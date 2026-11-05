@@ -1,1 +1,114 @@
 # WOOWANGTHON_TEAM_36_BE
+
+장학금 매칭 서비스 backend입니다. 사양은 상위 작업 공간의 `docs/장학금_매칭_서비스_계획서.md`를 따릅니다.
+
+## 배포 준비 (T08)
+
+계정 생성, 결제, 비밀값 입력은 **개발 담당자**가 직접 합니다. 아래 순서대로 체크하고, 확인한 값(리전, 모델 이름, 한도)은 계획서에 기록합니다.
+
+공통 변수(명령 예시에서 씀):
+
+```bash
+export PROJECT_ID=<프로젝트 ID>
+export REGION=asia-southeast1   # 싱가포르 (9.1). 사이트가 막히면 asia-northeast3(서울)
+```
+
+### 1. Google Cloud 결제·프로젝트 (9.1)
+
+- [ ] 담당자 Google 계정으로 결제 계정 생성(무료 체험, 2027-02-02까지)
+- [ ] 프로젝트 생성 후 `gcloud config set project $PROJECT_ID`
+- [ ] 예산 알림 월 $5: Billing → Budgets & alerts. **"Include credits in cost" 체크 해제**(크레딧 제외 기준), 알림 수신자는 담당자만(결제 관리자·사용자 기본 알림 해제 후 담당자 이메일만)
+- [ ] IAM에서 다른 팀원에게 프로젝트 편집 이상 권한을 주지 않음
+- [ ] API 사용 설정
+
+  ```bash
+  gcloud services enable run.googleapis.com cloudbuild.googleapis.com \
+    artifactregistry.googleapis.com secretmanager.googleapis.com \
+    cloudscheduler.googleapis.com
+  ```
+
+### 2. 사이트 접근 확인: Cloud Run Job (완료 기준)
+
+`scripts/check_sites.py`는 표준 라이브러리만 씁니다. 그래서 앱 이미지를 빌드하지 않고 공개 `python:3.12-slim` 이미지에 스크립트를 base64로 넘겨 실행합니다. gcloud `--args`는 쉼표로 인자를 나누는데, base64에는 쉼표가 없어서 안전합니다.
+
+```bash
+SCRIPT_B64=$(base64 < scripts/check_sites.py | tr -d '\n')
+gcloud run jobs deploy check-sites \
+  --region $REGION \
+  --image mirror.gcr.io/library/python:3.12-slim \
+  --command sh \
+  --args="-c","echo $SCRIPT_B64 | base64 -d | python -" \
+  --max-retries 0 --task-timeout 120s
+gcloud run jobs execute check-sites --region $REGION --wait
+```
+
+결과는 Cloud Logging에서 확인합니다.
+
+```bash
+gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="check-sites"' \
+  --limit 20 --format 'value(textPayload)' --freshness 10m
+```
+
+- [ ] 세 사이트(SW_DEPT, AIBC, KOSAF) 모두 `200`이면 싱가포르 확정
+- [ ] 하나라도 막히면 `REGION=asia-northeast3`으로 다시 실행하고, 결과를 계획서 9.1 "리전"에 기록
+- [ ] 확인이 끝나면 Job 삭제: `gcloud run jobs delete check-sites --region $REGION`
+
+### 3. Neon (9.4)
+
+- [ ] 프로젝트 생성: PostgreSQL **16**, 리전 **AWS Asia Pacific (Singapore)**
+- [ ] Compute 설정: 오토스케일 최대 **0.25 CU**(최소도 0.25)
+- [ ] 연결 문자열 두 개를 복사해 드라이버를 `postgresql+psycopg://`로 바꿈
+  - pooled(호스트에 `-pooler`) → `DATABASE_URL`
+  - direct → `DATABASE_URL_DIRECT`
+- [ ] 매월 15일 전후 사용량 확인 일정 등록(100 CU-시간 초과 시 DB 정지)
+
+### 4. Gemini (3장 AI 행, 9.1, 9.6, 9.9)
+
+- [ ] AI Studio에서 이 GCP 프로젝트(결제 연결)를 가져와 **유료 등급** API 키 발급
+- [ ] 새 프로젝트에서 쓸 수 있는 **최신 안정 Flash 모델 이름**을 확인해 계획서 9.6 `GEMINI_MODEL` 칸에 기록
+- [ ] AI Studio 한도 화면의 **분당·하루 요청 한도**를 계획서 9.9에 기록(T29 백필 간격 계산에 씀)
+
+### 5. Google OAuth (7.3 표)
+
+- [ ] OAuth 동의 화면: 사용자 유형 **External**, scope는 `openid email profile`만
+- [ ] 앱 홈페이지·개인정보처리방침 링크: `https://<프로덕션>.vercel.app/`, `https://<프로덕션>.vercel.app/privacy` (6번 Vercel 주소가 정해진 뒤 입력)
+- [ ] OAuth 클라이언트: 유형 **웹 애플리케이션**, 승인된 리디렉션 URI 2개
+  - `https://<프로덕션>.vercel.app/api/auth/google/callback`
+  - `http://localhost:5173/api/auth/google/callback`
+- [ ] `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` 보관(secret은 7번 Secret Manager에만)
+- [ ] `/privacy` 화면 배포(T24) 후 게시 상태를 **Testing → In production**으로 전환
+
+### 6. Vercel (9.2, 9.7)
+
+- [ ] Hobby 계정으로 공개 저장소 `WOOWANGTHON_TEAM_36_FE`를 Import(Framework: Vite)
+- [ ] 프로덕션 주소(`https://<프로덕션>.vercel.app`) 확정 → 5번 OAuth 설정에 입력
+- [ ] `vercel.json`의 backend 주소는 첫 backend 배포(T28) 후 실제 `run.app` 주소로 바꿈
+
+### 7. Secret Manager (9.5)
+
+비밀값 7개를 등록합니다. 값이 셸 기록에 남지 않도록 `--data-file=-`로 표준 입력에서 받습니다. 붙여 넣은 뒤 줄바꿈 없이 `Ctrl-D`를 누릅니다.
+
+```bash
+for name in DATABASE_URL DATABASE_URL_DIRECT GEMINI_API_KEY GOOGLE_CLIENT_SECRET; do
+  echo "$name 값을 붙여 넣고 Ctrl-D:"
+  gcloud secrets create $name --replication-policy=automatic --data-file=-
+done
+```
+
+무작위 값 3개는 생성해서 바로 등록합니다(화면에 출력하지 않음).
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(48), end='')" \
+  | gcloud secrets create JWT_SECRET --replication-policy=automatic --data-file=-
+python3 -c "import secrets; print(secrets.token_urlsafe(32), end='')" \
+  | gcloud secrets create CRON_TOKEN --replication-policy=automatic --data-file=-
+# AES-256 키: 32바이트 무작위 값의 base64 (T18 core/crypto.py가 이 형식을 읽음)
+python3 -c "import base64, secrets; print(base64.b64encode(secrets.token_bytes(32)).decode(), end='')" \
+  | gcloud secrets create FIELD_ENCRYPTION_KEY --replication-policy=automatic --data-file=-
+```
+
+- [ ] 7개 등록 확인: `gcloud secrets list`
+- [ ] `FIELD_ENCRYPTION_KEY`는 잃어버리면 암호화 필드를 복구할 수 없으므로 담당자만 아는 곳에 따로 백업
+- [ ] 값을 바꾸면 이전 버전은 `gcloud secrets versions destroy`로 사용 중지(무료 활성 버전 6개)
+
+비밀이 아닌 값(`GEMINI_MODEL`, `GOOGLE_CLIENT_ID`, `GOOGLE_REDIRECT_URI`, `ADMIN_EMAILS`)은 Cloud Run 환경변수로 직접 넣습니다(T28).
