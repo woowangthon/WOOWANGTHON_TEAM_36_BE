@@ -1,0 +1,42 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "2026학년도 2학기 Level-Up 장학금(TOEIC)",
+      "benefit_amount_text": "500,000원",
+      "benefit_type": null,
+      "apply_start": null,
+      "apply_end": "2026-10-22T12:00:00+09:00",
+      "target_grades": null,
+      "excludes_extra_semester": null,
+      "enrollment_status": null,
+      "min_gpa": null,
+      "min_credits": 12,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "소프트웨어학부 포함",
+      "target_program": "제한없음",
+      "required_documents": [
+        "장학생 지원서",
+        "토익성적표(2025-2학기, 2026-1학기)"
+      ],
+      "extra_conditions": [
+        "2025-2학기 TOEIC 400점 이상, 2026-1학기 TOEIC 500점 이상이며 100점 이상 향상"
+      ],
+      "ambiguous_fields": [
+        "min_gpa"
+      ],
+      "evidence": {
+        "apply_end": "제출기한 : 2026년 10월 22일 12:00까지",
+        "min_gpa": "12 학점 이상 , 성적 B0 (2.60) 이상 취득자",
+        "min_credits": "12 학점 이상 , 성적 B0 (2.60) 이상 취득자",
+        "target_department": "소프트웨어학부 장학담당조교 ... 제출"
+      }
+    }
+  ]
+}

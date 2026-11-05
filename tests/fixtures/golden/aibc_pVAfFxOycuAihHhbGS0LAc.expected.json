@@ -1,0 +1,37 @@
+{
+  "notice_kind": "기준안내",
+  "scholarships": [
+    {
+      "scholarship_name": "AI부트캠프사업단 자격증 장학금",
+      "benefit_amount_text": "합격 시 응시비용 100%, 불합격 시 50% 지급 (1인 최대 50만 원)",
+      "benefit_type": null,
+      "apply_start": null,
+      "apply_end": null,
+      "target_grades": null,
+      "excludes_extra_semester": null,
+      "enrollment_status": null,
+      "min_gpa": null,
+      "min_credits": null,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "제한없음",
+      "target_program": "AIBC 양성인재",
+      "required_documents": [],
+      "extra_conditions": [
+        "중급 이상의 자격이 되는 사업단 참여 학생",
+        "사업단 자격증 리스트의 자격증 응시",
+        "신청 시 사업단에 신청서 제출"
+      ],
+      "ambiguous_fields": [],
+      "evidence": {
+        "target_program": "자격증 장학금 지원 자격: 사업단 참여 학생이면서 중급 이상의 자격이 되는 학생",
+        "benefit_amount_text": "학생 1명당 최대 50만 원까지 지원 가능"
+      }
+    }
+  ]
+}

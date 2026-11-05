@@ -1,0 +1,44 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "2026학년도 2학기 천사장학금",
+      "benefit_amount_text": null,
+      "benefit_type": null,
+      "apply_start": "2026-10-15T00:00:00+09:00",
+      "apply_end": "2026-10-29T18:00:00+09:00",
+      "target_grades": null,
+      "excludes_extra_semester": true,
+      "enrollment_status": [
+        "재학"
+      ],
+      "min_gpa": null,
+      "min_credits": null,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "제한없음",
+      "target_program": "제한없음",
+      "required_documents": [
+        "천사장학금 신청서",
+        "학과장 추천서",
+        "가계곤란 증빙자료"
+      ],
+      "extra_conditions": [
+        "징계 등 처분 이력이 없는 학생",
+        "객관적인 가계곤란 증빙자료 제출 가능",
+        "최대 2회까지 수혜 가능"
+      ],
+      "ambiguous_fields": [],
+      "evidence": {
+        "apply_end": "신청기간 : 2026. 10. 15.( 목 ) ~ 10. 29.(목 ) 18:00 까지",
+        "enrollment_status": "정규학기에 재학 중인 학부생",
+        "excludes_extra_semester": "정규학기에 재학 중인 학부생"
+      }
+    }
+  ]
+}
