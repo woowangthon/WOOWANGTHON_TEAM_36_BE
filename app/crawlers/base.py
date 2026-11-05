@@ -69,20 +69,28 @@ class PoliteClient:
             transport=transport,
         )
 
-    def get(self, url: str, *, params: dict[str, str | int] | None = None) -> httpx.Response:
+    def get(
+        self,
+        url: str,
+        *,
+        params: dict[str, str | int] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> httpx.Response:
         """GET 요청. 5xx면 1회 재시도하고, 최종 응답이 4xx·5xx면 `HTTPStatusError`를 던집니다."""
         for attempt in range(MAX_5XX_RETRIES + 1):
-            response = self._send(url, params)
+            response = self._send(url, params, headers)
             if response.status_code < 500 or attempt == MAX_5XX_RETRIES:
                 break
             logger.warning("5xx 응답, 재시도", extra={"url": url, "status": response.status_code})
         response.raise_for_status()
         return response
 
-    def _send(self, url: str, params: dict[str, str | int] | None) -> httpx.Response:
+    def _send(
+        self, url: str, params: dict[str, str | int] | None, headers: dict[str, str] | None
+    ) -> httpx.Response:
         self._wait_turn()
         try:
-            return self._http.get(url, params=params)
+            return self._http.get(url, params=params, headers=headers)
         finally:
             # 실패(타임아웃 등)한 요청도 사이트에 닿았을 수 있으므로 간격 계산에 넣습니다.
             self._last_finished = self._clock.monotonic()
@@ -153,6 +161,14 @@ class Crawler(ABC):
     @abstractmethod
     def fetch_detail(self, external_id: str) -> RawNotice:
         """글 1건의 상세를 받아 돌려줍니다."""
+
+    def fetch_attachment(self, attachment: Attachment, *, referer: str) -> bytes | None:
+        """첨부 파일을 내려받습니다. 받지 않는 사이트는 None을 돌려줍니다.
+
+        학부 게시판(XE)은 상세를 연 같은 세션 쿠키와 Referer가 있어야 받아집니다
+        (`tests/fixtures/README.md`). 클라이언트가 쿠키를 유지하므로 Referer만 넣습니다.
+        """
+        return self.client.get(attachment.url, headers={"Referer": referer}).content
 
     def close(self) -> None:
         self.client.close()

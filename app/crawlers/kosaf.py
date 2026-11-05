@@ -54,6 +54,9 @@ class KosafCrawler(Crawler):
         url = detail_url(external_id)
         return parse_detail(self.client.get(url).text, external_id=external_id, url=url)
 
+    def fetch_attachment(self, attachment: Attachment, *, referer: str) -> bytes | None:
+        return None  # fileDown() ZIP은 받지 않음(2장)
+
 
 def parse_list(html: str) -> list[NoticeSummary]:
     page = soup(html)

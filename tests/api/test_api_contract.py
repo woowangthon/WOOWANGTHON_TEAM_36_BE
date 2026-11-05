@@ -57,8 +57,11 @@ STUB_REQUESTS = [
     ("delete", "/scholarships/1/state", None),
     ("get", "/admin/crawl-runs", None),
     ("post", "/admin/notices/1/reextract", None),
-    ("post", "/internal/crawl", None),
+    # ("post", "/internal/crawl") — T17에서 구현 (tests/scheduler/test_internal_api.py)
 ]
+
+# 기능 카드에서 구현해 더 이상 501이 아닌 엔드포인트
+IMPLEMENTED = {("post", "/internal/crawl")}
 
 
 def test_openapi_has_all_spec_endpoints(client):
@@ -72,7 +75,7 @@ def test_every_spec_endpoint_is_stubbed():
     normalized = {
         (m, p.replace("{scholarship_id}", "1").replace("{notice_id}", "1"))
         for m, p in SPEC_ENDPOINTS
-        if p != "/health"
+        if p != "/health" and (m, p) not in IMPLEMENTED
     }
     assert covered == normalized
 
