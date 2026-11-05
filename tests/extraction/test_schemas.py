@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from app.extraction import (
     ExtractedCriteria,
+    ExtractionError,
     ExtractionResult,
     ExtractRequest,
     ScholarshipCriteria,
@@ -188,7 +189,7 @@ def test_extract_request_rejects_invalid(overrides):
         _request(**overrides)
 
 
-# --- extract() 뼈대 --------------------------------------------------------
+# --- extract() 목 응답·설정 --------------------------------------------------------
 
 
 def test_extract_returns_mock_when_ai_mock(monkeypatch):
@@ -202,7 +203,9 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     assert again.criteria.scholarships[0].scholarship_name == "두산연강재단 장학금"
 
 
-def test_extract_not_implemented_without_mock(monkeypatch):
+def test_extract_without_model_name_fails(monkeypatch):
+    # GEMINI_MODEL은 코드에 기본값이 없음(T15). 앱 시작은 막지 않고 추출할 때 실패합니다.
     monkeypatch.setenv("AI_MOCK", "0")
-    with pytest.raises(NotImplementedError):
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    with pytest.raises(ExtractionError):
         extract(_request())
