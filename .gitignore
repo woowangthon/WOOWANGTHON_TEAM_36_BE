@@ -1,0 +1,17 @@
+# 비밀값: 커밋 금지 (변수 이름은 .env.example에만)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# OS·편집기
+.DS_Store
+.idea/
+.vscode/
