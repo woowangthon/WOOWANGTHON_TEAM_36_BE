@@ -1,0 +1,45 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "(재)미래인재육성재단 2027학년도 신규 장학생",
+      "benefit_amount_text": "학기당 350만 원 (생활비성), 6학기 지원",
+      "benefit_type": "생활비성",
+      "apply_start": null,
+      "apply_end": "2026-09-10T23:59:00+09:00",
+      "target_grades": [
+        1
+      ],
+      "excludes_extra_semester": null,
+      "enrollment_status": null,
+      "min_gpa": null,
+      "min_credits": null,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "제한없음",
+      "target_program": "제한없음",
+      "required_documents": [
+        "장학생 신청서 및 자기소개서",
+        "개인정보수집이용동의서",
+        "학교장 추천서",
+        "성적증명서"
+      ],
+      "extra_conditions": [
+        "전체 학기 성적 백분위 90점 이상"
+      ],
+      "ambiguous_fields": [
+        "min_gpa"
+      ],
+      "evidence": {
+        "apply_end": "제출기한: 2026년 9월 10일까지",
+        "target_grades": "2027 학년도 2 학년 1 학기 진학 예정자",
+        "min_gpa": "전체 학기 성적 백분위 90 점 이상인 자"
+      }
+    }
+  ]
+}

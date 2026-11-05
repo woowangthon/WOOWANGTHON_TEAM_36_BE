@@ -1,0 +1,75 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "2026년 2학기 푸른등대 기부장학금(2차) - KOSAF기부펀드 일상회복",
+      "benefit_amount_text": "생활비 장학금 200만 원",
+      "benefit_type": "생활비성",
+      "apply_start": "2026-10-22T09:00:00+09:00",
+      "apply_end": "2026-11-12T18:00:00+09:00",
+      "target_grades": null,
+      "excludes_extra_semester": null,
+      "enrollment_status": [
+        "재학"
+      ],
+      "min_gpa": null,
+      "min_credits": null,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "제한없음",
+      "target_program": "제한없음",
+      "required_documents": [
+        "고립·은둔 지원 프로그램 참여 또는 수료 증빙서류"
+      ],
+      "extra_conditions": [
+        "2023년 이후 고립·은둔 지원 프로그램을 수료한 자",
+        "신·편입생 제외",
+        "신청시작일 기준 잔여 정규학기 1개학기 이상"
+      ],
+      "ambiguous_fields": [],
+      "evidence": {
+        "apply_end": "2026. 10. 22.( 목 ) 09:00 ∼ 11. 12.( 목 ) 18:00",
+        "enrollment_status": "대한민국 국적의 대학교 재학생"
+      }
+    },
+    {
+      "scholarship_name": "2026년 2학기 푸른등대 기부장학금(2차) - KOSAF기부펀드 지역 1차 산업",
+      "benefit_amount_text": "생활비 장학금 200만 원",
+      "benefit_type": "생활비성",
+      "apply_start": "2026-10-22T09:00:00+09:00",
+      "apply_end": "2026-11-12T18:00:00+09:00",
+      "target_grades": null,
+      "excludes_extra_semester": null,
+      "enrollment_status": [
+        "재학"
+      ],
+      "min_gpa": null,
+      "min_credits": null,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "소프트웨어학부 불포함",
+      "target_program": "제한없음",
+      "required_documents": [],
+      "extra_conditions": [
+        "지방 소재(서울·인천·경기 외) 대학교 재학생",
+        "신·편입생 제외",
+        "신청시작일 기준 잔여 정규학기 1개학기 이상"
+      ],
+      "ambiguous_fields": [],
+      "evidence": {
+        "apply_end": "2026. 10. 22.( 목 ) 09:00 ∼ 11. 12.( 목 ) 18:00",
+        "target_department": "농업, 수산업, 축산업, 산림업 관련 학과 전공자"
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "2026년 2학기 푸른등대 기부장학금(2차)",
+      "benefit_amount_text": null,
+      "benefit_type": null,
+      "apply_start": "2026-10-22T09:00:00+09:00",
+      "apply_end": "2026-11-12T18:00:00+09:00",
+      "target_grades": null,
+      "excludes_extra_semester": null,
+      "enrollment_status": null,
+      "min_gpa": null,
+      "min_credits": null,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "불명",
+      "target_program": "제한없음",
+      "required_documents": [],
+      "extra_conditions": [
+        "기부자별 세부 선발기준은 한국장학재단 누리집 및 붙임 파일에서 확인"
+      ],
+      "ambiguous_fields": [],
+      "evidence": {
+        "apply_end": "장학금 신청 및 서류제출: 2026. 10. 22.(목) 09:00 ~ 11. 12.(목) 18:00"
+      }
+    }
+  ]
+}

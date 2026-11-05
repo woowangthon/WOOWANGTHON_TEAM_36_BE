@@ -1,0 +1,43 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "신한은행 충북장학회 2026년도 장학금",
+      "benefit_amount_text": "150만원",
+      "benefit_type": "생활비성",
+      "apply_start": null,
+      "apply_end": "2026-10-23T12:00:00+09:00",
+      "target_grades": null,
+      "excludes_extra_semester": true,
+      "enrollment_status": [
+        "재학"
+      ],
+      "min_gpa": 3.0,
+      "min_credits": null,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": [
+        "충청북도"
+      ],
+      "region_basis": "본인",
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "제한없음",
+      "target_program": "제한없음",
+      "required_documents": [
+        "장학생 추천서",
+        "전학년 성적증명서",
+        "주민등록등본(최근 1개월 이내)"
+      ],
+      "extra_conditions": [],
+      "ambiguous_fields": [],
+      "evidence": {
+        "apply_end": "제출기한 : 2026년 10월 23일 12시까지",
+        "min_gpa": "직전학기 평점평균 3.0 이상인 자",
+        "regions": "주소지가 충청북도인 재학생",
+        "excludes_extra_semester": "휴학자 및 초과학기자는 추천 제외"
+      }
+    }
+  ]
+}

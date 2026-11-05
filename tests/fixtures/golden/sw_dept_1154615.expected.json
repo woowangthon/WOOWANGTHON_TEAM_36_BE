@@ -1,0 +1,52 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "(재)한국지도자육성장학재단 2027년도 신규 장학생",
+      "benefit_amount_text": "유형1 등록금 전액 또는 유형2 생활비 학기당 350만 원(택 1), 최대 2년",
+      "benefit_type": null,
+      "apply_start": null,
+      "apply_end": "2026-10-27T18:00:00+09:00",
+      "target_grades": [
+        2
+      ],
+      "excludes_extra_semester": null,
+      "enrollment_status": null,
+      "min_gpa": null,
+      "min_credits": 12,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "제한없음",
+      "target_program": "제한없음",
+      "required_documents": [
+        "장학생 지원서",
+        "지도교수 추천서",
+        "자기소개서",
+        "개인정보제공동의서",
+        "의무사항 참여 동의서",
+        "성적증명서",
+        "가산점부여 항목 증빙서류"
+      ],
+      "extra_conditions": [
+        "전체학기 백분율 성적 85점 이상",
+        "징계사실이 없는 자",
+        "2027학년도 1학기 휴학 예정자 제외"
+      ],
+      "ambiguous_fields": [
+        "benefit_type",
+        "min_gpa"
+      ],
+      "evidence": {
+        "apply_end": "제출기한: 2026년 10월 26일 12시까지 ( 기간 연장 ~10.27 18:00)",
+        "target_grades": "2027 학년도 1 학기 기준 3 학년 1 학기에 재학 예정인 자",
+        "min_credits": "매 정규학기 12 학점 이상 이수하고 전체학기 백분율 성적 85 점 이상인자",
+        "min_gpa": "전체학기 백분율 성적 85 점 이상인자"
+      }
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "notice_kind": "기준안내",
+  "scholarships": [
+    {
+      "scholarship_name": "소프트웨어학부 교내재원 성적우수장학금 (2027학년도 1학기)",
+      "benefit_amount_text": null,
+      "benefit_type": null,
+      "apply_start": null,
+      "apply_end": null,
+      "target_grades": null,
+      "excludes_extra_semester": true,
+      "enrollment_status": [
+        "재학"
+      ],
+      "min_gpa": 2.6,
+      "min_credits": 12,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "소프트웨어학부 포함",
+      "target_program": "제한없음",
+      "required_documents": [],
+      "extra_conditions": [
+        "직전학기 학업성적 80% + 활동점수 20% 환산성적 석차순 선발"
+      ],
+      "ambiguous_fields": [],
+      "evidence": {
+        "min_gpa": "성적우수장학생: 직전학기 12학점, B 0 (2.6) 이상",
+        "min_credits": "성적우수장학생: 직전학기 12학점, B 0 (2.6) 이상",
+        "excludes_extra_semester": "성적장학금 배정 제외대상: 휴학생, 수업연한 초과자",
+        "target_department": "2027학년도 1학기 소프트웨어학부 교내재원 성적우수 장학생"
+      }
+    },
+    {
+      "scholarship_name": "소프트웨어학부 학과수석장학금 (2027학년도 1학기)",
+      "benefit_amount_text": null,
+      "benefit_type": null,
+      "apply_start": null,
+      "apply_end": null,
+      "target_grades": [
+        1,
+        2,
+        3
+      ],
+      "excludes_extra_semester": true,
+      "enrollment_status": [
+        "재학"
+      ],
+      "min_gpa": null,
+      "min_credits": 12,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "소프트웨어학부 포함",
+      "target_program": "제한없음",
+      "required_documents": [],
+      "extra_conditions": [],
+      "ambiguous_fields": [],
+      "evidence": {
+        "target_grades": "학과수석장학생: 2∼4학년 중 선발(1학년은 대상 아님)",
+        "min_credits": "이수학점 미달(학부 12학점)",
+        "excludes_extra_semester": "성적장학금 배정 제외대상: 휴학생, 수업연한 초과자"
+      }
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "hy사회복지재단 2026년 든든 학업지원금",
+      "benefit_amount_text": "200만원 (생활비성, 1회)",
+      "benefit_type": "생활비성",
+      "apply_start": "2026-09-01T10:00:00+09:00",
+      "apply_end": "2026-10-08T17:00:00+09:00",
+      "target_grades": null,
+      "excludes_extra_semester": null,
+      "enrollment_status": [
+        "재학"
+      ],
+      "min_gpa": null,
+      "min_credits": null,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": 5.0,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "제한없음",
+      "target_program": "제한없음",
+      "required_documents": [
+        "개인정보 수집·이용 제공 동의서",
+        "재학 증명서",
+        "가족관계증명서(상세)",
+        "한국장학재단 학자금 지원구간 통지서",
+        "통장 사본"
+      ],
+      "extra_conditions": [
+        "사이버대학교 재학생 불가",
+        "기존 선발 학생 지원 불가"
+      ],
+      "ambiguous_fields": [],
+      "evidence": {
+        "apply_end": "신청기간 : 2026. 9. 1.( 화 ) 10:00 ~ 10. 8.( 목 ) 17:00",
+        "max_income_bracket": "신청자격 : 학자금 지원구간 5 구간 이내",
+        "enrollment_status": "휴학생 지원 불가"
+      }
+    }
+  ]
+}

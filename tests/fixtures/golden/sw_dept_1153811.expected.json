@@ -1,0 +1,47 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "2026학년도 2학기 중소기업 취업연계 장학사업(희망사다리Ⅰ유형)",
+      "benefit_amount_text": "매 학기 등록금 전액 및 취·창업지원금 200만 원",
+      "benefit_type": "혼합",
+      "apply_start": "2026-09-01T09:00:00+09:00",
+      "apply_end": "2026-09-18T18:00:00+09:00",
+      "target_grades": [
+        3,
+        4
+      ],
+      "excludes_extra_semester": null,
+      "enrollment_status": [
+        "재학"
+      ],
+      "min_gpa": null,
+      "min_credits": 12,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "제한없음",
+      "target_program": "제한없음",
+      "required_documents": [],
+      "extra_conditions": [
+        "직전학기 성적 백분위 70점 이상",
+        "졸업 후 의무종사 기간 동안 중소기업 취업 또는 창업상태 유지",
+        "신청기한 내 온라인 사전교육 및 진단평가 완료"
+      ],
+      "ambiguous_fields": [
+        "min_gpa"
+      ],
+      "evidence": {
+        "apply_end": "신청 기간 : 2026. 9. 1.( 화 ) 09:00 ~ 9. 18.( 금 ) 18:00 까지",
+        "target_grades": "대한민국 국적자로 3 학년 이상 재학생",
+        "min_credits": "직전학기 12 학점 이상 을 이수하고",
+        "min_gpa": "직전학기 성적이 백분위 70 점 이상",
+        "benefit_type": "매 학기 등록금 전액 및 취 · 창업지원금 200 만 원"
+      }
+    }
+  ]
+}

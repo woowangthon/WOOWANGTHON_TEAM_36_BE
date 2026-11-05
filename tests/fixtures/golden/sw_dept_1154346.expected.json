@@ -1,0 +1,50 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "(재)대전청년내일재단 2026년 하반기 인재육성 성취(대) 장학금",
+      "benefit_amount_text": null,
+      "benefit_type": "생활비성",
+      "apply_start": null,
+      "apply_end": "2026-10-08T17:00:00+09:00",
+      "target_grades": [
+        2,
+        3,
+        4
+      ],
+      "excludes_extra_semester": null,
+      "enrollment_status": [
+        "재학"
+      ],
+      "min_gpa": 3.5,
+      "min_credits": 12,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": [
+        "대전광역시"
+      ],
+      "region_basis": "무관",
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "제한없음",
+      "target_program": "제한없음",
+      "required_documents": [],
+      "extra_conditions": [
+        "공고일 기준 1년 전부터 계속해서 대전광역시에 주소",
+        "2026년 상반기 인재육성 장학금 수혜자 제외"
+      ],
+      "ambiguous_fields": [
+        "apply_start"
+      ],
+      "evidence": {
+        "apply_start": "신청기간: 2025. 9. 1.(화) ~ 10. 8.(목) 17시까지",
+        "apply_end": "신청기간: 2025. 9. 1.(화) ~ 10. 8.(목) 17시까지",
+        "target_grades": "대학교 2학년 이상 재학생",
+        "min_gpa": "직전 학기까지의 전체 평균 평점 3.5 이상인 학생",
+        "min_credits": "직전학기 최소학점(12학점) 이상 이수",
+        "regions": "본인 또는 부모가 1년 전부터 계속해서 대전광역시에 주소를 두고 있는 학생"
+      }
+    }
+  ]
+}

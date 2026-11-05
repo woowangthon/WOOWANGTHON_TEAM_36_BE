@@ -1,0 +1,42 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "2026년 국가근로장학금 동계방학 집중근로 프로그램",
+      "benefit_amount_text": null,
+      "benefit_type": "생활비성",
+      "apply_start": "2026-10-30T09:00:00+09:00",
+      "apply_end": "2026-11-12T18:00:00+09:00",
+      "target_grades": null,
+      "excludes_extra_semester": null,
+      "enrollment_status": [
+        "재학"
+      ],
+      "min_gpa": null,
+      "min_credits": null,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": 9.0,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "제한없음",
+      "target_program": "제한없음",
+      "required_documents": [],
+      "extra_conditions": [
+        "2026년 2학기 국가근로장학금 학생 신청기간에 국가근로장학금을 신청한 학생",
+        "직전학기 성적 70점/100점 만점(C0수준) 이상",
+        "동계방학 집중근로 프로그램 참여 대학의 재학생"
+      ],
+      "ambiguous_fields": [
+        "min_gpa"
+      ],
+      "evidence": {
+        "apply_end": "신청기간 : 2026. 10. 30.(금) 9시 ~ 2026. 11. 12.(목) 18시",
+        "max_income_bracket": "학자금 지원 9구간 이하인 학생",
+        "min_gpa": "직전학기 성적 70점/100점 만점(C0수준) 이상"
+      }
+    }
+  ]
+}

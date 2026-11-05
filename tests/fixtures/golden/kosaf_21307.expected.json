@@ -1,0 +1,38 @@
+{
+  "notice_kind": "모집",
+  "scholarships": [
+    {
+      "scholarship_name": "2026년 푸른등대 한국수력원자력 K-원전 장학금 (1유형 대학생 지원사업)",
+      "benefit_amount_text": "학기당 생활비 장학금 300만 원 ('26-2~'27-1 2개 학기)",
+      "benefit_type": "생활비성",
+      "apply_start": "2026-09-11T09:00:00+09:00",
+      "apply_end": "2026-09-28T18:00:00+09:00",
+      "target_grades": null,
+      "excludes_extra_semester": null,
+      "enrollment_status": [
+        "재학"
+      ],
+      "min_gpa": null,
+      "min_credits": null,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "소프트웨어학부 불포함",
+      "target_program": "제한없음",
+      "required_documents": [],
+      "extra_conditions": [
+        "2026년 지원대상 대학의 원자력 관련 학과 또는 연계 전공 재학생"
+      ],
+      "ambiguous_fields": [],
+      "evidence": {
+        "apply_end": "2026. 9. 11.(금) 09:00 ~ 2026. 9. 28.(월) 18:00",
+        "target_department": "원자력 관련 학과 또는 연계 전공 으로 인정된 대학생 및 대학원생",
+        "benefit_type": "학기당 생활비 장학금 300만 원"
+      }
+    }
+  ]
+}

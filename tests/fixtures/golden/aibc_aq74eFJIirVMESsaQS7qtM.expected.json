@@ -1,0 +1,35 @@
+{
+  "notice_kind": "기준안내",
+  "scholarships": [
+    {
+      "scholarship_name": "AI부트캠프사업단 장학금",
+      "benefit_amount_text": "몰입형 교육과정 이수성적 기준 장학등급(1~6등급)별 차등 지급, 가점 포함 1인 최대 600만원",
+      "benefit_type": null,
+      "apply_start": null,
+      "apply_end": null,
+      "target_grades": null,
+      "excludes_extra_semester": null,
+      "enrollment_status": null,
+      "min_gpa": null,
+      "min_credits": null,
+      "gender": null,
+      "max_age": null,
+      "max_income_bracket": null,
+      "regions": null,
+      "region_basis": null,
+      "required_special": null,
+      "excludes_full_tuition": null,
+      "target_department": "제한없음",
+      "target_program": "AIBC 양성인재",
+      "required_documents": [],
+      "extra_conditions": [
+        "AI부트캠프 중급 이상의 교육과정을 이수한 학생"
+      ],
+      "ambiguous_fields": [],
+      "evidence": {
+        "target_program": "장학금 지급은 AI부트캠프 중급 이상의 교육과정을 이수한 학생을 대상으로 한다.",
+        "benefit_amount_text": "최대 600만원 을 초과할 수 없다."
+      }
+    }
+  ]
+}
