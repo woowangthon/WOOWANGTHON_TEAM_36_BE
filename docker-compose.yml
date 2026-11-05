@@ -1,0 +1,51 @@
+# 로컬 통합 실행 (계획서 8.3)
+#   docker compose up                 → postgres 16 + backend
+#   docker compose --profile full up  → + ../frontend (두 저장소를 나란히 clone했다는 전제)
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: scholarship
+      POSTGRES_PASSWORD: scholarship
+      POSTGRES_DB: scholarship
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scholarship -d scholarship"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  backend:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # .env의 값(Neon 주소 등)보다 우선해서 compose의 postgres를 씁니다.
+      DATABASE_URL: postgresql+psycopg://scholarship:scholarship@postgres:5432/scholarship
+      AI_MOCK: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--no-access-log"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    profiles: ["full"]
+    build: ../frontend
+    environment:
+      # 컨테이너 안에서는 localhost:8000이 backend가 아니므로 Vite 프록시 대상을 바꿉니다(T03).
+      API_PROXY_TARGET: http://backend:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
