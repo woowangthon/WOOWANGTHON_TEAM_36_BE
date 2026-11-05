@@ -10,14 +10,19 @@
 """
 
 import logging
+import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from types import TracebackType
-from typing import ClassVar, Protocol, Self
+from typing import TYPE_CHECKING, ClassVar, Protocol, Self
+from zoneinfo import ZoneInfo
 
 import httpx
+
+if TYPE_CHECKING:
+    from bs4 import BeautifulSoup, Tag
 
 USER_AGENT = "CBNU-ScholarshipMatcher/0.1 (WOOWANGTHON team36; contact: pgmo0329@naver.com)"
 MIN_INTERVAL_SECONDS = 1.0  # 공통 규칙: 같은 사이트 요청 간격 1초 이상
@@ -164,3 +169,65 @@ class Crawler(ABC):
         tb: TracebackType | None,
     ) -> None:
         self.close()
+
+
+# --- 사이트 크롤러가 함께 쓰는 HTML 도우미 ---
+# BeautifulSoup/lxml은 학생 요청 경로에서 불러오지 않도록 함수 안에서 import합니다(9.5).
+
+SEOUL = ZoneInfo("Asia/Seoul")
+_POSTED_AT = re.compile(r"(\d{4})[.-](\d{1,2})[.-](\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?")
+_BLOCK_TAGS = ("p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "table", "ul", "ol")
+_CELL_TAGS = ("td", "th")
+
+
+class ParseError(ValueError):
+    """페이지 구조가 예상과 달라 필요한 값을 찾지 못했습니다(사이트 개편 등)."""
+
+
+def soup(html: str) -> "BeautifulSoup":
+    from bs4 import BeautifulSoup
+
+    return BeautifulSoup(html, "lxml")
+
+
+def parse_posted_at(text: str) -> datetime | None:
+    """게시판의 게시일 `2026.10.22 15:33`, `2026-10-29`를 한국 시간으로 읽습니다.
+
+    시각이 없으면 00:00입니다. 형식이 정해진 게시일만 읽고, 공지 본문·제목의 날짜 해석은
+    `parsers/dates.py`(T14)가 맡습니다.
+    """
+    match = _POSTED_AT.search(text)
+    if match is None:
+        return None
+    year, month, day, hour, minute = match.groups()
+    return datetime(int(year), int(month), int(day), int(hour or 0), int(minute or 0), tzinfo=SEOUL)
+
+
+def block_text(element: "Tag") -> str:
+    """문단·줄바꿈·표 행 단위로 줄을 나눈 본문 텍스트. `element`를 바꾸므로 한 번만 부릅니다.
+
+    공문을 한글 편집기에서 붙여 넣은 글은 `<span>`이 글자 단위로 잘게 나뉘어 있어서,
+    `get_text("\\n")`처럼 태그마다 나누면 "2027 / 년도"처럼 끊깁니다. 그래서 인라인 태그는
+    이어 붙이고, 블록 태그와 `<br>`에서만 줄을 나눕니다.
+    표는 한 행을 한 줄로 만들고 칸은 ` | `로 구분합니다(칸 안의 문단·줄바꿈은 공백으로 합침).
+    """
+    for row in element.find_all("tr"):
+        # 소스 HTML의 칸 사이 줄바꿈이 행을 여러 줄로 나누지 않게 공백 문자열을 지웁니다.
+        for child in list(row.children):
+            if isinstance(child, str) and not child.strip():
+                child.extract()
+    for cell in element.find_all(_CELL_TAGS):
+        for br in cell.find_all("br"):
+            br.replace_with(" ")
+        for block in cell.find_all(_BLOCK_TAGS):
+            block.insert_before(" ")
+            block.insert_after(" ")
+        cell.string = " ".join(cell.get_text().split())
+        cell.insert_after(" | ")
+    for br in element.find_all("br"):
+        br.replace_with("\n")
+    for block in element.find_all(_BLOCK_TAGS):
+        block.insert_before("\n")
+        block.insert_after("\n")
+    lines = (" ".join(line.split()).strip(" |") for line in element.get_text().splitlines())
+    return "\n".join(line for line in lines if line)
