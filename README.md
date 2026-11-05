@@ -64,9 +64,22 @@ gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name=
 
 ### 4. Gemini (3장 AI 행, 9.1, 9.6, 9.9)
 
-- [ ] AI Studio에서 이 GCP 프로젝트(결제 연결)를 가져와 **유료 등급** API 키 발급
-- [ ] 새 프로젝트에서 쓸 수 있는 **최신 안정 Flash 모델 이름**을 확인해 계획서 9.6 `GEMINI_MODEL` 칸에 기록
-- [ ] AI Studio 한도 화면의 **분당·하루 요청 한도**를 계획서 9.9에 기록(T29 백필 간격 계산에 씀)
+GCP 무료 체험 크레딧은 Gemini에 쓸 수 없습니다(2026-03부터). AI Studio 선불 크레딧으로 결제합니다.
+
+- [ ] AI Studio에서 이 GCP 프로젝트를 가져옴(Import project)
+- [ ] AI Studio 결제 화면에서 **선불 크레딧 $5** 구매(자동 충전 끔). 잔액이 $0이면 호출이 402로 실패함
+- [ ] API 키를 gcloud로 만들고 Gemini API만 쓰도록 제한한 뒤, 값을 화면에 띄우지 않고 Secret Manager에 바로 등록
+
+  ```bash
+  gcloud services enable generativelanguage.googleapis.com apikeys.googleapis.com
+  gcloud services api-keys create --display-name=scholarship-gemini \
+    --api-target=service=generativelanguage.googleapis.com --format='value(name)'
+  gcloud services api-keys get-key-string <위 출력의 키 이름> --format='value(keyString)' \
+    | tr -d '\n' | gcloud secrets create GEMINI_API_KEY --replication-policy=automatic --data-file=-
+  ```
+
+- [ ] 새 프로젝트에서 쓸 수 있는 **최신 안정 Flash 모델 이름**을 확인해 계획서 9.6 `GEMINI_MODEL` 칸에 기록(2026-11-05: `gemini-3.8-flash`)
+- [ ] AI Studio 한도 화면의 **분당·하루 요청 한도**를 계획서 9.9에 기록(2026-11-05 Tier 1: RPM 1,000 / TPM 2M / RPD 10,000)
 
 ### 5. Google OAuth (7.3 표)
 
@@ -86,10 +99,10 @@ gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name=
 
 ### 7. Secret Manager (9.5)
 
-비밀값 7개를 등록합니다. 값이 셸 기록에 남지 않도록 `--data-file=-`로 표준 입력에서 받습니다. 붙여 넣은 뒤 줄바꿈 없이 `Ctrl-D`를 누릅니다.
+비밀값 7개를 등록합니다. 값이 셸 기록에 남지 않도록 `--data-file=-`로 표준 입력에서 받습니다. 붙여 넣은 뒤 줄바꿈 없이 `Ctrl-D`를 누릅니다. `GEMINI_API_KEY`는 4번에서 이미 등록했습니다.
 
 ```bash
-for name in DATABASE_URL DATABASE_URL_DIRECT GEMINI_API_KEY GOOGLE_CLIENT_SECRET; do
+for name in DATABASE_URL DATABASE_URL_DIRECT GOOGLE_CLIENT_SECRET; do
   echo "$name 값을 붙여 넣고 Ctrl-D:"
   gcloud secrets create $name --replication-policy=automatic --data-file=-
 done
