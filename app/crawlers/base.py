@@ -10,14 +10,12 @@
 """
 
 import logging
-import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from types import TracebackType
 from typing import TYPE_CHECKING, ClassVar, Protocol, Self
-from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -174,8 +172,6 @@ class Crawler(ABC):
 # --- 사이트 크롤러가 함께 쓰는 HTML 도우미 ---
 # BeautifulSoup/lxml은 학생 요청 경로에서 불러오지 않도록 함수 안에서 import합니다(9.5).
 
-SEOUL = ZoneInfo("Asia/Seoul")
-_POSTED_AT = re.compile(r"(\d{4})[.-](\d{1,2})[.-](\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?")
 _BLOCK_TAGS = ("p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "table", "ul", "ol")
 _CELL_TAGS = ("td", "th")
 
@@ -188,19 +184,6 @@ def soup(html: str) -> "BeautifulSoup":
     from bs4 import BeautifulSoup
 
     return BeautifulSoup(html, "lxml")
-
-
-def parse_posted_at(text: str) -> datetime | None:
-    """게시판의 게시일 `2026.10.22 15:33`, `2026-10-29`를 한국 시간으로 읽습니다.
-
-    시각이 없으면 00:00입니다. 형식이 정해진 게시일만 읽고, 공지 본문·제목의 날짜 해석은
-    `parsers/dates.py`(T14)가 맡습니다.
-    """
-    match = _POSTED_AT.search(text)
-    if match is None:
-        return None
-    year, month, day, hour, minute = match.groups()
-    return datetime(int(year), int(month), int(day), int(hour or 0), int(minute or 0), tzinfo=SEOUL)
 
 
 def block_text(element: "Tag") -> str:

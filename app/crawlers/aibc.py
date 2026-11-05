@@ -17,9 +17,9 @@ from app.crawlers.base import (
     ParseError,
     RawNotice,
     block_text,
-    parse_posted_at,
     soup,
 )
+from app.parsers.dates import parse_posted_at
 
 BASE_URL = "https://aibc.cbnu.ac.kr/"
 LIST_URL = "https://aibc.cbnu.ac.kr/menu/1108"
