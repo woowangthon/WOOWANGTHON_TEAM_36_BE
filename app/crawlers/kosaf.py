@@ -23,9 +23,9 @@ from app.crawlers.base import (
     ParseError,
     RawNotice,
     block_text,
-    parse_posted_at,
     soup,
 )
+from app.parsers.dates import parse_posted_at
 
 LIST_URL = "https://www.kosaf.go.kr/ko/notice.do"
 CATEGORY = "0000000002"  # 장학금 공지
