@@ -170,6 +170,9 @@ for r in roles/run.sourceDeveloper roles/serviceusage.serviceUsageConsumer; do
 done
 gcloud iam service-accounts add-iam-policy-binding $RUNTIME_SA \
   --member=serviceAccount:$DEPLOY_SA --role=roles/iam.serviceAccountUser
+# 빌드 계정도 빌려 써야 합니다. 없으면 빌드가 PERMISSION_DENIED로 실패합니다(2026-11-06 첫 배포에서 확인).
+gcloud iam service-accounts add-iam-policy-binding $PROJECT_NUMBER-compute@developer.gserviceaccount.com \
+  --member=serviceAccount:$DEPLOY_SA --role=roles/iam.serviceAccountUser
 gcloud secrets add-iam-policy-binding DATABASE_URL_DIRECT --member=serviceAccount:$DEPLOY_SA \
   --role=roles/secretmanager.secretAccessor --condition=None   # 마이그레이션용
 
@@ -205,7 +208,7 @@ gh variable set ADMIN_EMAILS --env production --repo $REPO --body "<관리자 Gm
 
 ### 최초 1회: 첫 배포 후 공개 접근·정리 정책·Scheduler
 
-배포용 계정에는 IAM 정책 변경 권한이 없으므로 공개 접근(`allUsers` 호출 허용)은 첫 배포 직후 프로젝트 소유자가 한 번 설정합니다.
+배포용 계정에는 IAM 정책 변경 권한이 없으므로 공개 접근(`allUsers` 호출 허용)은 첫 배포 직후 프로젝트 소유자가 한 번 설정합니다. 그 전까지는 워크플로의 `/health` 확인이 403으로 실패하는 것이 정상입니다.
 
 ```bash
 gcloud run services add-iam-policy-binding scholarship-backend --region=$REGION \
@@ -237,6 +240,6 @@ gcloud scheduler jobs create http wake --location=$REGION \
   --uri="$URL/health" --http-method=GET --attempt-deadline=30s --max-retry-attempts=0
 ```
 
-- 확인: `gcloud scheduler jobs run crawl --location=$REGION` 후 Neon `crawl_runs`에 `DONE` 기록
+- 확인: `gcloud scheduler jobs run crawl --location=$REGION` 후 Neon `crawl_runs`에 `DONE` 기록 (첫 실행은 공지 32건 추출에 약 8분)
 - `CRON_TOKEN`을 바꾸면 `gcloud scheduler jobs update http crawl --update-headers=...`로 같이 바꿉니다.
 - 백필(T29) 동안은 `gcloud scheduler jobs pause crawl`, 끝나면 `resume`
