@@ -84,29 +84,32 @@ GCP 무료 체험 크레딧은 Gemini에 쓸 수 없습니다(2026-03부터). AI
 ### 5. Google OAuth (7.3 표)
 
 - [ ] OAuth 동의 화면: 사용자 유형 **External**, scope는 `openid email profile`만
-- [ ] 앱 홈페이지·개인정보처리방침 링크: `https://<프로덕션>.vercel.app/`, `https://<프로덕션>.vercel.app/privacy` (6번 Vercel 주소가 정해진 뒤 입력)
+- [ ] 앱 홈페이지·개인정보처리방침 링크: `https://cbnu-scholarship.vercel.app/`, `https://cbnu-scholarship.vercel.app/privacy`
 - [ ] OAuth 클라이언트: 유형 **웹 애플리케이션**, 승인된 리디렉션 URI 2개
-  - `https://<프로덕션>.vercel.app/api/auth/google/callback`
+  - `https://cbnu-scholarship.vercel.app/api/auth/google/callback`
   - `http://localhost:5173/api/auth/google/callback`
 - [ ] `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` 보관(secret은 7번 Secret Manager에만)
 - [ ] `/privacy` 화면 배포(T24) 후 게시 상태를 **Testing → In production**으로 전환
 
 ### 6. Vercel (9.2, 9.7)
 
-- [ ] Hobby 계정으로 공개 저장소 `WOOWANGTHON_TEAM_36_FE`를 Import(Framework: Vite)
-- [ ] 프로덕션 주소(`https://<프로덕션>.vercel.app`) 확정 → 5번 OAuth 설정에 입력
+- [ ] Hobby 계정으로 공개 저장소 `WOOWANGTHON_TEAM_36_FE`를 Import(Framework: Vite, 프로젝트 이름 `scholarship-matcher`)
+- [ ] 프로덕션 주소 확정 → 5번 OAuth 설정에 입력. 2026-11-06: `https://cbnu-scholarship.vercel.app`(프로젝트 → Settings → Domains에서 추가. 기본 주소 `scholarship-matcher-seven.vercel.app`도 그대로 동작)
 - [ ] `vercel.json`의 backend 주소는 첫 backend 배포(T28) 후 실제 `run.app` 주소로 바꿈
 
 ### 7. Secret Manager (9.5)
 
-비밀값 7개를 등록합니다. 값이 셸 기록에 남지 않도록 `--data-file=-`로 표준 입력에서 받습니다. 붙여 넣은 뒤 줄바꿈 없이 `Ctrl-D`를 누릅니다. `GEMINI_API_KEY`는 4번에서 이미 등록했습니다.
+비밀값 7개를 등록합니다. `GEMINI_API_KEY`는 4번에서 이미 등록했습니다. 값이 화면·셸 기록에 남지 않도록 명령을 먼저 실행하고, 입력 프롬프트에 붙여 넣은 뒤 Enter를 누릅니다(입력은 보이지 않음). 명령을 복사하면 클립보드의 비밀값이 덮어써지므로 비밀값은 명령 실행 **뒤에** 복사합니다.
 
 ```bash
-for name in DATABASE_URL DATABASE_URL_DIRECT GOOGLE_CLIENT_SECRET; do
-  echo "$name 값을 붙여 넣고 Ctrl-D:"
-  gcloud secrets create $name --replication-policy=automatic --data-file=-
-done
+# zsh 기준. 이름마다 한 번씩 실행
+name=GOOGLE_CLIENT_SECRET   # DATABASE_URL, DATABASE_URL_DIRECT도 같은 방법
+read -rs "v?$name: "; echo
+printf %s "$v" | gcloud secrets create $name --replication-policy=automatic --data-file=-
+unset v
 ```
+
+값을 붙여 넣는 칸이 프롬프트가 아니라 명령줄이면 셸이 그 값을 명령으로 실행해 기록에 남습니다. 그랬다면 그 값은 새로 발급합니다.
 
 무작위 값 3개는 생성해서 바로 등록합니다(화면에 출력하지 않음).
 
@@ -122,6 +125,6 @@ python3 -c "import base64, secrets; print(base64.b64encode(secrets.token_bytes(3
 
 - [ ] 7개 등록 확인: `gcloud secrets list`
 - [ ] `FIELD_ENCRYPTION_KEY`는 잃어버리면 암호화 필드를 복구할 수 없으므로 담당자만 아는 곳에 따로 백업
-- [ ] 값을 바꾸면 이전 버전은 `gcloud secrets versions destroy`로 사용 중지(무료 활성 버전 6개)
+- [ ] 값을 바꾸면 `gcloud secrets versions add`로 새 버전을 넣고, 이전 버전은 `versions disable` 후 확인되면 `versions destroy`(무료 활성 버전 6개)
 
 비밀이 아닌 값(`GEMINI_MODEL`, `GOOGLE_CLIENT_ID`, `GOOGLE_REDIRECT_URI`, `ADMIN_EMAILS`)은 Cloud Run 환경변수로 직접 넣습니다(T28).
