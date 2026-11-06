@@ -1,0 +1,2182 @@
+{
+  "model_version": "gemini-3.8-flash+extract_v2",
+  "run_at": "2026-11-06T21:51:52+09:00",
+  "summary": {
+    "notices": 30,
+    "failed": 0,
+    "count_match": 30,
+    "fields": {
+      "notice_kind": {
+        "correct": 30,
+        "total": 30,
+        "accuracy": 1.0
+      },
+      "apply_end": {
+        "correct": 23,
+        "total": 23,
+        "accuracy": 1.0
+      },
+      "min_gpa": {
+        "correct": 23,
+        "total": 23,
+        "accuracy": 1.0
+      },
+      "target_grades": {
+        "correct": 23,
+        "total": 23,
+        "accuracy": 1.0
+      },
+      "max_income_bracket": {
+        "correct": 23,
+        "total": 23,
+        "accuracy": 1.0
+      },
+      "target_department": {
+        "correct": 23,
+        "total": 23,
+        "accuracy": 1.0
+      }
+    },
+    "correct": 145,
+    "total": 145,
+    "accuracy": 1.0,
+    "target": 0.9,
+    "gap": 0.1
+  },
+  "latency_seconds": {
+    "total": 128.3,
+    "median": 15.7,
+    "max": 34.9
+  },
+  "notices": {
+    "aibc_aq74eFJIirVMESsaQS7qtM": {
+      "seconds": 12.3,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "기준안내",
+        "scholarships": [
+          {
+            "scholarship_name": "AI부트캠프사업단 장학금",
+            "benefit_amount_text": "최대 600만원",
+            "benefit_type": null,
+            "apply_start": null,
+            "apply_end": null,
+            "target_grades": null,
+            "excludes_extra_semester": null,
+            "enrollment_status": null,
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "AIBC 양성인재",
+            "required_documents": [],
+            "extra_conditions": [
+              "장학금 지급은 AI부트캠프 중급 이상의 교육과정을 이수한 학생을 대상으로 한다.",
+              "기본 장학등급은 AI부트캠프 몰입형 교육과정의 최종 이수성적을 기준으로 산정한다.",
+              "교육과정의 출석률 및 이수 성실도를 고려하여 기본 장학등급을 조정하거나 장학금 지급대상에서 제외할 수 있다."
+            ],
+            "ambiguous_fields": [
+              "benefit_type"
+            ],
+            "evidence": {
+              "scholarship_name": "[장학금] AI부트캠프사업단 장학금 지급 기준 공지",
+              "benefit_amount_text": "학생 1인에게 지급하는 장학금은 기본 장학금 및 가점에 따른 추가 지급액을 합산하여 최대 600만원 을 초과할 수 없다.",
+              "benefit_type": "기본 장학금은 기본 장학등급(1~6등급)에 따라 차등 지급하며, 등급별 지급금액 및 지급인원은 해당 연도 사업예산 범위에서 사업운영위원회의 심의를 거쳐 정한다.",
+              "target_department": "장학금 지급은 AI부트캠프 중급 이상의 교육과정을 이수한 학생을 대상으로 한다.",
+              "target_program": "장학금 지급은 AI부트캠프 중급 이상의 교육과정을 이수한 학생을 대상으로 한다."
+            }
+          }
+        ]
+      }
+    },
+    "aibc_kiF1EPTNkL5vj4HVH5idK5": {
+      "seconds": 5.7,
+      "error": null,
+      "count_expected": 0,
+      "count_predicted": 0,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 0,
+          "total": 0
+        },
+        "min_gpa": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_grades": {
+          "correct": 0,
+          "total": 0
+        },
+        "max_income_bracket": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_department": {
+          "correct": 0,
+          "total": 0
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "결과",
+        "scholarships": []
+      }
+    },
+    "aibc_pVAfFxOycuAihHhbGS0LAc": {
+      "seconds": 17.3,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "기준안내",
+        "scholarships": [
+          {
+            "scholarship_name": "자격증 장학금",
+            "benefit_amount_text": "합격 시 응시비용 100% 지급, 불합격 시 50% 지급 (학생 1명당 최대 50만 원까지 지원 가능)",
+            "benefit_type": "생활비성",
+            "apply_start": null,
+            "apply_end": null,
+            "target_grades": null,
+            "excludes_extra_semester": null,
+            "enrollment_status": null,
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "AIBC 양성인재",
+            "required_documents": [
+              "신청서"
+            ],
+            "extra_conditions": [
+              "사업단 참여 학생이면서 중급 이상의 자격이 되는 학생",
+              "지정된 AI부트캠프사업단 자격증 리스트 내 자격증 취득(응시) 대상",
+              "예산 소진 시까지 지원 가능"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "자격증 장학금 관련 안내",
+              "benefit_amount_text": "지원 내용: 자격증 장학금은 합격 시 응시비용 100% 지급, 불합격 시 50% 지급\n\n지원 한도: 학생 1명당 최대 50만 원까지 지원 가능",
+              "benefit_type": "지원 내용: 자격증 장학금은 합격 시 응시비용 100% 지급, 불합격 시 50% 지급",
+              "target_department": "자격증 장학금 지원 자격: 사업단 참여 학생이면서 중급 이상의 자격이 되는 학생",
+              "target_program": "자격증 장학금 지원 자격: 사업단 참여 학생이면서 중급 이상의 자격이 되는 학생",
+              "required_documents": "예산 배분을 위하여 신청 시 반드시 사업단에 신청서 제출"
+            }
+          }
+        ]
+      }
+    },
+    "aibc_ypFXkiw6xSDhBxkPBz3aht": {
+      "seconds": 5.6,
+      "error": null,
+      "count_expected": 0,
+      "count_predicted": 0,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 0,
+          "total": 0
+        },
+        "min_gpa": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_grades": {
+          "correct": 0,
+          "total": 0
+        },
+        "max_income_bracket": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_department": {
+          "correct": 0,
+          "total": 0
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "기타",
+        "scholarships": []
+      }
+    },
+    "kosaf_21288": {
+      "seconds": 10.1,
+      "error": null,
+      "count_expected": 0,
+      "count_predicted": 0,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 0,
+          "total": 0
+        },
+        "min_gpa": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_grades": {
+          "correct": 0,
+          "total": 0
+        },
+        "max_income_bracket": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_department": {
+          "correct": 0,
+          "total": 0
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "기타",
+        "scholarships": []
+      }
+    },
+    "kosaf_21307": {
+      "seconds": 34.9,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "푸른등대 한국수력원자력 K-원전 장학금",
+            "benefit_amount_text": "학기당 생활비 장학금 300만 원 ('26-2~'27-1 2개 학기)",
+            "benefit_type": "생활비성",
+            "apply_start": "2026-09-11T09:00:00+09:00",
+            "apply_end": "2026-09-28T18:00:00+09:00",
+            "target_grades": null,
+            "excludes_extra_semester": null,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "소프트웨어학부 불포함",
+            "target_program": "제한없음",
+            "required_documents": [],
+            "extra_conditions": [
+              "원자력 관련 학과 또는 연계 전공으로 인정된 대학생"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "apply_start": "2026. 9. 11.(금) 09:00 ~ 2026. 9. 28.(월) 18:00",
+              "apply_end": "2026. 9. 11.(금) 09:00 ~ 2026. 9. 28.(월) 18:00",
+              "benefit_amount_text": "학기당 생활비 장학금 300만 원 ('26-2~'27-1 2개 학기), 300명 선발",
+              "benefit_type": "학기당 생활비 장학금 300만 원 ('26-2~'27-1 2개 학기), 300명 선발",
+              "enrollment_status": "2026년 지원대상 대학(원)의 원자력 학과(전공) 재학생만 신청 가능 ([붙임1] (참고) 파일의 '신청가능 학과' 확인 후 신청)",
+              "scholarship_name": "2026년 푸른등대 한국수력원자력 K-원전 장학금 신규장학생 을 아래의 내용과 같이 선발하오니, 많은 관심과 신청 바랍니다.",
+              "target_department": "원자력 관련 학과 또는 연계 전공 으로 인정된 대학생 및 대학원생 (석사과정)"
+            }
+          }
+        ]
+      }
+    },
+    "kosaf_21319": {
+      "seconds": 4.3,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "기준안내",
+        "scholarships": [
+          {
+            "scholarship_name": "주거안정장학금",
+            "benefit_amount_text": null,
+            "benefit_type": "생활비성",
+            "apply_start": null,
+            "apply_end": null,
+            "target_grades": null,
+            "excludes_extra_semester": null,
+            "enrollment_status": null,
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [],
+            "extra_conditions": [],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "2026학년도 2학기 주거안정장학금 시행계획 안내",
+              "benefit_type": "주거안정장학금",
+              "target_department": "한국장학재단 국가장학실 주거장학팀입니다."
+            }
+          }
+        ]
+      }
+    },
+    "kosaf_21401": {
+      "seconds": 5.8,
+      "error": null,
+      "count_expected": 0,
+      "count_predicted": 0,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 0,
+          "total": 0
+        },
+        "min_gpa": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_grades": {
+          "correct": 0,
+          "total": 0
+        },
+        "max_income_bracket": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_department": {
+          "correct": 0,
+          "total": 0
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "결과",
+        "scholarships": []
+      }
+    },
+    "kosaf_21411": {
+      "seconds": 24.5,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "국가근로장학금",
+            "benefit_amount_text": null,
+            "benefit_type": "생활비성",
+            "apply_start": "2026-10-21T09:00:00+09:00",
+            "apply_end": "2026-10-29T18:00:00+09:00",
+            "target_grades": null,
+            "excludes_extra_semester": null,
+            "enrollment_status": null,
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": 9.0,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [],
+            "extra_conditions": [
+              "소속 대학이 국가근로장학금 일반유형 추가신청기간을 운영(붙임2 참고)",
+              "2026년 2학기 1,2차 통합신청을 완료했으나, 국가근로장학금을 신청하지 않은 경우"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "2026년도 2학기 국가근로장학금 일반유형 추가신청기간을 운영하오니",
+              "benefit_type": "국가근로장학금",
+              "apply_start": "2026. 10. 21.(수) 09:00 ~ 10. 29.(목) 18:00",
+              "apply_end": "2026. 10. 21.(수) 09:00 ~ 10. 29.(목) 18:00",
+              "max_income_bracket": "2026년 2학기 기준 학자금지원구간 산정완료(학자금 지원구간 9구간 이하)",
+              "target_department": "2026년도 2학기 국가근로장학금 참여를 희망하는 학생 중 아래 요건을 모두 충족하는 경우"
+            }
+          }
+        ]
+      }
+    },
+    "kosaf_21427": {
+      "seconds": 11.7,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "푸른등대 기부장학금(2차)",
+            "benefit_amount_text": null,
+            "benefit_type": null,
+            "apply_start": "2026-10-22T09:00:00+09:00",
+            "apply_end": "2026-11-12T18:00:00+09:00",
+            "target_grades": null,
+            "excludes_extra_semester": null,
+            "enrollment_status": null,
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "불명",
+            "target_program": "제한없음",
+            "required_documents": [],
+            "extra_conditions": [],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "2026년 2학기 푸른등대 기부장학금(2차) 신규장학생 을 아래와 같이 선발하오니 많은 신청 바랍니다.",
+              "apply_start": "장학금 신청 및 서류제출: 2026. 10. 22.(목) 09:00 ~ 11. 12.(목) 18:00",
+              "apply_end": "장학금 신청 및 서류제출: 2026. 10. 22.(목) 09:00 ~ 11. 12.(목) 18:00",
+              "target_department": "기부자별 세부 선발기준은 한국장학재단 누리집* 및 붙임 파일에서 확인"
+            }
+          }
+        ]
+      }
+    },
+    "kosaf_21449": {
+      "seconds": 16.1,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "국가근로장학금 동계방학 집중근로 프로그램",
+            "benefit_amount_text": null,
+            "benefit_type": "생활비성",
+            "apply_start": "2026-10-30T09:00:00+09:00",
+            "apply_end": "2026-11-12T18:00:00+09:00",
+            "target_grades": null,
+            "excludes_extra_semester": null,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": 9.0,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [],
+            "extra_conditions": [
+              "2026년 2학기 국가근로장학금 학생 신청기간(1, 2차, 추가신청)에 국가근로장학금을 신청",
+              "직전학기 성적 70점/100점 만점(C0수준) 이상(단, 학생이 장애인, 자립준비청년인 경우 성적기준 적용 제외 가능)",
+              "동계방학 집중근로 프로그램에 참여하는 대학의 재학생",
+              "근로기관(근로지) 대표자, 관리자 및 담당자와 가족관계(이해관계)인 경우 근로 불가"
+            ],
+            "ambiguous_fields": [
+              "min_gpa"
+            ],
+            "evidence": {
+              "benefit_type": "방학 기간 동안 대학 소재지와 관계없이 학생의 주거지 인근 교외 근로기관 에서 집중적으로 근로할 수 있도록 지원하는 사업",
+              "apply_start": "2026. 10. 30.(금) 9시 ~ 2026. 11. 12.(목) 18시",
+              "apply_end": "2026. 10. 30.(금) 9시 ~ 2026. 11. 12.(목) 18시",
+              "enrollment_status": "3) 동계방학 집중근로 프로그램에 참여하는 대학 **의 재학생",
+              "min_gpa": "직전학기 성적 70점/100점 만점(C0수준) 이상",
+              "max_income_bracket": "학자금 지원 9구간 이하인 학생",
+              "target_department": "3) 동계방학 집중근로 프로그램에 참여하는 대학 **의 재학생"
+            }
+          }
+        ]
+      }
+    },
+    "kosaf_21454": {
+      "seconds": 3.7,
+      "error": null,
+      "count_expected": 0,
+      "count_predicted": 0,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 0,
+          "total": 0
+        },
+        "min_gpa": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_grades": {
+          "correct": 0,
+          "total": 0
+        },
+        "max_income_bracket": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_department": {
+          "correct": 0,
+          "total": 0
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "결과",
+        "scholarships": []
+      }
+    },
+    "kosaf_21470": {
+      "seconds": 4.2,
+      "error": null,
+      "count_expected": 0,
+      "count_predicted": 0,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 0,
+          "total": 0
+        },
+        "min_gpa": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_grades": {
+          "correct": 0,
+          "total": 0
+        },
+        "max_income_bracket": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_department": {
+          "correct": 0,
+          "total": 0
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "결과",
+        "scholarships": []
+      }
+    },
+    "kosaf_21475": {
+      "seconds": 3.4,
+      "error": null,
+      "count_expected": 0,
+      "count_predicted": 0,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 0,
+          "total": 0
+        },
+        "min_gpa": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_grades": {
+          "correct": 0,
+          "total": 0
+        },
+        "max_income_bracket": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_department": {
+          "correct": 0,
+          "total": 0
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "기타",
+        "scholarships": []
+      }
+    },
+    "sw_dept_1153811": {
+      "seconds": 15.7,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "중소기업 취업연계 장학사업(희망사다리Ⅰ유형)",
+            "benefit_amount_text": "매 학기 등록금 전액 및 취·창업지원금 200만 원",
+            "benefit_type": "혼합",
+            "apply_start": "2026-09-01T09:00:00+09:00",
+            "apply_end": "2026-09-18T18:00:00+09:00",
+            "target_grades": [
+              3,
+              4
+            ],
+            "excludes_extra_semester": null,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": null,
+            "min_credits": 12,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [
+              "취·창업지원금 사용계획서"
+            ],
+            "extra_conditions": [
+              "대한민국 국적자",
+              "직전학기 성적이 백분위 70점 이상",
+              "졸업 후 의무종사 기간(장학금 수혜 횟수(학기) × 6개월) 동안 중소기업 취업 또는 창업상태 유지",
+              "수혜 학기마다 직무기초교육을 이수, 이수보고서 및 증빙자료 제출",
+              "신청기한 내 장학금 신청서 작성, 온라인 사전교육 및 진단평가를 모두 완료"
+            ],
+            "ambiguous_fields": [
+              "min_gpa"
+            ],
+            "evidence": {
+              "scholarship_name": "2026 학년도 2 학기 중소기업 취업연계 장학사업 ( 희망사다리 Ⅰ 유형 ) 신규 장학생 신청 기간을 아래와 같이 안내합니다.",
+              "benefit_amount_text": "매 학기 등록금 전액 및 취 · 창업지원금 200만 원",
+              "benefit_type": "매 학기 등록금 전액 및 취 · 창업지원금 200만 원",
+              "apply_start": "신청 기간 : 2026. 9. 1.( 화 ) 09:00 ~ 9. 18.( 금 ) 18:00 까지",
+              "apply_end": "신청 기간 : 2026. 9. 1.( 화 ) 09:00 ~ 9. 18.( 금 ) 18:00 까지",
+              "target_grades": "대한민국 국적자로 3 학년 이상 재학생",
+              "enrollment_status": "대한민국 국적자로 3 학년 이상 재학생",
+              "min_credits": "직전학기 12 학점 이상 을 이수하고",
+              "min_gpa": "직전학기 성적이 백분위 70점 이상",
+              "target_department": "한국장학재단 학생진로장학부 -4157(2026. 8. 25.)",
+              "target_program": "한국장학재단 홈페이지 또는 모바일앱을 통하여 신청",
+              "required_documents": "취·창업지원금 사용계획서는 신청 시 필수제출서류이며"
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1153873": {
+      "seconds": 3.5,
+      "error": null,
+      "count_expected": 0,
+      "count_predicted": 0,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 0,
+          "total": 0
+        },
+        "min_gpa": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_grades": {
+          "correct": 0,
+          "total": 0
+        },
+        "max_income_bracket": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_department": {
+          "correct": 0,
+          "total": 0
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "기타",
+        "scholarships": []
+      }
+    },
+    "sw_dept_1153906": {
+      "seconds": 16.8,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "(재)미래인재육성재단 2027학년도 신규 장학생",
+            "benefit_amount_text": "학기당 350 만 원 ( 생활비성 )",
+            "benefit_type": "생활비성",
+            "apply_start": null,
+            "apply_end": "2026-09-10T23:59:00+09:00",
+            "target_grades": [
+              1
+            ],
+            "excludes_extra_semester": null,
+            "enrollment_status": null,
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [
+              "장학생 신청서 및 자기소개서 1 부",
+              "개인정보수집이용동의서 1 부",
+              "학교장 추천서 1 부",
+              "성적증명서 1 부",
+              "( 해당자만 ) 어학 , 예체능 , 과학 기술 등 특정 분야의 공인성적 또는 수상 경력을 증명할 수 있는 서류"
+            ],
+            "extra_conditions": [
+              "2027 학년도 2 학년 1 학기 진학 예정자",
+              "전체 학기 성적 백분위 90 점 이상인 자"
+            ],
+            "ambiguous_fields": [
+              "apply_start",
+              "min_gpa"
+            ],
+            "evidence": {
+              "scholarship_name": "(재)미래인재육성재단에서 2027학년도 신규 장학생 선발을 안내하오니",
+              "benefit_amount_text": "나 . 장학금 : 학기당 350 만 원 ( 생활비성 )",
+              "benefit_type": "나 . 장학금 : 학기당 350 만 원 ( 생활비성 )",
+              "apply_start": "2026. 9. 10(목) 까지 신청하시기 바랍니다 .",
+              "apply_end": "- 제출기한: 2026년 9월 10일까지",
+              "target_grades": "- 2027 학년도 2 학년 1 학기 진학 예정자",
+              "min_gpa": "- 전체 학기 성적 백분위 90 점 이상인 자",
+              "target_department": "가 . 추천자격\n\n- 2027 학년도 2 학년 1 학기 진학 예정자\n\n- 전체 학기 성적 백분위 90 점 이상인 자",
+              "required_documents": "다. 제출 서류 (추천자로 확정시 제출)\n\n- 장학생 신청서 및 자기소개서 1 부\n\n- 개인정보수집이용동의서 1 부\n\n- 학교장 추천서 1 부\n\n- 성적증명서 1 부\n\n- ( 해당자만 ) 어학 , 예체능 , 과학 기술 등 특정 분야의 공인성적 또는 수상 경력을 증명할 수 있는 서류"
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154016": {
+      "seconds": 34.9,
+      "error": null,
+      "count_expected": 2,
+      "count_predicted": 2,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 2,
+          "total": 2
+        },
+        "min_gpa": {
+          "correct": 2,
+          "total": 2
+        },
+        "target_grades": {
+          "correct": 2,
+          "total": 2
+        },
+        "max_income_bracket": {
+          "correct": 2,
+          "total": 2
+        },
+        "target_department": {
+          "correct": 2,
+          "total": 2
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "기준안내",
+        "scholarships": [
+          {
+            "scholarship_name": "학과수석장학생",
+            "benefit_amount_text": null,
+            "benefit_type": "등록금성",
+            "apply_start": null,
+            "apply_end": null,
+            "target_grades": [
+              1,
+              2,
+              3
+            ],
+            "excludes_extra_semester": true,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": null,
+            "min_credits": 12,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "소프트웨어학부 포함",
+            "target_program": "제한없음",
+            "required_documents": [],
+            "extra_conditions": [
+              "직전학기 학업성적(100점만점)의 80% + 활동점수(최대 130점)의 20% = 환산성적(총점) 석차순으로 선발",
+              "성적 미달자 배정 제외"
+            ],
+            "ambiguous_fields": [
+              "min_gpa"
+            ],
+            "evidence": {
+              "benefit_type": "1. 기본 자격요건: 「충북대학교 등록금재원 장학금 관리지침」 을 따름",
+              "target_grades": "▷ 학과수석장학생: 2∼4학년 중 선발(1학년은 대상 아님)",
+              "excludes_extra_semester": "* 성적장학금 배정 제외대상: 휴학생, 수업연한 초과자, 이수학점 미달(학부 12학점), 성적 미달",
+              "enrollment_status": "* 성적장학금 배정 제외대상: 휴학생, 수업연한 초과자, 이수학점 미달(학부 12학점), 성적 미달",
+              "min_credits": "* 성적장학금 배정 제외대상: 휴학생, 수업연한 초과자, 이수학점 미달(학부 12학점), 성적 미달",
+              "min_gpa": "* 성적장학금 배정 제외대상: 휴학생, 수업연한 초과자, 이수학점 미달(학부 12학점), 성적 미달",
+              "target_department": "2027학년도 1학기 소프트웨어학부 교내재원 성적우수 장학생 선발을 위한 『성적장학금 선발 기준』을 다음과 같이 공지합니다."
+            }
+          },
+          {
+            "scholarship_name": "성적우수장학생",
+            "benefit_amount_text": null,
+            "benefit_type": "등록금성",
+            "apply_start": null,
+            "apply_end": null,
+            "target_grades": null,
+            "excludes_extra_semester": true,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": 2.6,
+            "min_credits": 12,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "소프트웨어학부 포함",
+            "target_program": "제한없음",
+            "required_documents": [],
+            "extra_conditions": [
+              "직전학기 학업성적(100점만점)의 80% + 활동점수(최대 130점)의 20% = 환산성적(총점) 석차순으로 선발"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "benefit_type": "1. 기본 자격요건: 「충북대학교 등록금재원 장학금 관리지침」 을 따름",
+              "excludes_extra_semester": "* 성적장학금 배정 제외대상: 휴학생, 수업연한 초과자, 이수학점 미달(학부 12학점), 성적 미달",
+              "enrollment_status": "* 성적장학금 배정 제외대상: 휴학생, 수업연한 초과자, 이수학점 미달(학부 12학점), 성적 미달",
+              "min_gpa": "▷ 성적우수장학생: 직전학기 12학점, B 0 (2.6) 이상",
+              "min_credits": "▷ 성적우수장학생: 직전학기 12학점, B 0 (2.6) 이상",
+              "target_department": "2027학년도 1학기 소프트웨어학부 교내재원 성적우수 장학생 선발을 위한 『성적장학금 선발 기준』을 다음과 같이 공지합니다."
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154172": {
+      "seconds": 4.7,
+      "error": null,
+      "count_expected": 0,
+      "count_predicted": 0,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 0,
+          "total": 0
+        },
+        "min_gpa": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_grades": {
+          "correct": 0,
+          "total": 0
+        },
+        "max_income_bracket": {
+          "correct": 0,
+          "total": 0
+        },
+        "target_department": {
+          "correct": 0,
+          "total": 0
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "기타",
+        "scholarships": []
+      }
+    },
+    "sw_dept_1154342": {
+      "seconds": 28.6,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "(재)논산시장학회 학업장려 장학생",
+            "benefit_amount_text": "1 인 생활비 150 만 원 (1 회)",
+            "benefit_type": "생활비성",
+            "apply_start": "2026-09-28T09:00:00+09:00",
+            "apply_end": "2026-10-30T18:00:00+09:00",
+            "target_grades": [
+              1
+            ],
+            "excludes_extra_semester": null,
+            "enrollment_status": null,
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": 23,
+            "max_income_bracket": null,
+            "regions": [
+              "충청남도 논산시"
+            ],
+            "region_basis": "무관",
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [],
+            "extra_conditions": [
+              "2026 년에 입학한 신입생",
+              "공고일 기준 고등학교 졸업 학력 취득 후 5 년이 경과되지 않은 자",
+              "공고일 (2026. 9. 28.) 기준 논산시에 계속하여 1 년 이상 (2025 년 9 월 29 일 이전 ~ 신청일 현재 ) 주민등록을 둔 자",
+              "2026 년 상반기 ( 재 ) 논산시장학회 장학생은 제외"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "논산시에서 2026 년 하반기 ( 재 ) 논산시장학회 학업장려 장학생을 아래와 같이 선발함을 안내합니다.",
+              "benefit_amount_text": "다 . 지원내용 : 1 인 생활비 150 만 원 (1 회)",
+              "benefit_type": "다 . 지원내용 : 1 인 생활비 150 만 원 (1 회)",
+              "apply_start": "가 . 접수기간 : 2026. 9. 28.( 월 ) 09:00 ~ 10. 30.( 금 ) 18:00 까지",
+              "apply_end": "가 . 접수기간 : 2026. 9. 28.( 월 ) 09:00 ~ 10. 30.( 금 ) 18:00 까지",
+              "target_grades": "- 2026 년에 입학한 신입생",
+              "max_age": "- 2003 년 1 월 1 일 이후 출생자 중 공고일 기준 고등학교 졸업 학력 취득 후 5 년이 경과되지 않은 자",
+              "regions": "- 학생 본인 , 부 , 모 중 어느 한 명이라도 공고일 (2026. 9. 28.) 기준 논산시에 계속하여 1 년 이상 (2025 년 9 월 29 일 이전 ~ 신청일 현재 ) 주민등록을 둔 자",
+              "region_basis": "- 학생 본인 , 부 , 모 중 어느 한 명이라도 공고일 (2026. 9. 28.) 기준 논산시에 계속하여 1 년 이상 (2025 년 9 월 29 일 이전 ~ 신청일 현재 ) 주민등록을 둔 자",
+              "target_department": "논산시에서 2026 년 하반기 ( 재 ) 논산시장학회 학업장려 장학생을 아래와 같이 선발함을 안내합니다."
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154346": {
+      "seconds": 12.1,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "성취 장학금",
+            "benefit_amount_text": null,
+            "benefit_type": "생활비성",
+            "apply_start": null,
+            "apply_end": "2026-10-08T17:00:00+09:00",
+            "target_grades": [
+              2,
+              3,
+              4
+            ],
+            "excludes_extra_semester": null,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": 3.5,
+            "min_credits": 12,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": [
+              "대전광역시"
+            ],
+            "region_basis": "무관",
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [],
+            "extra_conditions": [
+              "공고일 기준 본인 또는 부모가 1년 전부터 계속해서 대전광역시에 주소를 두고 있는 학생",
+              "대전청년내일재단 2026년 상반기 인재육성 장학금 수혜자는 제외"
+            ],
+            "ambiguous_fields": [
+              "apply_start"
+            ],
+            "evidence": {
+              "scholarship_name": "선발분야: 성취 장학금(생활비성)",
+              "benefit_type": "성취 장학금(생활비성)",
+              "apply_start": "2025. 9. 1.(화) ~ 10. 8.(목) 17시까지",
+              "apply_end": "2026년 성취(대) 장학생 선발계획 연장 공고 ( ~10.8 17:00)",
+              "target_grades": "대학교 2학년 이상 재학생",
+              "enrollment_status": "대학교 2학년 이상 재학생",
+              "min_credits": "직전학기 최소학점(12학점) 이상 이수",
+              "min_gpa": "직전 학기까지의 전체 평균 평점 3.5 이상인 학생",
+              "regions": "공고일 기준 본인 또는 부모가 1년 전부터 계속해서 대전광역시에 주소를 두고 있는 학생",
+              "region_basis": "본인 또는 부모가 1년 전부터 계속해서 대전광역시에 주소를 두고 있는 학생",
+              "target_department": "(재)대전청년내일재단 2026년 하반기 인재육성 성취(대) 장학생을 선발한다 하오니 관심있는 학생들은 신청하시기 바랍니다."
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154414": {
+      "seconds": 10.3,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "2026년 든든 학업지원금",
+            "benefit_amount_text": "200만원",
+            "benefit_type": "생활비성",
+            "apply_start": "2026-09-01T10:00:00+09:00",
+            "apply_end": "2026-10-08T17:00:00+09:00",
+            "target_grades": null,
+            "excludes_extra_semester": null,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": 5.0,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [
+              "개인정보 수집·이용 제공 동의서",
+              "재학 증명서",
+              "가족관계증명서(상세)",
+              "한국장학재단 학자금 지원구간 통지서",
+              "통장 사본",
+              "지원 동기",
+              "학업 계획",
+              "지원금 사용 계획",
+              "추천서"
+            ],
+            "extra_conditions": [
+              "사이버대학교 불가",
+              "기존 선발 학생 지원 불가(중/고등학생 선정 학생 제외)"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "hy 사회복지재단 에서 「 2026 년 든든 학업지원금 」 장학생 선발을 다음과 같이 안내합니다.",
+              "benefit_amount_text": "다 . 장학금액 : 200 만원 ( 생활비성 , 1 회 )",
+              "benefit_type": "다 . 장학금액 : 200 만원 ( 생활비성 , 1 회 )",
+              "apply_start": "나 . 신청기간 : 2026. 9. 1.( 화 ) 10:00 ~ 10. 8.( 목 ) 17:00",
+              "apply_end": "나 . 신청기간 : 2026. 9. 1.( 화 ) 10:00 ~ 10. 8.( 목 ) 17:00",
+              "enrollment_status": "가 . 선발대상: 2026 학년도 2 학기 재학생",
+              "max_income_bracket": "라 . 신청자격 : 학자금 지원구간 5 구간 이내",
+              "target_department": "▷  선발  대상  :  대학교  재학  대학생  (사이버대학교  불가)",
+              "required_documents": "▷  공통  필수  제출  서류(모든  신청자  제출)"
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154590": {
+      "seconds": 22.3,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "천사장학금",
+            "benefit_amount_text": null,
+            "benefit_type": null,
+            "apply_start": "2026-10-15T00:00:00+09:00",
+            "apply_end": "2026-10-29T18:00:00+09:00",
+            "target_grades": null,
+            "excludes_extra_semester": true,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [
+              "천사장학금 신청서",
+              "학과장 추천서",
+              "객관적인 가계곤란 증빙자료"
+            ],
+            "extra_conditions": [
+              "징계 등 처분 이력이 없는 학생",
+              "객관적인 가계곤란 증빙자료와 학과장 추천서 제출이 가능한 학생",
+              "천사장학금은 최대 2회까지 수혜 가능"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "2 0 26 학년도 2 학기 천사장학생 선발 계획을 다음과 같이 안내합니다.",
+              "apply_start": "가 . 신청기간 : 2026. 10. 15.( 목 ) ~ 10. 29.(목 ) 18:00 까지",
+              "apply_end": "가 . 신청기간 : 2026. 10. 15.( 목 ) ~ 10. 29.(목 ) 18:00 까지",
+              "enrollment_status": "정규학기에 재학 중인 학부생",
+              "excludes_extra_semester": "정규학기에 재학 중인 학부생",
+              "target_department": "정규학기에 재학 중인 학부생",
+              "required_documents": "신청서 작성 후 학과장 추천서 및 증빙서류 첨부하여 학생과로 제출 ( 등기 우편 또는 방문 제출 )"
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154615": {
+      "seconds": 30.6,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "(재)한국지도자육성장학재단 2027년도 신규 장학생",
+            "benefit_amount_text": "유형 1: 등록금 전액, 정규학기 최대 2년간 지원 / 유형 2: 생활비 (학기당 350만 원 지원), 정규학기 최대 2년간 지원",
+            "benefit_type": null,
+            "apply_start": null,
+            "apply_end": "2026-10-27T18:00:00+09:00",
+            "target_grades": [
+              2
+            ],
+            "excludes_extra_semester": true,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": null,
+            "min_credits": 12,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [
+              "장학생 지원서",
+              "지도교수 추천서",
+              "자기소개서",
+              "개인정보제공동의서",
+              "의무사항 참여 동의서",
+              "성적증명서",
+              "가산점부여 항목 증빙서류"
+            ],
+            "extra_conditions": [
+              "전체학기 백분율 성적 85점 이상인 자",
+              "징계사실이 없는 자",
+              "대한민국 국적보유자",
+              "2027년도 1학기 휴학 예정인 학생 제외"
+            ],
+            "ambiguous_fields": [
+              "benefit_type",
+              "apply_start",
+              "min_gpa"
+            ],
+            "evidence": {
+              "scholarship_name": "2. ( 재 ) 한 국지도자육성장학재단 2027 년도 신규 장학생 선발함을 안내합니다.",
+              "benefit_amount_text": "- 유형 1: 등록금 전액 , 정규학기 최대 2 년간 지원",
+              "benefit_type": "나 . 장학유형 ( 하나만 선택 가능 )",
+              "apply_start": "사. 신청세부사항",
+              "apply_end": "제출기한: 2026년 10월 26일 12시까지 ( 기간 연장 ~10.27 18:00)",
+              "target_grades": "- 2027 학년도 1 학기 기준 3 학년 1 학기에 재학 예정인 자",
+              "excludes_extra_semester": "※ 정규학기를 초과한 학기는 지원하지 않으며, 학적변동 시 지급종료될 수 있음",
+              "enrollment_status": "휴학생은(휴학예정자 포함) 선발대상이 아닙니다.",
+              "min_gpa": "- 매 정규학기 12 학점 이상 이수하고 전체학기 백분율 성적 85 점 이상인자",
+              "min_credits": "- 매 정규학기 12 학점 이상 이수하고 전체학기 백분율 성적 85 점 이상인자",
+              "target_department": "1. 추천대상 : ’27년도 1학기 국내 대학교(일반․ 산업․ 교육․ 전문 대학)에 재학 예정인",
+              "target_program": "1. 추천대상 : ’27년도 1학기 국내 대학교(일반․ 산업․ 교육․ 전문 대학)에 재학 예정인",
+              "required_documents": "- 장학생 지원서 1 부 , 지도교수 추천서 1 부 , 자기소개서 1 부 , 개인정보제공동의서 1 부 , 의무사항 참여 동의서 1 부 ( 붙임 서식 참조 )"
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154665": {
+      "seconds": 20.8,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "두산연강 대학 장학금",
+            "benefit_amount_text": "졸업 시까지 학기당 학업장려금(생활비성 장학금) 400만 원 지원",
+            "benefit_type": "생활비성",
+            "apply_start": "2026-10-14T09:00:00+09:00",
+            "apply_end": "2026-11-13T18:00:00+09:00",
+            "target_grades": [
+              1
+            ],
+            "excludes_extra_semester": true,
+            "enrollment_status": [
+              "재학",
+              "휴학"
+            ],
+            "min_gpa": 3.0,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": 6.0,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [
+              "추천서(재단 양식)",
+              "재학(휴학) 증명서",
+              "성적 증명서",
+              "가족관계증명서(부 또는 모 기준 '상세')",
+              "소득분위서류(2026년 2학기 한국장학재단 학자금 지원구간 통지서 또는 대체 서류)",
+              "가계곤란 증빙서류(해당자)"
+            ],
+            "extra_conditions": [
+              "대한민국 국적의 학부생",
+              "2027년 3월(1학기) 기준 2학년 1학기 진학 예정자",
+              "선발 후 2027년 1학기, 2학기 모두 재학이 가능한 자",
+              "수여식 등 재단에서 주최하는 행사에 참석이 가능한 자",
+              "6년제 학과 또는 5년제 학과 소속 학부생 지원 불가",
+              "타 재단이나 개인/단체/기업으로부터 후원받는 장학금과 중복 수혜 불가(국가장학금 및 교내장학금은 중복 수혜 가능)"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "두산연강재단에서 2027년도 두산연강 대학 장학생을 아래와 같이 선발하고자 하오니",
+              "benefit_amount_text": "졸업 시까지 학기당 학업장려금(생활비성 장학금) 400만 원 지원",
+              "benefit_type": "두산연강 대학 장학금은 전액 생활비성 장학금으로 지급됩니다.",
+              "apply_start": "6. 접수 기간 : 2026 년 10 월 14 일(수) 09 시 ~ 11 월 13 일(금) 18 시(한국시간 기준)",
+              "apply_end": "6. 접수 기간 : 2026 년 10 월 14 일(수) 09 시 ~ 11 월 13 일(금) 18 시(한국시간 기준)",
+              "target_grades": "1.2. 2027년 3월(1학기) 기준, 2학년 1학기 진학 예정자 \n(공고일 현재 1학년 2학기에 재학 중인 경우에는 1학년 1학기 성적으로 지원)",
+              "excludes_extra_semester": "* 정규학기 8학기 과정 중 3학기 진학 예정인자(4년제 학과 과정 기준)",
+              "enrollment_status": "5.2. 재학(휴학) 증명서",
+              "min_gpa": "1.4. 전체 학기 성적 평점 평균이 3.0/4.5 이상인 자",
+              "max_income_bracket": "1.5. 한국장학재단 소득분위(2026년 2학기 기준) 6분위 이내인 자",
+              "target_department": "1.1. 국내 대학교 중 4년제 학과에 소속된 대한민국 국적의 학부생",
+              "target_program": "두산연강재단에서 2027년도 두산연강 대학 장학생을 아래와 같이 선발하고자 하오니",
+              "required_documents": "5. 제출 서류 \n5.1. (재단 양식) 추천서 : 소속 학과 학과장 또는 지도교수 작성 및 날인 \n5.2. 재학(휴학) 증명서 \n5.3. 성적 증명서 \n5.4. 가족관계증명서(부 또는 모 기준 ‘상세’로 발급) \n5.5. 소득분위서류(2026년 2학기 한국장학재단 학자금 지원구간 통지서) \n5.6. 가계곤란 증빙서류"
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154674": {
+      "seconds": 22.8,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "Level-Up 장학생",
+            "benefit_amount_text": "500,000 원",
+            "benefit_type": null,
+            "apply_start": null,
+            "apply_end": "2026-10-22T12:00:00+09:00",
+            "target_grades": null,
+            "excludes_extra_semester": null,
+            "enrollment_status": null,
+            "min_gpa": null,
+            "min_credits": 12,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "소프트웨어학부 포함",
+            "target_program": "제한없음",
+            "required_documents": [
+              "장학생 지원서",
+              "토익성적표 (2025-2 성적표 1부, 2026-1 성적표 1부)"
+            ],
+            "extra_conditions": [
+              "“TOEIC” Level-Up 장학생 : 2025-2 학기 대비 2026-1 학기 TOEIC 점수 가 가장 많이 향상된 학부생",
+              "2025-2 학기 : TOEIC 점수 400 점 이상 취득",
+              "2026-1 학기 : TOEIC 점수 500 점 이상 취득 (’25-2 학기 대비 100 점 이상 향상 된 경우에 한함 )",
+              "성적 B0 (2.60) 이상 취득자 ( 복학생은 휴학 직전 성적 인정학기, 재입학생은 재입학 이후 성적 인정학기 )"
+            ],
+            "ambiguous_fields": [
+              "benefit_type",
+              "min_gpa"
+            ],
+            "evidence": {
+              "scholarship_name": "2026 학년도 2 학기 Level-Up 장학생을 선발하고자 다음과 같이 안내합니다.",
+              "benefit_amount_text": "다 . 장학금액 : 500,000 원",
+              "benefit_type": "다 . 장학금액 : 500,000 원",
+              "apply_end": "마. 제출기한 : 2026년 10월 22일 12:00까지",
+              "min_credits": "12 학점 이상 , 성적 B0 (2.60) 이상 취득자 ( 복학생은 휴학 직전 성적 인정학기, 재입학생은 재입학 이후 성적 인정학기 )",
+              "min_gpa": "12 학점 이상 , 성적 B0 (2.60) 이상 취득자 ( 복학생은 휴학 직전 성적 인정학기, 재입학생은 재입학 이후 성적 인정학기 )",
+              "target_department": "바. 제출처 : 소프트웨어학부 장학담당조교 comdpt@cbnu.ac.kr, 043-261-2785, S4-1동 218호 방문 제출",
+              "required_documents": "라 . 제출서류 : 장학생 지원서, 토익성적표 (2025-2 성적표 1부, 2026-1 성적표 1부)"
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154721": {
+      "seconds": 12.3,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "신한은행 충북장학회 2026년도 장학생",
+            "benefit_amount_text": "150 만원 ( 생활비 )",
+            "benefit_type": "생활비성",
+            "apply_start": null,
+            "apply_end": "2026-10-23T12:00:00+09:00",
+            "target_grades": null,
+            "excludes_extra_semester": true,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": 3.0,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": [
+              "충청북도"
+            ],
+            "region_basis": "본인",
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [
+              "장학생 추천서",
+              "전학년 성적증명서",
+              "주민등록등본"
+            ],
+            "extra_conditions": [
+              "품행이 단정한 학생"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "( 재 ) 신 한 은행 충북장학회 2026 년도 장학생을 선발함을 안내합니다.",
+              "benefit_amount_text": "다 . 장학금액 : 150 만원 ( 생활비 )",
+              "benefit_type": "다 . 장학금액 : 150 만원 ( 생활비 )",
+              "apply_end": "제출기한 : 2026년 10월 23일 12시까지",
+              "excludes_extra_semester": "휴학자 및 초과학기자는 추천 제외",
+              "enrollment_status": "주소지가 충청북도인 재학생",
+              "min_gpa": "직전학기 평점평균 3.0 이상인 자",
+              "regions": "주소지가 충청북도인 재학생",
+              "region_basis": "주소지가 충청북도인 재학생",
+              "target_department": "추천인원 : 1명(단대별)",
+              "required_documents": "라 . 제출서류 (추천자로 선정시 제출, 원본 제출 )\n\n- 장학생 추천서 1 부\n\n- 전학년 성적증명서 1 부\n\n- 주민등록등본 1 부 ( 최근 1 개월 이내 발행본 )"
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154730": {
+      "seconds": 31.5,
+      "error": null,
+      "count_expected": 2,
+      "count_predicted": 2,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 2,
+          "total": 2
+        },
+        "min_gpa": {
+          "correct": 2,
+          "total": 2
+        },
+        "target_grades": {
+          "correct": 2,
+          "total": 2
+        },
+        "max_income_bracket": {
+          "correct": 2,
+          "total": 2
+        },
+        "target_department": {
+          "correct": 2,
+          "total": 2
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "2026년 2학기 푸른등대 기부장학금(2차) - KOSAF기부펀드 일상회복",
+            "benefit_amount_text": "생활비 장학금 200만 원",
+            "benefit_type": "생활비성",
+            "apply_start": "2026-10-22T09:00:00+09:00",
+            "apply_end": "2026-11-12T18:00:00+09:00",
+            "target_grades": null,
+            "excludes_extra_semester": true,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [
+              "고립·은둔 지원 프로그램 참여 또는 수료를 확인할 수 있는 증빙서류"
+            ],
+            "extra_conditions": [
+              "대한민국 국적자",
+              "신·편입생 제외",
+              "푸른등대기부장학금 신청시작일 기준 잔여정규학기 1개 학기 이상인 자",
+              "2023년 이후(프로그램 수료일 기준) 고립·은둔 지원 프로그램을 수료한 자",
+              "2026년 푸른등대 2학기 기부장학금 합격자는 심사단계에서 자동탈락(중복수혜 불가)"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "가 . 장학금명 : 2026 년 2 학기 푸른등대 기부장학금 (2 차 )",
+              "benefit_amount_text": "라 . 지원금액 : 생활비 장학금 200 만 원",
+              "benefit_type": "생활비무상보조로정액지원(생활비장학금)",
+              "apply_start": "나 . 학생 신청 및 서류제출 기간 : 2026. 10. 22.( 목 ) 09:00 ∼ 11. 12.( 목 ) 18:00",
+              "apply_end": "나 . 학생 신청 및 서류제출 기간 : 2026. 10. 22.( 목 ) 09:00 ∼ 11. 12.( 목 ) 18:00",
+              "enrollment_status": "➀ 대한민국 국적의 대학교 재학생",
+              "excludes_extra_semester": "푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자",
+              "target_department": "대한민국 국적의 국내 4년제 및 전문대학교",
+              "required_documents": "고립·은둔 지원 프로그램 참여 또는 수료를 확인할 수 있는 증빙서류 1부"
+            }
+          },
+          {
+            "scholarship_name": "2026년 2학기 푸른등대 기부장학금(2차) - KOSAF기부펀드 지역 1차 산업",
+            "benefit_amount_text": "생활비 장학금 200만 원",
+            "benefit_type": "생활비성",
+            "apply_start": "2026-10-22T09:00:00+09:00",
+            "apply_end": "2026-11-12T18:00:00+09:00",
+            "target_grades": null,
+            "excludes_extra_semester": true,
+            "enrollment_status": [
+              "재학"
+            ],
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "소프트웨어학부 불포함",
+            "target_program": "제한없음",
+            "required_documents": [],
+            "extra_conditions": [
+              "대한민국 국적 및 지방 소재(서울·인천·경기도 제외) 대학교 재학생",
+              "신·편입생 제외",
+              "푸른등대기부장학금 신청시작일 기준 잔여정규학기 1개 학기 이상인 자",
+              "농업, 수산업, 축산업, 산림업 관련 학과 전공자 (복수전공·부전공 인정 불가)",
+              "2026년 푸른등대 2학기 기부장학금 합격자는 심사단계에서 자동탈락(중복수혜 불가)"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "가 . 장학금명 : 2026 년 2 학기 푸른등대 기부장학금 (2 차 )",
+              "benefit_amount_text": "라 . 지원금액 : 생활비 장학금 200 만 원",
+              "benefit_type": "생활비무상보조로정액지원(생활비장학금)",
+              "apply_start": "나 . 학생 신청 및 서류제출 기간 : 2026. 10. 22.( 목 ) 09:00 ∼ 11. 12.( 목 ) 18:00",
+              "apply_end": "나 . 학생 신청 및 서류제출 기간 : 2026. 10. 22.( 목 ) 09:00 ∼ 11. 12.( 목 ) 18:00",
+              "enrollment_status": "➀ 대한민국 국적 및 지방 소재* 대학교 재학생",
+              "excludes_extra_semester": "푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자",
+              "target_department": "② 농업, 수산업, 축산업, 산림업 관련 학과 전공자"
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154830": {
+      "seconds": 19.7,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "국가근로장학사업 동계방학 집중근로 프로그램",
+            "benefit_amount_text": "시간당 12,790 원",
+            "benefit_type": "생활비성",
+            "apply_start": "2026-10-30T09:00:00+09:00",
+            "apply_end": "2026-11-12T18:00:00+09:00",
+            "target_grades": null,
+            "excludes_extra_semester": null,
+            "enrollment_status": null,
+            "min_gpa": null,
+            "min_credits": null,
+            "gender": null,
+            "max_age": null,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [],
+            "extra_conditions": [
+              "2026 학년도 2 학기 국가근로 학기중 근로 신청 후 미 선발자",
+              "선발 후 근로를 종료하였거나 현재 국가근로를 하고 있는 학생은 선발 불가"
+            ],
+            "ambiguous_fields": [],
+            "evidence": {
+              "scholarship_name": "2026학년도 2학기 국가근로장학사업 동계방학 집중근로 프로그램 신청 안내 ( ~11.12 18:00)",
+              "benefit_amount_text": "지원금액 : 시간당 12,790 원",
+              "benefit_type": "지원금액 : 시간당 12,790 원",
+              "apply_start": "신청기간 : 2026. 10. 30.( 금 ) 09:00 ~ 11. 12.( 목 ) 18:00",
+              "apply_end": "신청기간 : 2026. 10. 30.( 금 ) 09:00 ~ 11. 12.( 목 ) 18:00",
+              "target_department": "관련 : 한국장학재단 학생진로장학부 -4848(2026. 9. 29.)"
+            }
+          }
+        ]
+      }
+    },
+    "sw_dept_1154905": {
+      "seconds": 26.2,
+      "error": null,
+      "count_expected": 1,
+      "count_predicted": 1,
+      "fields": {
+        "notice_kind": {
+          "correct": 1,
+          "total": 1
+        },
+        "apply_end": {
+          "correct": 1,
+          "total": 1
+        },
+        "min_gpa": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_grades": {
+          "correct": 1,
+          "total": 1
+        },
+        "max_income_bracket": {
+          "correct": 1,
+          "total": 1
+        },
+        "target_department": {
+          "correct": 1,
+          "total": 1
+        }
+      },
+      "mismatches": [],
+      "predicted": {
+        "notice_kind": "모집",
+        "scholarships": [
+          {
+            "scholarship_name": "관정재단 장학금",
+            "benefit_amount_text": "관정성적우수장학금(A형): 600만 원, 관정학업장려장학금(B형): 400만 원 (택 1)",
+            "benefit_type": null,
+            "apply_start": null,
+            "apply_end": "2026-11-12T23:59:00+09:00",
+            "target_grades": [
+              2
+            ],
+            "excludes_extra_semester": null,
+            "enrollment_status": null,
+            "min_gpa": 4.0,
+            "min_credits": null,
+            "gender": null,
+            "max_age": 24,
+            "max_income_bracket": null,
+            "regions": null,
+            "region_basis": null,
+            "required_special": null,
+            "excludes_full_tuition": null,
+            "target_department": "제한없음",
+            "target_program": "제한없음",
+            "required_documents": [
+              "붙임 3 관정재단 2027년도 신규 장학생 신청 명단"
+            ],
+            "extra_conditions": [
+              "대한민국 국적 보유자로 대한민국 고등학교를 졸업한 자 (국외 영주권자나 이중국적 보유자는 제외, 부득이한 국외 수학 또는 검정고시 합격자 예외 가능)",
+              "2027학년도 1학기 기준 5학기(3학년 1학기) 진학 예정이며 휴학 계획이 없는 자",
+              "편입생은 제외",
+              "단, 군필자는 군복무 기간 고려 가능"
+            ],
+            "ambiguous_fields": [
+              "benefit_type",
+              "apply_start"
+            ],
+            "evidence": {
+              "scholarship_name": "2027 년도 ( 재 ) 관정재단 장학생 선발 계획을 붙임과 같이 안내하오니",
+              "benefit_amount_text": "관정성적우수장학금\n\nA 형\n\n600 만 원\n\n타 장학금 중복수혜 불가\n\n관정학업장려장학금 *\n\nB 형\n\n400 만 원",
+              "benefit_type": "관정성적우수장학금\n\nA 형\n\n600 만 원\n\n타 장학금 중복수혜 불가\n\n관정학업장려장학금 *\n\nB 형\n\n400 만 원\n\n국가 및 학교 등록금감면 장학금과 중복수혜 가능",
+              "apply_start": "2026. 11. 12.( 목 ) 까지 신청 하여 주시기 바랍니다 .",
+              "apply_end": "2026. 11. 12.( 목 ) 까지 신청 하여 주시기 바랍니다 .",
+              "target_grades": "2027 학년도 1 학기 기준 5 학기 (3 학년 1 학기 ) 진학 예정이며 휴학 계획이 없는 자",
+              "min_gpa": "학부 1~3 학기 총 평점평균이 4.0 이상인 자",
+              "max_age": "만 24 세 이하 (2027 년 기준 2003. 1. 1. 이후 출생 )",
+              "target_department": "계열별 추천인원 : 자연 · 이공 계열 4 명 / 인문 · 사회계열 1 명",
+              "required_documents": "제출내용: 붙임 3 관정재단 2027년도 신규 장학생 신청 명단 1부."
+            }
+          }
+        ]
+      }
+    }
+  }
+}
