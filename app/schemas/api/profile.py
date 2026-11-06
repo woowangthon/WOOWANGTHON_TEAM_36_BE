@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.extraction.schemas import INCOME_BRACKETS, EnrollmentStatus, Gender
 
 Department = Literal["소프트웨어학부", "기타"]
-SpecialFlag = Literal["다자녀", "보훈", "장애"]  # 보훈·장애는 민감정보 동의가 있어야 저장
+SpecialFlag = Literal["다자녀", "보훈", "장애"]  # 특수자격은 민감정보 동의가 있어야 저장(4.1·4.2)
 FullTuitionWaiver = Literal["예", "아니오", "모름"]
 
 
