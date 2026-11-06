@@ -25,25 +25,10 @@ SPEC_ENDPOINTS = {
     ("get", "/health"),
 }
 
-VALID_PROFILE = {
-    "name": "홍길동",
-    "gender": "여",
-    "birth_year": 2004,
-    "gpa": 3.8,
-    "credits": 18,
-    "grade": 3,
-    "extra_semester": False,
-    "enrollment_status": "재학",
-    "department": "소프트웨어학부",
-    "aibc_member": False,
-}
-
 # 501을 확인할 요청 (본문 검증을 통과하는 값)
 STUB_REQUESTS = [
     ("get", "/auth/google/login", None),
     ("get", "/auth/google/callback?code=c&state=s", None),
-    ("get", "/profile", None),
-    ("put", "/profile", VALID_PROFILE),
     ("get", "/scholarships?result=eligible&sort=deadline&source=internal", None),
     ("get", "/scholarships/1", None),
     ("put", "/scholarships/1/state", {"state": "BOOKMARKED"}),
@@ -63,6 +48,9 @@ IMPLEMENTED = {
     ("get", "/auth/me"),
     ("delete", "/auth/me"),
     ("delete", "/auth/consent/sensitive"),
+    # T21 (tests/api/test_profile.py)
+    ("get", "/profile"),
+    ("put", "/profile"),
 }
 
 
@@ -112,9 +100,4 @@ def test_invalid_body_is_422(client, path, body):
     assert client.post(path, json=body).status_code == 422
 
 
-@pytest.mark.parametrize(
-    "overrides",
-    [{"grade": 5}, {"gpa": 4.6}, {"income_bracket": 1.5}, {"special_flags": ["한부모"]}],
-)
-def test_invalid_profile_is_422(client, overrides):
-    assert client.put("/profile", json={**VALID_PROFILE, **overrides}).status_code == 422
+# 프로필 본문 검증(422)은 로그인·동의가 필요해 tests/api/test_profile.py에서 확인합니다.
