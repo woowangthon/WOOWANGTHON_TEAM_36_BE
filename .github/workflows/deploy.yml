@@ -1,0 +1,82 @@
+# backend 배포 (계획서 9.5, 9.7)
+# - main에 머지되면 실행합니다. GitHub Environment `production`의 필수 승인자(담당자)가 승인해야 진행됩니다.
+# - 인증은 Workload Identity Federation(서비스 계정 키 없음)으로 배포용 서비스 계정을 빌려 씁니다.
+# - 순서: 마이그레이션(direct 연결) → `gcloud run deploy --source .`
+# - 비밀값은 Secret Manager에서 Cloud Run 환경변수로 연결합니다. 코드·이미지·로그에 넣지 않습니다.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 배포가 겹치지 않게 한 번에 하나씩 (뒤 배포는 앞 배포가 끝날 때까지 대기)
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: scholarship-matcher-513804
+  REGION: asia-southeast1
+  SERVICE: scholarship-backend
+  RUNTIME_SA: scholarship-backend@scholarship-matcher-513804.iam.gserviceaccount.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - uses: astral-sh/setup-uv@v10
+
+      - name: 마이그레이션 (direct 연결, 9.4·9.7)
+        run: |
+          url="$(gcloud secrets versions access latest --secret=DATABASE_URL_DIRECT)"
+          echo "::add-mask::$url"
+          export DATABASE_URL_DIRECT="$url" DATABASE_URL="$url"
+          uv sync --frozen --no-dev
+          uv run --no-sync alembic upgrade head
+
+      # 공개 접근(--allow-unauthenticated)은 최초 1회 담당자가 설정합니다(README). 이후 배포는 그대로 유지됩니다.
+      - name: Cloud Run 배포 (9.5)
+        env:
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --source . \
+            --region "$REGION" \
+            --service-account "$RUNTIME_SA" \
+            --min-instances 0 \
+            --max-instances 2 \
+            --timeout 3600 \
+            --memory 512Mi \
+            --cpu-boost \
+            --set-env-vars "^|^GEMINI_MODEL=gemini-3.8-flash|GOOGLE_REDIRECT_URI=https://cbnu-scholarship.vercel.app/api/auth/google/callback|GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}|ADMIN_EMAILS=${ADMIN_EMAILS}" \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,FIELD_ENCRYPTION_KEY=FIELD_ENCRYPTION_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,CRON_TOKEN=CRON_TOKEN:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest" \
+            --quiet
+
+      - name: 상태 확인 (GET /health)
+        run: |
+          url="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"
+          for i in 1 2 3 4 5; do
+            status="$(curl -s -o /dev/null -w '%{http_code}' "$url/health")"
+            echo "health: $status"
+            [ "$status" = "200" ] && exit 0
+            sleep 5
+          done
+          exit 1

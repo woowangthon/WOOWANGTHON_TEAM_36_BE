@@ -1,0 +1,15 @@
+# `gcloud run deploy --source .`가 Cloud Storage에 올리지 않을 파일 (계획서 9.5)
+# 비밀값(.env)이 소스 압축 파일에 들어가지 않게 명시합니다. 이미지에는 Dockerfile이 app/만 복사합니다.
+.gcloudignore
+.git
+.gitignore
+.github
+.env
+.env.*
+.venv
+__pycache__/
+.pytest_cache
+.ruff_cache
+tests
+eval
+docker-compose.yml
