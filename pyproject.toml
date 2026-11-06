@@ -5,6 +5,7 @@ description = "장학금 매칭 서비스 backend (수집·AI 추출·DB·인증
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic>=1.20.1",
+    "authlib>=1.9.5",
     "beautifulsoup4>=4.15.0",
     "cryptography>=50.0.2",
     "fastapi>=0.162.0",

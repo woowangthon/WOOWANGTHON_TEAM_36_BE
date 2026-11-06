@@ -27,8 +27,6 @@ SPEC_ENDPOINTS = {
 
 # 501을 확인할 요청 (본문 검증을 통과하는 값)
 STUB_REQUESTS = [
-    ("get", "/auth/google/login", None),
-    ("get", "/auth/google/callback?code=c&state=s", None),
     ("get", "/scholarships?result=eligible&sort=deadline&source=internal", None),
     ("get", "/scholarships/1", None),
     ("put", "/scholarships/1/state", {"state": "BOOKMARKED"}),
@@ -48,6 +46,9 @@ IMPLEMENTED = {
     ("get", "/auth/me"),
     ("delete", "/auth/me"),
     ("delete", "/auth/consent/sensitive"),
+    # T20 (tests/api/test_google.py)
+    ("get", "/auth/google/login"),
+    ("get", "/auth/google/callback"),
     # T21 (tests/api/test_profile.py)
     ("get", "/profile"),
     ("put", "/profile"),
