@@ -26,10 +26,7 @@ SPEC_ENDPOINTS = {
 }
 
 # 501을 확인할 요청 (본문 검증을 통과하는 값)
-STUB_REQUESTS = [
-    ("get", "/admin/crawl-runs", None),
-    ("post", "/admin/notices/1/reextract", None),
-]
+STUB_REQUESTS: list[tuple[str, str, None]] = []  # T27로 모든 엔드포인트 구현 완료
 
 # 기능 카드에서 구현해 더 이상 501이 아닌 엔드포인트
 IMPLEMENTED = {
@@ -53,6 +50,9 @@ IMPLEMENTED = {
     ("get", "/scholarships/{scholarship_id}"),
     ("put", "/scholarships/{scholarship_id}/state"),
     ("delete", "/scholarships/{scholarship_id}/state"),
+    # T27 (tests/api/test_admin.py)
+    ("get", "/admin/crawl-runs"),
+    ("post", "/admin/notices/{notice_id}/reextract"),
 }
 
 
