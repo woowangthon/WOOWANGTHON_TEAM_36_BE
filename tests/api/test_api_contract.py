@@ -27,10 +27,6 @@ SPEC_ENDPOINTS = {
 
 # 501을 확인할 요청 (본문 검증을 통과하는 값)
 STUB_REQUESTS = [
-    ("get", "/scholarships?result=eligible&sort=deadline&source=internal", None),
-    ("get", "/scholarships/1", None),
-    ("put", "/scholarships/1/state", {"state": "BOOKMARKED"}),
-    ("delete", "/scholarships/1/state", None),
     ("get", "/admin/crawl-runs", None),
     ("post", "/admin/notices/1/reextract", None),
 ]
@@ -52,6 +48,11 @@ IMPLEMENTED = {
     # T21 (tests/api/test_profile.py)
     ("get", "/profile"),
     ("put", "/profile"),
+    # T23 (tests/api/test_scholarships.py)
+    ("get", "/scholarships"),
+    ("get", "/scholarships/{scholarship_id}"),
+    ("put", "/scholarships/{scholarship_id}/state"),
+    ("delete", "/scholarships/{scholarship_id}/state"),
 }
 
 
