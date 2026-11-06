@@ -40,28 +40,30 @@ VALID_PROFILE = {
 
 # 501을 확인할 요청 (본문 검증을 통과하는 값)
 STUB_REQUESTS = [
-    ("post", "/auth/signup", {"email": "a@example.com", "password": "password123"}),
-    ("post", "/auth/login", {"email": "a@example.com", "password": "x"}),
-    ("post", "/auth/logout", None),
     ("get", "/auth/google/login", None),
     ("get", "/auth/google/callback?code=c&state=s", None),
-    ("post", "/auth/consent", {"privacy": True, "sensitive": False}),
-    ("get", "/auth/me", None),
-    ("delete", "/auth/me", None),
     ("get", "/profile", None),
     ("put", "/profile", VALID_PROFILE),
-    ("delete", "/auth/consent/sensitive", None),
     ("get", "/scholarships?result=eligible&sort=deadline&source=internal", None),
     ("get", "/scholarships/1", None),
     ("put", "/scholarships/1/state", {"state": "BOOKMARKED"}),
     ("delete", "/scholarships/1/state", None),
     ("get", "/admin/crawl-runs", None),
     ("post", "/admin/notices/1/reextract", None),
-    # ("post", "/internal/crawl") — T17에서 구현 (tests/scheduler/test_internal_api.py)
 ]
 
 # 기능 카드에서 구현해 더 이상 501이 아닌 엔드포인트
-IMPLEMENTED = {("post", "/internal/crawl")}
+IMPLEMENTED = {
+    ("post", "/internal/crawl"),  # T17 (tests/scheduler/test_internal_api.py)
+    # T19 (tests/api/test_auth.py)
+    ("post", "/auth/signup"),
+    ("post", "/auth/login"),
+    ("post", "/auth/logout"),
+    ("post", "/auth/consent"),
+    ("get", "/auth/me"),
+    ("delete", "/auth/me"),
+    ("delete", "/auth/consent/sensitive"),
+}
 
 
 def test_openapi_has_all_spec_endpoints(client):
@@ -103,7 +105,7 @@ def test_match_result_dto_shape(client):
     [
         ("/auth/signup", {"email": "not-an-email", "password": "password123"}),
         ("/auth/signup", {"email": "a@example.com", "password": "short"}),
-        ("/auth/consent", {"privacy": True}),
+        # /auth/consent 본문 검증은 로그인이 필요해 tests/api/test_auth.py에서 확인
     ],
 )
 def test_invalid_body_is_422(client, path, body):
