@@ -58,7 +58,7 @@ tests/fixtures/ # 사이트별 저장 HTML, PDF 샘플, AI 응답 샘플, golden
 
 ## 명령
 - 실행: `docker compose up` (postgres + backend, `--profile full`이면 frontend 포함) 또는 `uv run uvicorn app.main:app --port 8000 --reload`
-- 테스트: `uv run pytest` (DB가 필요한 테스트는 compose의 postgres 사용)
+- 테스트: `uv run pytest` (DB가 필요한 테스트는 compose의 postgres 사용). 테스트는 `.env`와 셸 환경변수를 읽지 않으므로(`tests/conftest.py`), 설정값이 필요한 테스트는 `monkeypatch.setenv`로 넣습니다
 - 린트: `uv run ruff check . && uv run ruff format .`
 - 마이그레이션: `uv run alembic revision --autogenerate -m "..."`, `uv run alembic upgrade head`
 - 수집: `uv run python -m app.scheduler.jobs` (`--backfill`, `--source SW_DEPT`)
