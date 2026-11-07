@@ -47,8 +47,11 @@ class UserProfile(Base):
     name: Mapped[str] = mapped_column(String(100))
     gender: Mapped[str] = mapped_column(String(10))
     birth_year: Mapped[int] = mapped_column(Integer)
-    gpa: Mapped[float] = mapped_column(Float)
-    credits: Mapped[int] = mapped_column(Integer)
+    gpa: Mapped[float] = mapped_column(Float)  # 직전학기 평점 (필수)
+    score_100: Mapped[float | None] = mapped_column(Float)  # 직전학기 100점 환산
+    credits: Mapped[int | None] = mapped_column(Integer)  # 직전학기 이수학점
+    gpa_total: Mapped[float | None] = mapped_column(Float)
+    score_100_total: Mapped[float | None] = mapped_column(Float)
     grade: Mapped[int] = mapped_column(Integer)  # 1~4
     extra_semester: Mapped[bool] = mapped_column(Boolean)
     enrollment_status: Mapped[str] = mapped_column(String(10))

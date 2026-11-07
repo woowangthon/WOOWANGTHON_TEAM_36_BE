@@ -13,6 +13,8 @@
       "excludes_extra_semester": null,
       "enrollment_status": null,
       "min_gpa": null,
+      "min_score_100": 90,
+      "grade_basis": "전체",
       "min_credits": null,
       "gender": null,
       "max_age": null,
@@ -29,16 +31,13 @@
         "학교장 추천서",
         "성적증명서"
       ],
-      "extra_conditions": [
-        "전체 학기 성적 백분위 90점 이상"
-      ],
-      "ambiguous_fields": [
-        "min_gpa"
-      ],
+      "extra_conditions": [],
+      "ambiguous_fields": [],
       "evidence": {
         "apply_end": "제출기한: 2026년 9월 10일까지",
         "target_grades": "2027 학년도 2 학년 1 학기 진학 예정자",
-        "min_gpa": "전체 학기 성적 백분위 90 점 이상인 자"
+        "min_score_100": "전체 학기 성적 백분위 90 점 이상인 자",
+        "grade_basis": "전체 학기 성적 백분위 90 점 이상인 자"
       }
     }
   ]

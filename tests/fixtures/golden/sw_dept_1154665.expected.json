@@ -13,6 +13,8 @@
       "excludes_extra_semester": null,
       "enrollment_status": null,
       "min_gpa": 3.0,
+      "min_score_100": null,
+      "grade_basis": "전체",
       "min_credits": null,
       "gender": null,
       "max_age": null,
@@ -39,9 +41,10 @@
       "evidence": {
         "apply_end": "접수기한 : ~ 2026. 11. 13.( 금 ) 18:00 까지",
         "target_grades": "2027 년 3 월 (1 학기 ) 기준 2 학년 1 학기 진학 예정자",
-        "min_gpa": "전체학기 평점 평균이 3.0 이상 인 자",
         "max_income_bracket": "한국장학재단 학자금지원구간 6 구간 이내인 자",
-        "benefit_type": "학기당 생활비성 장학금 400 만 원 지원"
+        "benefit_type": "학기당 생활비성 장학금 400 만 원 지원",
+        "min_gpa": "전체학기 평점 평균이 3.0 이상 인 자",
+        "grade_basis": "전체학기 평점 평균이 3.0 이상 인 자"
       }
     }
   ]

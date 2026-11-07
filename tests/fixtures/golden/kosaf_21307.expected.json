@@ -13,6 +13,8 @@
         "재학"
       ],
       "min_gpa": null,
+      "min_score_100": null,
+      "grade_basis": null,
       "min_credits": null,
       "gender": null,
       "max_age": null,

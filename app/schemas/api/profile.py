@@ -33,13 +33,19 @@ class Profile(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     gender: Gender
     birth_year: int = Field(ge=1900, le=2100)  # 나이는 서버가 계산(5.3)
-    gpa: float = Field(ge=0, le=4.5)  # 직전학기 평점, 4.5 만점
-    credits: int = Field(ge=0, le=30)  # 직전학기 이수학점
+    # 직전학기 = 계절학기를 뺀 가장 최근 정규학기(4.1)
+    gpa: float = Field(ge=0, le=4.5)  # 직전학기 평점평균, 4.5 만점
     grade: int = Field(ge=1, le=4)
     extra_semester: bool
     enrollment_status: EnrollmentStatus
     department: Department
     aibc_member: bool
+
+    # 선택 성적 (4.1, C안). 성적표 숫자를 그대로 받고 서로 환산하지 않습니다.
+    score_100: float | None = Field(default=None, ge=0, le=100)  # 직전학기 100점 환산(실점평균)
+    credits: int | None = Field(default=None, ge=0, le=30)  # 직전학기 이수학점(신청학점)
+    gpa_total: float | None = Field(default=None, ge=0, le=4.5)  # 전체 평점평균
+    score_100_total: float | None = Field(default=None, ge=0, le=100)  # 전체 100점 환산
 
     # 선택 (소득분위·주소·특수자격은 암호화 저장)
     income_bracket: float | None = None  # 기초 0, 차상위 0.5, 1~10구간. null = 모름

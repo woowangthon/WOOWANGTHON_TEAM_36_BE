@@ -13,6 +13,8 @@
       "excludes_extra_semester": null,
       "enrollment_status": null,
       "min_gpa": null,
+      "min_score_100": 85,
+      "grade_basis": "전체",
       "min_credits": 12,
       "gender": null,
       "max_age": null,
@@ -33,19 +35,18 @@
         "가산점부여 항목 증빙서류"
       ],
       "extra_conditions": [
-        "전체학기 백분율 성적 85점 이상",
         "징계사실이 없는 자",
         "2027학년도 1학기 휴학 예정자 제외"
       ],
       "ambiguous_fields": [
-        "benefit_type",
-        "min_gpa"
+        "benefit_type"
       ],
       "evidence": {
         "apply_end": "제출기한: 2026년 10월 26일 12시까지 ( 기간 연장 ~10.27 18:00)",
         "target_grades": "2027 학년도 1 학기 기준 3 학년 1 학기에 재학 예정인 자",
         "min_credits": "매 정규학기 12 학점 이상 이수하고 전체학기 백분율 성적 85 점 이상인자",
-        "min_gpa": "전체학기 백분율 성적 85 점 이상인자"
+        "min_score_100": "전체학기 백분율 성적 85 점 이상인자",
+        "grade_basis": "전체학기 백분율 성적 85 점 이상인자"
       }
     }
   ]

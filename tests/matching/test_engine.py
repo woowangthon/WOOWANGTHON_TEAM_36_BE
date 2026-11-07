@@ -115,8 +115,69 @@ def test_min_gpa(gpa, ambiguous, expected):
 
 
 @pytest.mark.parametrize(
+    ("p", "basis", "expected"),
+    [
+        ({"gpa": 3.5}, "직전학기", "MET"),
+        ({"gpa": 3.4, "gpa_total": 3.9}, "직전학기", "UNMET"),  # 전체 평점은 보지 않음
+        ({"gpa": 3.9, "gpa_total": 3.5}, "전체", "MET"),
+        ({"gpa": 3.9, "gpa_total": 3.4}, "전체", "UNMET"),  # 직전학기 평점은 보지 않음
+        ({"gpa": 3.9, "gpa_total": None}, "전체", "UNKNOWN"),  # 전체 평점 미입력
+    ],
+)
+def test_min_gpa_by_grade_basis(p, basis, expected):
+    c = criteria(min_gpa=3.5, grade_basis=basis)
+    assert outcome("min_gpa", profile(**p), c) == expected
+
+
+def test_min_gpa_unknown_when_grade_basis_ambiguous():
+    c = criteria(min_gpa=2.6, ambiguous_fields=["grade_basis"])
+    assert outcome("min_gpa", profile(gpa=4.0, gpa_total=4.0), c) == "UNKNOWN"
+
+
+@pytest.mark.parametrize(
+    ("p", "basis", "ambiguous", "expected"),
+    [
+        ({"score_100": 85.0}, "직전학기", [], "MET"),
+        ({"score_100": 84.9, "score_100_total": 99.0}, "직전학기", [], "UNMET"),
+        ({"score_100": None, "gpa": 4.5}, "직전학기", [], "UNKNOWN"),  # 평점에서 환산하지 않음
+        ({"score_100": 99.0, "score_100_total": 85.0}, "전체", [], "MET"),
+        ({"score_100": 99.0, "score_100_total": 80.0}, "전체", [], "UNMET"),
+        ({"score_100": 99.0, "score_100_total": None}, "전체", [], "UNKNOWN"),
+        ({"score_100": 85.0}, None, [], "MET"),  # 학기 기준이 없으면 직전학기
+        ({"score_100": 99.0, "score_100_total": 99.0}, "직전학기", ["grade_basis"], "UNKNOWN"),
+        ({"score_100": 99.0}, None, ["min_score_100"], "UNKNOWN"),
+    ],
+)
+def test_min_score_100(p, basis, ambiguous, expected):
+    c = criteria(
+        min_score_100=None if "min_score_100" in ambiguous else 85,
+        grade_basis=basis,
+        ambiguous_fields=ambiguous,
+    )
+    assert outcome("min_score_100", profile(**p), c) == expected
+
+
+def test_either_basis_condition_is_conditional():
+    """'직전학기 또는 전체 평균 80점 이상'은 성적 필드 없이 extra_conditions로 → 확인 필요 (5.2)."""
+    c = criteria(extra_conditions=["직전학기 또는 전체 평균 성적 80점 이상"])
+    evaluation = evaluate(profile(score_100=None), c, TODAY)
+    assert evaluation.result == "CONDITIONAL"
+    assert "min_score_100" not in {check.condition for check in evaluation.checks}
+
+
+def test_score_evidence_falls_back_to_grade_basis():
+    c = criteria(
+        min_score_100=70,
+        grade_basis="직전학기",
+        evidence={"grade_basis": "직전학기 성적 70점 이상"},
+    )
+    checks = {ch.condition: ch for ch in evaluate(profile(score_100=75), c, TODAY).checks}
+    assert checks["min_score_100"].evidence == "직전학기 성적 70점 이상"
+
+
+@pytest.mark.parametrize(
     ("credits", "ambiguous", "expected"),
-    [(12, [], "MET"), (11, [], "UNMET"), (18, ["min_credits"], "UNKNOWN")],
+    [(12, [], "MET"), (11, [], "UNMET"), (18, ["min_credits"], "UNKNOWN"), (None, [], "UNKNOWN")],
 )
 def test_min_credits(credits, ambiguous, expected):
     c = criteria(min_credits=None if ambiguous else 12, ambiguous_fields=ambiguous)

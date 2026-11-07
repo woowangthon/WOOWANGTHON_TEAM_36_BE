@@ -13,6 +13,8 @@
         "재학"
       ],
       "min_gpa": null,
+      "min_score_100": 70,
+      "grade_basis": "직전학기",
       "min_credits": null,
       "gender": null,
       "max_age": null,
@@ -26,16 +28,14 @@
       "required_documents": [],
       "extra_conditions": [
         "2026년 2학기 국가근로장학금 학생 신청기간에 국가근로장학금을 신청한 학생",
-        "직전학기 성적 70점/100점 만점(C0수준) 이상",
         "동계방학 집중근로 프로그램 참여 대학의 재학생"
       ],
-      "ambiguous_fields": [
-        "min_gpa"
-      ],
+      "ambiguous_fields": [],
       "evidence": {
         "apply_end": "신청기간 : 2026. 10. 30.(금) 9시 ~ 2026. 11. 12.(목) 18시",
         "max_income_bracket": "학자금 지원 9구간 이하인 학생",
-        "min_gpa": "직전학기 성적 70점/100점 만점(C0수준) 이상"
+        "min_score_100": "직전학기 성적 70점/100점 만점(C0수준) 이상",
+        "grade_basis": "직전학기 성적 70점/100점 만점(C0수준) 이상"
       }
     }
   ]

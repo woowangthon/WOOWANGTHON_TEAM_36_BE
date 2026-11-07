@@ -13,6 +13,8 @@
         "재학"
       ],
       "min_gpa": 3.0,
+      "min_score_100": null,
+      "grade_basis": "직전학기",
       "min_credits": null,
       "gender": null,
       "max_age": null,
@@ -34,9 +36,10 @@
       "ambiguous_fields": [],
       "evidence": {
         "apply_end": "제출기한 : 2026년 10월 23일 12시까지",
-        "min_gpa": "직전학기 평점평균 3.0 이상인 자",
         "regions": "주소지가 충청북도인 재학생",
-        "excludes_extra_semester": "휴학자 및 초과학기자는 추천 제외"
+        "excludes_extra_semester": "휴학자 및 초과학기자는 추천 제외",
+        "min_gpa": "직전학기 평점평균 3.0 이상인 자",
+        "grade_basis": "직전학기 평점평균 3.0 이상인 자"
       }
     }
   ]
