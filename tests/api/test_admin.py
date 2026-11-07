@@ -148,6 +148,10 @@ def test_reextract_only_marks_pending(admin, factory, monkeypatch):  # noqa: F81
     monkeypatch.setattr("app.extraction.extractor.extract", forbidden)
     monkeypatch.setattr("app.extraction.extract", forbidden)
     notice_id = add_notice(factory)
+    with factory() as session:  # 3번 실패해 자동 재시도에서 빠진 공지(9.3)
+        notice = session.get(Notice, notice_id)
+        notice.extract_status, notice.extract_attempts = "FAILED", 3
+        session.commit()
 
     response = admin.post(f"/admin/notices/{notice_id}/reextract")
 
@@ -156,6 +160,7 @@ def test_reextract_only_marks_pending(admin, factory, monkeypatch):  # noqa: F81
     with factory() as session:
         notice = session.get(Notice, notice_id)
         assert notice.extract_status == "PENDING"
+        assert notice.extract_attempts == 0  # 재시도 횟수 제한이 풀림(9.3)
         assert notice.extracted_at is None  # 추출 시각도 그대로
 
 

@@ -53,7 +53,13 @@ class ExtractionError(Exception):
     수집 작업은 이 예외를 받으면 extract_status = FAILED로 기록하고 다음 공지를 처리합니다.
 
     메시지에 공지 원문이나 비밀값을 넣지 않습니다.
+    `counts_as_attempt`가 거짓이면 공지 탓이 아닌 실패(선불 크레딧 소진 402)라
+    수집 작업이 재시도 횟수(`extract_attempts`, 9.3)에 세지 않습니다.
     """
+
+    def __init__(self, message: str, *, counts_as_attempt: bool = True) -> None:
+        super().__init__(message)
+        self.counts_as_attempt = counts_as_attempt
 
 
 class _RetryableError(Exception):
@@ -139,8 +145,11 @@ def _generate(client: Any, model: str, content: str, *, timeout: float) -> str:
     except errors.APIError as error:
         if error.code in RETRYABLE_STATUS:
             raise _RetryableError(f"HTTP {error.code}") from error
-        # 402(선불 크레딧 소진, 9.1)·400·403 등은 재시도해도 같은 결과
-        raise ExtractionError(f"Gemini 호출 실패(HTTP {error.code})") from error
+        # 402(선불 크레딧 소진, 9.1)·400·403 등은 재시도해도 같은 결과.
+        # 402는 공지 탓이 아니므로 공지의 재시도 횟수에 세지 않습니다(9.3).
+        raise ExtractionError(
+            f"Gemini 호출 실패(HTTP {error.code})", counts_as_attempt=error.code != 402
+        ) from error
     except (httpx.TimeoutException, TimeoutError) as error:
         raise _RetryableError("호출 시간 초과") from error
 

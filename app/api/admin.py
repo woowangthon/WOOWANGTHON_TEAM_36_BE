@@ -101,6 +101,7 @@ def reextract(notice_id: int, admin: AdminUser, db: DB) -> ReextractResponse:
     if notice is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="공지를 찾을 수 없습니다")
     notice.extract_status = "PENDING"
+    notice.extract_attempts = 0  # 재시도 횟수 제한(9.3)을 풀고 다음 수집에서 다시 시도
     db.commit()
     log_event(logger, "재추출 요청", notice_id=notice.id, user_id=admin.id)
     return ReextractResponse(notice_id=notice.id, extract_status="PENDING")

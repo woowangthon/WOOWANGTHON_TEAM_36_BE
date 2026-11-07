@@ -203,10 +203,11 @@ def test_gives_up_after_three_retries(gemini, clock):
 def test_non_retryable_errors_fail_immediately(gemini, clock, code):
     # 402: 선불 크레딧 소진(9.1)
     models = gemini([server_error(code), json.dumps(VALID_RESPONSE)])
-    with pytest.raises(ExtractionError, match=str(code)):
+    with pytest.raises(ExtractionError, match=str(code)) as info:
         extract(request())
     assert len(models.calls) == 1
     assert clock.sleeps == []
+    assert info.value.counts_as_attempt is (code != 402)  # 402는 재시도 횟수에 세지 않음(9.3)
 
 
 # --- 검증 실패 ---

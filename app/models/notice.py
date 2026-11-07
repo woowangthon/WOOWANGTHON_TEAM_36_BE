@@ -52,6 +52,8 @@ class Notice(Base):
     extract_status: Mapped[str] = mapped_column(
         String(10), default="PENDING", server_default="PENDING"
     )
+    # 연속 추출 실패 횟수. 3번이면 FAILED 자동 재시도에서 뺍니다(9.3). 402는 세지 않음
+    extract_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     model_version: Mapped[str | None] = mapped_column(String(100))
     extracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
