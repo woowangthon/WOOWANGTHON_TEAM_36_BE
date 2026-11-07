@@ -19,12 +19,15 @@ PROFILE = {
     "gender": "여",
     "birth_year": 2004,
     "gpa": 3.8,
-    "credits": 18,
     "grade": 3,
     "extra_semester": False,
     "enrollment_status": "재학",
     "department": "소프트웨어학부",
     "aibc_member": False,
+    "score_100": 91.2,
+    "credits": 18,
+    "gpa_total": 3.65,
+    "score_100_total": 88.4,
     "income_bracket": 3.0,
     "self_region": {"sido": "충청북도", "sigungu": "청주시"},
     "parent_region": {"sido": "충청남도", "sigungu": "논산시"},
@@ -36,6 +39,10 @@ REQUIRED_ONLY = {
     for k, v in PROFILE.items()
     if k
     not in {
+        "score_100",
+        "credits",
+        "gpa_total",
+        "score_100_total",
         "income_bracket",
         "self_region",
         "parent_region",
@@ -127,6 +134,10 @@ def test_required_only_profile(api, factory):
 
     assert body == {
         **REQUIRED_ONLY,
+        "score_100": None,
+        "credits": None,
+        "gpa_total": None,
+        "score_100_total": None,
         "income_bracket": None,
         "self_region": None,
         "parent_region": None,
@@ -135,6 +146,7 @@ def test_required_only_profile(api, factory):
     }
     row = stored(factory)
     assert row.enc_income_bracket is None and row.enc_special_flags is None
+    assert (row.score_100, row.credits, row.gpa_total, row.score_100_total) == (None,) * 4
 
 
 def test_put_updates_existing_profile(api, factory):
@@ -261,6 +273,10 @@ def test_requires_privacy_consent(app_client, factory, method):
         {"gpa": -0.1},
         {"gpa": 4.6},
         {"credits": 31},
+        {"score_100": 100.1},
+        {"score_100": -1},
+        {"gpa_total": 4.6},
+        {"score_100_total": 101},
         {"birth_year": 1899},
         {"gender": "기타"},
         {"enrollment_status": "제적"},

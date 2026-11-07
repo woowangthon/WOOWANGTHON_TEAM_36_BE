@@ -11,6 +11,8 @@
       "excludes_extra_semester": null,
       "enrollment_status": null,
       "min_gpa": 2.6,
+      "min_score_100": null,
+      "grade_basis": "직전학기",
       "min_credits": 12,
       "gender": null,
       "max_age": null,
@@ -31,9 +33,10 @@
       "ambiguous_fields": [],
       "evidence": {
         "apply_end": "제출기한 : 2026년 10월 22일 12:00까지",
-        "min_gpa": "12 학점 이상 , 성적 B0 (2.60) 이상 취득자 ( 복학생은 휴학 직전 성적 인정학기, 재입학생은 재입학 이후 성적 인정학기 )",
         "min_credits": "12 학점 이상 , 성적 B0 (2.60) 이상 취득자",
-        "target_department": "소프트웨어학부 장학담당조교 ... 제출"
+        "target_department": "소프트웨어학부 장학담당조교 ... 제출",
+        "min_gpa": "12 학점 이상 , 성적 B0 (2.60) 이상 취득자 ( 복학생은 휴학 직전 성적 인정학기, 재입학생은 재입학 이후 성적 인정학기 )",
+        "grade_basis": "12 학점 이상 , 성적 B0 (2.60) 이상 취득자 ( 복학생은 휴학 직전 성적 인정학기, 재입학생은 재입학 이후 성적 인정학기 )"
       }
     }
   ]

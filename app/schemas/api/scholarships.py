@@ -20,6 +20,7 @@ ConditionName = Literal[
     "excludes_extra_semester",
     "enrollment_status",
     "min_gpa",
+    "min_score_100",
     "min_credits",
     "gender",
     "max_age",

@@ -78,16 +78,34 @@ def enrollment_status(p: Profile, c: ScholarshipCriteria) -> Outcome:
 # --- 성적 ---------------------------------------------------------------------------
 
 
-def min_gpa(p: Profile, c: ScholarshipCriteria) -> Outcome:
+def _at_least(value: float | None, minimum: float) -> Outcome:
+    return UNKNOWN if value is None else _bool(value >= minimum)
+
+
+def min_gpa(p: Profile, c: ScholarshipCriteria, *, basis_ambiguous: bool = False) -> Outcome:
+    """평점(4.5 만점). `grade_basis = 전체`면 전체 평점평균, 그 밖은 직전학기 평점과 비교합니다."""
     if c.min_gpa is None:
         return None
-    return _bool(p.gpa >= c.min_gpa)
+    if basis_ambiguous:
+        return UNKNOWN
+    value = p.gpa_total if c.grade_basis == "전체" else p.gpa
+    return _at_least(value, c.min_gpa)
+
+
+def min_score_100(p: Profile, c: ScholarshipCriteria, *, basis_ambiguous: bool = False) -> Outcome:
+    """100점 만점 성적. 평점에서 환산하지 않고 성적표의 100점 환산 점수와만 비교합니다."""
+    if c.min_score_100 is None:
+        return None
+    if basis_ambiguous:
+        return UNKNOWN
+    value = p.score_100_total if c.grade_basis == "전체" else p.score_100
+    return _at_least(value, c.min_score_100)
 
 
 def min_credits(p: Profile, c: ScholarshipCriteria) -> Outcome:
     if c.min_credits is None:
         return None
-    return _bool(p.credits >= c.min_credits)
+    return _at_least(p.credits, c.min_credits)
 
 
 # --- 인적 사항 ----------------------------------------------------------------------

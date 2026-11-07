@@ -21,6 +21,7 @@ Gender = Literal["남", "여"]
 RegionBasis = Literal["본인", "부모", "무관"]
 TargetDepartment = Literal["제한없음", "소프트웨어학부 포함", "소프트웨어학부 불포함", "불명"]
 TargetProgram = Literal["제한없음", "AIBC 양성인재"]
+GradeBasis = Literal["직전학기", "전체"]  # 성적 조건이 어느 학기 성적 기준인지 (5.2)
 
 # 기초생활수급자 = 0, 차상위 = 0.5, 학자금지원구간 1~10 = 1~10 (5.2)
 INCOME_BRACKETS: frozenset[float] = frozenset({0.0, 0.5, *(float(n) for n in range(1, 11))})
@@ -36,6 +37,8 @@ CriteriaField = Literal[
     "excludes_extra_semester",
     "enrollment_status",
     "min_gpa",
+    "min_score_100",
+    "grade_basis",
     "min_credits",
     "gender",
     "max_age",
@@ -80,7 +83,12 @@ class ScholarshipCriteria(BaseModel):
     excludes_extra_semester: bool | None = None
     enrollment_status: list[EnrollmentStatus] | None = None
 
+    # 성적 조건 (5.2): 4.5 만점 평점과 100점 만점 점수는 서로 환산하지 않고 따로 둡니다.
+    # min_score_100·grade_basis는 extract_v3에서 추가했습니다.
+    # 기본값이 None이라 DB에 저장된 v2 결과도 그대로 읽힙니다.
     min_gpa: float | None = Field(default=None, ge=0, le=4.5)
+    min_score_100: float | None = Field(default=None, ge=0, le=100)
+    grade_basis: GradeBasis | None = None
     min_credits: int | None = Field(default=None, ge=0)
 
     gender: Gender | None = None
