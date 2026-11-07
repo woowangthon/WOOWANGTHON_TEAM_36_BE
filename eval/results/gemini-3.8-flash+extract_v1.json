@@ -17,9 +17,9 @@
         "accuracy": 0.8696
       },
       "min_gpa": {
-        "correct": 20,
+        "correct": 21,
         "total": 23,
-        "accuracy": 0.8696
+        "accuracy": 0.913
       },
       "target_grades": {
         "correct": 21,
@@ -37,11 +37,11 @@
         "accuracy": 0.8261
       }
     },
-    "correct": 130,
+    "correct": 131,
     "total": 145,
-    "accuracy": 0.8966,
+    "accuracy": 0.9034,
     "target": 0.9,
-    "gap": -0.0034
+    "gap": 0.0034
   },
   "latency_seconds": {
     "total": 132.5,
@@ -1724,7 +1724,7 @@
           "total": 1
         },
         "min_gpa": {
-          "correct": 0,
+          "correct": 1,
           "total": 1
         },
         "target_grades": {
@@ -1740,14 +1740,7 @@
           "total": 1
         }
       },
-      "mismatches": [
-        {
-          "scholarship": "2026학년도 2학기 Level-Up 장학금(TOEIC)",
-          "field": "min_gpa",
-          "expected": null,
-          "got": 2.6
-        }
-      ],
+      "mismatches": [],
       "predicted": {
         "notice_kind": "모집",
         "scholarships": [
@@ -2170,5 +2163,7 @@
         ]
       }
     }
-  }
+  },
+  "rescored_at": "2026-11-07T12:05:04+09:00",
+  "rescore_note": "골든셋 sw_dept_1154674 min_gpa 정답 변경(null → 2.6, 권남렬 검토)으로 저장된 예측을 다시 채점함. 모델 재호출 없음"
 }

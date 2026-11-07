@@ -5,7 +5,7 @@
 - `<source>_<id>.input.json`: `ExtractRequest` 형식(`source_code`, `title`, `posted_at`, `text`). `text`는 본문 + `[첨부 PDF: 파일명]` 뒤에 PDF 추출 텍스트(PyMuPDF)입니다. 3만 자 자르기는 하지 않았습니다(extractor가 합니다).
 - `<source>_<id>.expected.json`: `ExtractedCriteria` 형식 정답. `app.extraction.schemas.ExtractedCriteria`로 검증을 통과한 값을 `model_dump(mode="json")`으로 저장했습니다.
 
-정답은 Claude가 원문을 읽고 확정했습니다(2026-11-05 결정, 사람 검수 없음). 필드마다 `evidence`에 근거 원문을 남겼습니다.
+정답은 Claude가 원문을 읽고 초안을 만든 뒤(2026-11-05), 권남렬이 원문과 나란히 놓고 직접 검토했습니다(2026-11-06, 30건 중 1건 수정: `sw_dept_1154674`). 필드마다 `evidence`에 근거 원문을 남겼습니다.
 
 ## 구성
 
@@ -36,7 +36,7 @@
 
 | 공지 | 판단 |
 | --- | --- |
-| `sw_dept_1154674` | "성적 B0(2.60) 이상"이 직전학기 성적인지 누적인지 공지에 없어서 `min_gpa` null + ambiguous. 12학점은 명확하므로 `min_credits` 12 |
+| `sw_dept_1154674` | "성적 B0(2.60) 이상 (복학생은 휴학 직전 성적 인정학기…)"의 "성적 인정학기"는 계절학기를 뺀 직전 정규학기를 뜻하므로 직전학기 평점 조건으로 보고 `min_gpa` 2.6 (2026-11-06 권남렬 검토로 null + ambiguous에서 변경). 12학점은 명확하므로 `min_credits` 12 |
 | `sw_dept_1154615`, `1153811`, `1153906`, `kosaf_21449` | **백분율·백분위 성적 기준**(85점, 70점, 90점, 70점/C0)은 4.5 만점 평점으로 바꿀 수 없어 `min_gpa` null + ambiguous, 원문은 `extra_conditions` |
 | `sw_dept_1154905` | "만 24세 이하(2003.1.1 이후 출생)"는 `max_age` 24. 5학기 진학 예정 → 현재 2학년 `[2]` |
 | `sw_dept_1154342` | 나이 대신 "2003.1.1 이후 출생"만 있어 2026년 기준 만 나이 `max_age` 23으로 환산. 신입생 → `[1]` |
