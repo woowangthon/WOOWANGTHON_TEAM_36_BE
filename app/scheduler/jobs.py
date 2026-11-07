@@ -11,6 +11,7 @@
    24시간마다 다시 확인합니다. 새 글·해시가 바뀐 글만 PDF를 받고 `PENDING`으로 둡니다(2장).
 3. 이번에 새로 받았거나 바뀐 공지를 먼저 추출하고, 그다음 대기 중인 `PENDING`·`FAILED`를
    최대 20건 추출합니다. 추출 실패는 `FAILED`로 두고 다음 공지를 계속 처리합니다(9.3).
+   `FAILED`는 연속 3번 실패하면 더 고르지 않습니다(크레딧 부족 402는 세지 않음).
 4. 장학금 upsert: 같은 공지 안에서 이름이 같으면 id를 유지하고,
    결과에서 사라진 장학금은 `CLOSED`(5.2).
 5. 상태 일괄 갱신: `OPEN`·`ALWAYS` → `CLOSED` 방향만(마감 경과, 상시 만료 60일·1년).
@@ -29,7 +30,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select, text
+from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.db import get_sessionmaker
@@ -58,6 +59,7 @@ CRAWL_LOCK_KEY = 36_2026_11  # pg_advisory_xact_lock 고정 키 (수집 작업 �
 RUNNING_STALE_AFTER = timedelta(hours=1)  # 1시간 지난 RUNNING은 비정상 종료로 보고 무시
 RECHECK_AFTER = timedelta(hours=24)  # 1페이지 밖 OPEN 공지 재확인 주기
 PENDING_BATCH = 20  # 대기 중인 PENDING·FAILED를 한 번에 처리하는 최대 건수
+MAX_EXTRACT_ATTEMPTS = 3  # FAILED가 연속 이만큼 실패하면 자동 재시도에서 뺌(9.3)
 BACKFILL_PERIOD = timedelta(days=365)
 MAX_BACKFILL_PAGES = 60  # 목록 구조가 바뀌어 끝을 못 찾을 때의 안전장치
 ALWAYS_RECRUIT_PERIOD = timedelta(days=60)  # 마감 없는 모집
@@ -254,6 +256,7 @@ def _process_notice(
     notice.attachments = [{"name": a.name, "url": a.url} for a in raw.attachments]
     notice.content_hash = digest
     notice.extract_status = "PENDING"
+    notice.extract_attempts = 0  # 내용이 바뀌었으니 다시 처음부터 시도
     notice.last_checked_at = now
     session.commit()
     result.changed.append(notice.id)
@@ -300,11 +303,22 @@ def notice_text(crawler: Crawler, raw: RawNotice) -> str:
 
 
 def pending_notice_ids(session: Session, *, exclude: Iterable[int]) -> list[int]:
-    """이전부터 대기 중인 PENDING(관리자 재추출 포함)·FAILED 공지, 오래된 것부터 최대 20건."""
+    """이전부터 대기 중인 PENDING(관리자 재추출 포함)·FAILED 공지, 오래된 것부터 최대 20건.
+
+    연속 3번 실패한 FAILED는 고르지 않습니다(9.3). 관리자 재추출이면 다시 PENDING이 됩니다.
+    """
     excluded = list(exclude)
     query = (
         select(Notice.id)
-        .where(Notice.extract_status.in_(("PENDING", "FAILED")))
+        .where(
+            or_(
+                Notice.extract_status == "PENDING",
+                and_(
+                    Notice.extract_status == "FAILED",
+                    Notice.extract_attempts < MAX_EXTRACT_ATTEMPTS,
+                ),
+            )
+        )
         .order_by(Notice.id)
         .limit(PENDING_BATCH)
     )
@@ -330,12 +344,15 @@ def extract_notices(
             result = extractor(request)
         except ExtractionError as error:
             notice.extract_status = "FAILED"
+            if error.counts_as_attempt:
+                notice.extract_attempts += 1
             session.commit()
             log_event(
                 logger,
                 "추출 실패",
                 logging.WARNING,
                 notice_id=notice.id,
+                attempts=notice.extract_attempts,
                 reason=str(error)[:ERROR_TEXT_LIMIT],
             )
             continue
@@ -352,6 +369,7 @@ def apply_extraction(
     notice.model_version = result.model_version
     notice.extracted_at = now
     notice.extract_status = "DONE"
+    notice.extract_attempts = 0
 
     existing: dict[str, Scholarship] = {}
     for row in notice.scholarships:

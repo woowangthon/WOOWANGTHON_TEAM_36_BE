@@ -521,6 +521,47 @@ def test_failed_extraction_is_retried_next_run(crawl, site, extractor, session_f
     assert "A 장학금" in scholarships(session_factory)
 
 
+def test_failed_notice_stops_after_three_attempts(crawl, site, extractor, session_factory):
+    """같은 공지가 매시간 실패하며 Gemini 비용만 쓰지 않게 3번에서 멈춥니다(9.3)."""
+    site.post("100", title="계속 실패할 공지")
+    extractor.set("계속 실패할 공지", *[ExtractionError("응답 검증 실패")] * 5)
+
+    for hour in range(5):
+        crawl(at=NOW + timedelta(hours=hour))
+
+    assert len(extractor.requests) == 3
+    (notice,) = notices(session_factory)
+    assert (notice.extract_status, notice.extract_attempts) == ("FAILED", 3)
+
+
+def test_credit_exhausted_is_not_counted(crawl, site, extractor, session_factory):
+    """402(선불 크레딧 소진)는 공지 탓이 아니므로 횟수에 세지 않고, 충전 뒤 다시 추출합니다."""
+    site.post("100", title="공지")
+    no_credit = ExtractionError("Gemini 호출 실패(HTTP 402)", counts_as_attempt=False)
+    extractor.set("공지", *[no_credit] * 4, result("모집", ("A 장학금", None)))
+
+    for hour in range(5):
+        crawl(at=NOW + timedelta(hours=hour))
+
+    (notice,) = notices(session_factory)
+    assert (notice.extract_status, notice.extract_attempts) == ("DONE", 0)
+    assert len(extractor.requests) == 5
+
+
+def test_changed_notice_resets_attempts(crawl, site, extractor, session_factory):
+    site.post("100", title="공지")
+    extractor.set("공지", *[ExtractionError("시간 초과")] * 3, result("모집", ("A 장학금", None)))
+    for hour in range(3):
+        crawl(at=NOW + timedelta(hours=hour))
+    assert notices(session_factory)[0].extract_attempts == 3
+
+    site.post("100", title="공지", body="마감 연장")  # 해시가 바뀜
+    crawl(at=NOW + timedelta(hours=3))
+
+    (notice,) = notices(session_factory)
+    assert (notice.extract_status, notice.extract_attempts) == ("DONE", 0)
+
+
 def test_pending_backlog_is_processed_20_per_run(crawl, extractor, session_factory):
     with session_factory() as session:
         for i in range(25):
