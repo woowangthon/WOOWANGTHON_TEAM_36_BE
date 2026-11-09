@@ -8,7 +8,13 @@ import httpx
 import pytest
 
 from app.crawlers.base import ParseError, PoliteClient
-from app.crawlers.kosaf import KosafCrawler, detail_url, parse_detail, parse_list
+from app.crawlers.kosaf import (
+    DOWNLOAD_URL,
+    KosafCrawler,
+    detail_url,
+    parse_detail,
+    parse_list,
+)
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "kosaf"
 SEOUL = ZoneInfo("Asia/Seoul")
@@ -77,14 +83,25 @@ def test_detail_body_text_only():
     assert ".zip" not in body
 
 
-def test_detail_attachments_are_names_with_original_link():
+def test_detail_attachments_have_download_urls():
     attachments = detail(RECRUIT).attachments
     assert [a.name for a in attachments] == [
         "붙임1. '26-2학기 푸른등대 기부장학금(2차) 사업계획서 및 제출서류 샘플 등.zip",
         "붙임2. 2026년 2학기 푸른등대 기부장학금(2차) 학생신청 메뉴얼(PC).zip",
     ]
-    # fileDown()은 받지 않으므로 URL은 원문 페이지
-    assert all(a.url == detail_url(RECRUIT) for a in attachments)
+    # fileDown('HP.BRD.UPLOAD', '21427', N)이 여는 주소
+    assert [a.url for a in attachments] == [
+        f"{DOWNLOAD_URL}?pPath=HP.BRD.UPLOAD&pSeq_No=21427&pFile_No=1",
+        f"{DOWNLOAD_URL}?pPath=HP.BRD.UPLOAD&pSeq_No=21427&pFile_No=2",
+    ]
+
+
+def test_detail_attachment_with_unknown_link_falls_back_to_page():
+    html = read(f"{MINUTES}.html").replace(
+        "fileDown('HP.BRD.UPLOAD', '21475', '1')", "fileDown(someVar)"
+    )
+    notice = parse_detail(html, external_id=MINUTES, url=detail_url(MINUTES))
+    assert [a.url for a in notice.attachments] == [detail_url(MINUTES)]
 
 
 def test_detail_without_attachments():
@@ -143,3 +160,42 @@ def test_crawler_requests():
     assert page3 == {"ctgrId1": "0000000002", "page": "3"}
     assert detail_request == {"mode": "view", "ctgrId1": "0000000002", "seqNo": RESULT}
     assert all(r.url.host == "www.kosaf.go.kr" for r in requests)
+
+
+def test_fetch_attachment_downloads_file():
+    pdf = (FIXTURES / "files" / f"{MINUTES}_1.pdf").read_bytes()
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, content=pdf, headers={"Content-Type": "application/oct-stream"})
+
+    client = PoliteClient(clock=InstantClock(), transport=httpx.MockTransport(handler))
+    attachment = detail(MINUTES).attachments[0]
+    with KosafCrawler(client) as crawler:
+        data = crawler.fetch_attachment(attachment, referer=detail_url(MINUTES))
+
+    assert data == pdf
+    (request,) = requests
+    assert request.url.path == "/ko/download.do"
+    assert dict(request.url.params) == {
+        "pPath": "HP.BRD.UPLOAD",
+        "pSeq_No": MINUTES,
+        "pFile_No": "1",
+    }
+
+
+def test_attachment_pdf_text_reaches_extraction_input():
+    """수집 작업이 KOSAF 첨부 PDF도 받아 추출 입력에 붙입니다(전에는 받지 않았음)."""
+    from app.scheduler.jobs import notice_text
+
+    pdf = (FIXTURES / "files" / f"{MINUTES}_1.pdf").read_bytes()
+    client = PoliteClient(
+        clock=InstantClock(),
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, content=pdf)),
+    )
+    with KosafCrawler(client) as crawler:
+        text = notice_text(crawler, detail(MINUTES))
+
+    assert "[첨부 PDF: 2026년 제1차 국가과학기술 장학사업 운영위원회 회의록.pdf]" in text
+    assert "장학사업 운영위원회 회의록\n< 한국장학재단 AI우수장학부 >" in text
