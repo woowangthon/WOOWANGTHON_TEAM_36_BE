@@ -2,8 +2,8 @@
 
 - 형식은 확장자가 아니라 **파일 앞부분 시그니처**로 고릅니다. 학부 게시판은 세션이 없으면
   200 응답으로 HTML 오류 페이지를 주고, 확장자와 실제 형식이 다른 파일도 있습니다.
-- 지원: PDF(`parsers/pdf.py`), HWPX·DOCX(ZIP 안의 XML), ZIP(안의 파일을 한 단계만 다시 판별).
-  HWP는 아직 읽지 않고 `UNSUPPORTED`로 둡니다(작업 계획 3번). 이미지·스캔본도 읽지 않습니다(D3).
+- 지원: PDF(`parsers/pdf.py`), HWP 5.0(`parsers/hwp.py`), HWPX·DOCX(ZIP 안의 XML),
+  ZIP(안의 파일을 한 단계만 다시 판별). 이미지·스캔본은 읽지 않습니다(D3).
 - ZIP은 **안의 파일마다 결과를 하나씩** 돌려줍니다. "ZIP 안의 HWP를 못 읽음"이 상태에 남아야
   판정에서 "확인 필요"로 낮출 수 있기 때문입니다(D8).
 - 압축 폭탄을 막으려고 안의 파일 수·파일 크기·전체 크기에 상한을 두고, ZIP 안의 ZIP은 풀지 않습니다.
@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from app.core.logging import log_event
+from app.parsers.hwp import is_hwp, read_hwp
 from app.parsers.pdf import is_pdf, read_pdf
 
 logger = logging.getLogger(__name__)
@@ -62,8 +63,15 @@ def _read_single(data: bytes, *, name: str) -> AttachmentPart:
         status, text = read_pdf(data, name=name)
         return AttachmentPart(name=name, kind="PDF", status=status, text=text)
     if data.startswith(_OLE):
-        kind: FileKind = "HWP" if name.lower().endswith(".hwp") else "OTHER"
-        return _part(name, kind, "UNSUPPORTED", reason="OLE 형식(HWP 등)은 아직 읽지 않음")
+        if not is_hwp(data):
+            return _part(name, "OTHER", "UNSUPPORTED", reason="HWP가 아닌 OLE 형식(DOC·XLS 등)")
+        status, text, reason = read_hwp(data)
+        if status == "FAILED":
+            return _part(name, "HWP", "FAILED", reason=reason)
+        text = _clean(text)
+        if not text:
+            return _part(name, "HWP", "NO_TEXT", reason="텍스트가 없는 HWP")
+        return AttachmentPart(name=name, kind="HWP", status="OK", text=text)
     if data.startswith(_IMAGES):
         return _part(name, "IMAGE", "UNSUPPORTED", reason="이미지는 읽지 않음")
     return _part(name, "OTHER", "UNSUPPORTED", reason="알 수 없는 형식", size=len(data))

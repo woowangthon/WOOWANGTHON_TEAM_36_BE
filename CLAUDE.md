@@ -14,7 +14,7 @@ app/
 ├─ models/      # SQLAlchemy 모델 (계획서 6장)        ★공용
 ├─ schemas/     # API DTO  ★공용
 ├─ crawlers/    # base.py, sw_dept.py, aibc.py, kosaf.py
-├─ parsers/     # pdf.py, attachments.py(첨부 형식 판별·HWPX·DOCX·ZIP), deadline.py, dates.py
+├─ parsers/     # pdf.py, hwp.py, attachments.py(첨부 형식 판별·HWPX·DOCX·ZIP), deadline.py, dates.py
 ├─ extraction/  # schemas.py(ExtractRequest·ExtractedCriteria ★공용), extractor.py(Gemini 호출·재시도), prompts/extract_vN.md
 ├─ matching/    # rules.py(조건별 비교), engine.py(3단계 판정)
 ├─ scheduler/   # jobs.py (수집 작업, `python -m app.scheduler.jobs`)
@@ -50,7 +50,7 @@ tests/fixtures/ # 사이트별 저장 HTML, PDF 샘플, AI 응답 샘플, golden
 - **골든셋 평가**(`eval/`): `uv run python -m eval.run` → 필드별 정답률과 전체 정답률을 출력하고 `eval/results/{model_version}.json`에 저장합니다. 채점은 계획서 10장 "골든셋 정답률 계산"을 따르고 목표는 90%입니다. 결과 파일은 커밋합니다(프롬프트 변경 이력 추적용).
 - **지연 대책**(계획서 9.5, 9.8):
   - 앱 시작 시 DB 연결이나 데이터 미리 불러오기를 하지 않습니다.
-  - PyMuPDF·BeautifulSoup/lxml·`google-genai`는 모듈 맨 위가 아니라 수집·추출 코드 안에서 import합니다.
+  - PyMuPDF·olefile·BeautifulSoup/lxml·`google-genai`는 모듈 맨 위가 아니라 수집·추출 코드 안에서 import합니다.
   - 화면 하나에 API 한 번이 되게 응답을 설계하고, N+1 쿼리를 만들지 않습니다(`selectinload`/`joinedload`).
   - 요청 로그에 `method`, `path`, `status`, `duration_ms`를 남깁니다.
 - CORS는 설정하지 않습니다(Vercel 프록시로 같은 출처, 계획서 9.2).
