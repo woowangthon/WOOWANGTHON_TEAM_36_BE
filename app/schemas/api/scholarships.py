@@ -69,6 +69,8 @@ class ConditionCheck(BaseModel):
     condition: ConditionName
     outcome: ConditionOutcome
     evidence: str | None  # 공지 원문 근거 문장 (5.2 evidence)
+    # 근거가 나온 곳: "본문" 또는 첨부 파일 이름. extract_v4 이전 결과는 null
+    evidence_source: str | None = None
 
 
 class NoticeRef(BaseModel):
@@ -76,6 +78,14 @@ class NoticeRef(BaseModel):
     title: str
     url: str  # 원문 링크
     posted_at: AwareDatetime
+
+
+class UnreadAttachment(BaseModel):
+    """읽지 못한 첨부. 화면에서 원문 링크와 함께 "직접 확인"으로 보여 줍니다(D8)."""
+
+    name: str  # ZIP 안의 파일은 "ZIP 이름 / 파일 이름"
+    url: str  # 첨부(ZIP이면 ZIP) 다운로드 주소
+    reason: Literal["NO_TEXT", "UNSUPPORTED", "FAILED", "TOO_LARGE"]  # 스캔본/형식/실패/크기
 
 
 class SiblingScholarship(BaseModel):
@@ -93,6 +103,10 @@ class ScholarshipDetail(ScholarshipSummary):
     required_documents: list[str]
     notice: NoticeRef
     siblings: list[SiblingScholarship]
+    # 첨부를 못 읽었으면 판정이 "지원 가능"이 아니라 "확인 필요"입니다(D8).
+    unread_attachments: list[UnreadAttachment]
+    # 추출 입력이 10만 자를 넘어 뒤쪽 첨부 일부를 읽지 못함. 판정은 바꾸지 않습니다(D5).
+    input_truncated: bool
 
 
 class StateRequest(BaseModel):

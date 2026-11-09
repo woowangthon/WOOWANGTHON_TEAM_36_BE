@@ -41,6 +41,7 @@ from app.crawlers.base import Crawler, RawNotice
 from app.crawlers.kosaf import KosafCrawler
 from app.crawlers.sw_dept import SwDeptCrawler
 from app.extraction import ExtractionError, ExtractionResult, ExtractRequest, extract
+from app.extraction.extractor import MAX_INPUT_CHARS
 from app.models import CrawlRun, Notice, NoticeAttachment, Scholarship
 from app.parsers.attachments import read_attachment
 from app.parsers.dates import now_kst
@@ -384,11 +385,13 @@ def extract_notices(
         notice = session.get(Notice, notice_id)
         if notice is None:
             continue
+        input_text = extraction_text(notice)
+        notice.input_truncated = len(input_text) > MAX_INPUT_CHARS
         request = ExtractRequest(
             source_code=notice.source_code,
             title=notice.title,
             posted_at=notice.posted_at,
-            text=extraction_text(notice),
+            text=input_text,
         )
         try:
             result = extractor(request)

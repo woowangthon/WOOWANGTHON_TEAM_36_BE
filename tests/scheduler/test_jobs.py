@@ -388,6 +388,16 @@ def test_is_form_file(name, is_form):
     assert jobs.is_form_file(name) is is_form
 
 
+def test_input_over_limit_is_marked_truncated(crawl, site, extractor, session_factory, monkeypatch):
+    monkeypatch.setattr(jobs, "MAX_INPUT_CHARS", 20)
+    site.post("100", body="짧은 본문")
+    site.post("200", body="이 본문은 스무 자를 훨씬 넘는 긴 공지 본문입니다", title="긴 공지")
+    crawl()
+
+    flags = {n.external_id: n.input_truncated for n in notices(session_factory)}
+    assert flags == {"100": False, "200": True}
+
+
 def test_notice_saved_before_attachment_table_uses_body_text(session_factory, extractor):
     """첨부 표 이전에 수집한 공지는 body_text에 PDF 텍스트가 붙어 있고 첨부 행이 없습니다."""
     with session_factory() as session:

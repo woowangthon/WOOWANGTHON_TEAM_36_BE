@@ -59,6 +59,8 @@ class Notice(Base):
     )
     # 연속 추출 실패 횟수. 3번이면 FAILED 자동 재시도에서 뺍니다(9.3). 402는 세지 않음
     extract_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # 마지막 추출 입력이 10만 자를 넘어 뒤쪽이 잘렸는지(D5). 상세 화면에 "일부만 읽음"으로 표시
+    input_truncated: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     model_version: Mapped[str | None] = mapped_column(String(100))
     extracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

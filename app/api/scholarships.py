@@ -4,6 +4,8 @@
 - 목록은 장학금·공지·출처·내 상태를 한 번의 JOIN 쿼리로 읽어 공지 수와 관계없이 쿼리 수가
   같습니다(9.8 N+1 금지).
 - 기본 목록은 `OPEN`·`ALWAYS`만, 공지가 `모집`·`기준안내`인 것만, 숨긴 장학금은 빼고 보여 줍니다.
+- 공지에 읽지 못한 첨부가 있으면 판정을 "지원 가능"이 아니라 "확인 필요"로 낮춥니다(D8).
+  목록은 같은 쿼리의 EXISTS 열로 확인해 쿼리 수를 늘리지 않습니다.
   `state`를 주면 내 장학금 화면용으로 마감(`CLOSED`)된 것도 포함합니다.
 - 프로필 값은 로그에 남기지 않습니다(4.2).
 """
@@ -12,7 +14,7 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import and_, select
+from sqlalchemy import and_, exists, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -21,7 +23,16 @@ from app.core.db import get_db
 from app.core.security import ConsentedUser
 from app.extraction.schemas import BenefitType, ScholarshipCriteria
 from app.matching.engine import evaluate
-from app.models import Notice, Scholarship, Source, User, UserProfile, UserScholarshipState
+from app.models import (
+    Notice,
+    NoticeAttachment,
+    Scholarship,
+    Source,
+    User,
+    UserProfile,
+    UserScholarshipState,
+)
+from app.models.notice import UNREAD_ATTACHMENT_STATUSES
 from app.parsers.dates import now_kst, to_kst
 from app.schemas.api.profile import Profile
 from app.schemas.api.scholarships import (
@@ -37,6 +48,7 @@ from app.schemas.api.scholarships import (
     StateFilter,
     StateRequest,
     StateResponse,
+    UnreadAttachment,
 )
 
 router = APIRouter(prefix="/scholarships", tags=["scholarships"])
@@ -98,10 +110,22 @@ def _summary(
     }
 
 
-def _base_query(user_id: int):
-    """장학금 + 공지 + 출처 + 내 상태를 한 번에 읽는 쿼리."""
+def _unread_attachments_exist():
+    """공지에 읽지 못한 첨부가 있는지(상관 EXISTS). 목록 쿼리 한 번에 함께 읽습니다."""
     return (
-        select(Scholarship, Notice, Source, UserScholarshipState.state)
+        exists()
+        .where(
+            NoticeAttachment.notice_id == Notice.id,
+            NoticeAttachment.status.in_(UNREAD_ATTACHMENT_STATUSES),
+        )
+        .label("has_unread")
+    )
+
+
+def _base_query(user_id: int):
+    """장학금 + 공지 + 출처 + 내 상태 + 못 읽은 첨부 여부를 한 번에 읽는 쿼리."""
+    return (
+        select(Scholarship, Notice, Source, UserScholarshipState.state, _unread_attachments_exist())
         .join(Notice, Scholarship.notice_id == Notice.id)
         .join(Source, Notice.source_code == Source.code)
         .outerjoin(
@@ -152,8 +176,9 @@ def list_scholarships(
     today = now_kst().date()
     wanted = RESULT_FILTERS[result]
     items = []
-    for s, notice, src, my_state in db.execute(query):
-        outcome = evaluate(profile, ScholarshipCriteria.model_validate(s.criteria), today).result
+    for s, notice, src, my_state, has_unread in db.execute(query):
+        criteria = ScholarshipCriteria.model_validate(s.criteria)
+        outcome = evaluate(profile, criteria, today, has_unread_attachments=has_unread).result
         if outcome in wanted:
             items.append(
                 ScholarshipSummary.model_validate(_summary(s, notice, src, my_state, outcome))
@@ -170,9 +195,17 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
     row = db.execute(_base_query(user.id).where(Scholarship.id == scholarship_id)).first()
     if row is None:
         raise _not_found()
-    s, notice, src, my_state = row
+    s, notice, src, my_state, _ = row
+    unread = db.scalars(
+        select(NoticeAttachment)
+        .where(
+            NoticeAttachment.notice_id == notice.id,
+            NoticeAttachment.status.in_(UNREAD_ATTACHMENT_STATUSES),
+        )
+        .order_by(NoticeAttachment.position)
+    ).all()
     criteria = ScholarshipCriteria.model_validate(s.criteria)
-    evaluation = evaluate(profile, criteria, now_kst().date())
+    evaluation = evaluate(profile, criteria, now_kst().date(), has_unread_attachments=bool(unread))
     siblings = db.execute(
         select(Scholarship.id, Scholarship.name, Scholarship.status)
         .where(Scholarship.notice_id == notice.id, Scholarship.id != s.id)
@@ -189,6 +222,10 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
                 id=notice.id, title=notice.title, url=notice.url, posted_at=_kst(notice.posted_at)
             ),
             "siblings": [SiblingScholarship(id=i, name=n, status=st) for i, n, st in siblings],
+            "unread_attachments": [
+                UnreadAttachment(name=a.name, url=a.url, reason=a.status) for a in unread
+            ],
+            "input_truncated": notice.input_truncated,
         }
     )
 
