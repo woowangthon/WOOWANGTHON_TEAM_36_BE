@@ -69,6 +69,9 @@ ERROR_TEXT_LIMIT = 500
 MAX_ATTACHMENTS = 10  # 공지 1건에서 받는 첨부 수 상한(넘는 것은 SKIPPED)
 # 결과 공지는 첨부가 대개 학번·이름 명단이라 받지 않습니다(D7, 개인정보).
 RESULT_TITLE_WORDS = ("선발 결과", "선발결과", "합격자", "최종 명단", "명단 발표", "결과 발표")
+# 빈칸만 있는 양식 파일은 조건이 없고 입력 길이만 늘려서 추출 입력에 넣지 않습니다(D5).
+# 파일 이름(ZIP 안의 파일은 마지막 부분)으로만 판단합니다.
+FORM_NAME_WORDS = ("신청서", "서식", "양식", "동의서", "확인서", "추천서", "매뉴얼", "메뉴얼")
 
 ExtractFn = Callable[[ExtractRequest], ExtractionResult]
 CrawlerFactory = Callable[[str], Crawler]
@@ -286,7 +289,7 @@ def read_attachments(crawler: Crawler, raw: RawNotice, now: datetime) -> list[No
     """첨부를 받아 형식별로 읽습니다. 첨부 하나가 실패해도 공지 수집은 계속합니다."""
     rows: list[NoticeAttachment] = []
 
-    def add(name: str, url: str, kind: str, status: str, text: str = "") -> None:
+    def add(name: str, url: str, kind: str, status: str, content: str = "") -> None:
         rows.append(
             NoticeAttachment(
                 position=len(rows),
@@ -294,7 +297,7 @@ def read_attachments(crawler: Crawler, raw: RawNotice, now: datetime) -> list[No
                 url=url,
                 file_kind=kind,
                 status=status,
-                text=text,
+                text=content,
                 extracted_at=now,
             )
         )
@@ -324,14 +327,26 @@ def read_attachments(crawler: Crawler, raw: RawNotice, now: datetime) -> list[No
 
 
 def extraction_text(notice: Notice) -> str:
-    """추출에 넘길 텍스트: 본문 + 읽은 첨부마다 `[첨부 {형식}: 이름]` + 텍스트.
+    """추출에 넘길 텍스트: 본문 + 읽은 공고문 첨부마다 `[첨부 {형식}: 이름]` + 텍스트.
 
-    골든셋 입력과 같은 형식입니다. 첨부 표가 생기기 전에 수집한 공지는 `body_text`에
-    PDF 텍스트가 이미 붙어 있고 첨부 행이 없어 그대로 쓰입니다.
+    골든셋 입력과 같은 형식입니다. 본문을 먼저, 첨부는 게시글 순서대로 붙이므로 10만 자를 넘으면
+    뒤쪽 첨부가 잘립니다(D5). 양식 파일은 넣지 않습니다.
+    첨부 표가 생기기 전에 수집한 공지는 `body_text`에 PDF 텍스트가 이미 붙어 있고 첨부 행이 없어
+    그대로 쓰입니다.
     """
     parts = [notice.body_text]
-    parts += [f"[첨부 {f.file_kind}: {f.name}]\n{f.text}" for f in notice.files if f.status == "OK"]
+    parts += [
+        f"[첨부 {f.file_kind}: {f.name}]\n{f.text}"
+        for f in notice.files
+        if f.status == "OK" and not is_form_file(f.name)
+    ]
     return "\n\n".join(part.strip() for part in parts)
+
+
+def is_form_file(name: str) -> bool:
+    """신청서·서식 같은 양식 파일인지. ZIP 안의 파일은 안쪽 파일 이름만 봅니다."""
+    base = name.rsplit(" / ", 1)[-1]
+    return any(word in base for word in FORM_NAME_WORDS)
 
 
 # --- 추출 ------------------------------------------------------------------

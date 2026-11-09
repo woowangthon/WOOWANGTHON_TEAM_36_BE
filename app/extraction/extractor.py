@@ -9,7 +9,8 @@
   응답을 Pydantic으로 다시 검증합니다. 검증 실패는 재시도하지 않습니다(9.3).
 - 429·5xx·호출 시간 초과는 지수 백오프로 최대 3회 재시도합니다. 호출 1회 60초, 공지 1건의 재시도를
   포함한 전체 처리는 100초를 넘지 않습니다.
-- 입력 텍스트는 3만 자에서 자릅니다.
+- 입력 텍스트는 10만 자에서 자릅니다(D5). 수집 작업이 본문 → 공고문 첨부 순으로 붙이고
+  신청서·서식 같은 양식 파일은 넣지 않으므로, 넘쳐도 잘리는 쪽은 뒤쪽 첨부입니다.
 - google-genai는 학생 요청 경로에서 불러오지 않도록 함수 안에서 import합니다(9.5).
 """
 
@@ -28,11 +29,11 @@ from app.core.config import get_settings
 from app.core.logging import log_event
 from app.extraction.schemas import ExtractedCriteria, ExtractionResult, ExtractRequest
 
-PROMPT_VERSION = "extract_v3"
+PROMPT_VERSION = "extract_v4"
 MOCK_MODEL_NAME = "mock"
 PROMPT_PATH = Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.md"
 
-MAX_INPUT_CHARS = 30_000
+MAX_INPUT_CHARS = 100_000  # 약 120쪽. 넘치면 뒤쪽 첨부부터 잘림(D5)
 CALL_TIMEOUT_SECONDS = 60.0
 TOTAL_TIMEOUT_SECONDS = 100.0
 MAX_RETRIES = 3

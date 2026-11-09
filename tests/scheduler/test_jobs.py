@@ -212,7 +212,7 @@ def test_fixture_site_with_mock_ai(session_factory):
     assert {r.external_id for r in rows} == {"pVAfFxOycuAihHhbGS0LAc", "aq74eFJIirVMESsaQS7qtM"}
     for row in rows:
         assert row.extract_status == "DONE"
-        assert row.model_version == "mock+extract_v3"
+        assert row.model_version == "mock+extract_v4"
         assert row.notice_kind == "모집"
         assert len(row.content_hash) == 64
         [scholarship] = row.scholarships
@@ -354,6 +354,38 @@ def test_re_crawl_replaces_attachment_rows(crawl, site, extractor, session_facto
 
     [notice] = notices(session_factory)
     assert notice.files == []
+
+
+def test_form_files_are_saved_but_not_sent_to_extraction(crawl, site, extractor, session_factory):
+    notice_pdf = Attachment(name="선발 공고문.pdf", url="https://example.test/f/1")
+    form = Attachment(name="[붙임2] 장학금 신청서 서식.pdf", url="https://example.test/f/2")
+    site.files = {notice_pdf.url: PDF_BYTES, form.url: PDF_BYTES}
+    site.post("100", attachments=(notice_pdf, form))
+
+    crawl()
+
+    text = extractor.requests[0].text
+    assert "[첨부 PDF: 선발 공고문.pdf]" in text
+    assert "신청서 서식" not in text
+    [notice] = notices(session_factory)
+    assert [f.status for f in notice.files] == ["OK", "OK"]  # 저장은 함(양식도 읽은 첨부)
+
+
+@pytest.mark.parametrize(
+    ("name", "is_form"),
+    [
+        ("2026 천사장학생 신청서 서식.hwp", True),
+        ("붙임1.zip / (일상회복) 프로그램 확인서.hwp", True),
+        ("[붙임 1] 학생활동지원신청서.hwpx", True),
+        ("개인정보 수집·이용 동의서.pdf", True),
+        ("학생신청 메뉴얼(PC).pdf", True),
+        ("붙임1. 사업계획서 및 제출서류 샘플 등.zip / 사업계획서 및 업무처리기준.pdf", False),
+        ("2026학년도 2학기 천사장학생 선발 계획.hwp", False),
+        ("장학생 선발 공고문.pdf", False),
+    ],
+)
+def test_is_form_file(name, is_form):
+    assert jobs.is_form_file(name) is is_form
 
 
 def test_notice_saved_before_attachment_table_uses_body_text(session_factory, extractor):

@@ -63,7 +63,8 @@ class ExtractRequest(BaseModel):
     source_code: SourceCode
     title: str = Field(min_length=1)
     posted_at: AwareDatetime  # 한국 시간(+09:00)으로 해석한 게시 시각
-    text: str  # 본문 + PDF 첨부 텍스트. 3만 자 자르기는 extractor가 합니다(3장 AI 행).
+    # 본문 + 첨부마다 `[첨부 {형식}: 파일 이름]` + 텍스트. 10만 자 자르기는 extractor가 합니다(D5).
+    text: str
 
 
 class ScholarshipCriteria(BaseModel):
@@ -109,6 +110,9 @@ class ScholarshipCriteria(BaseModel):
     extra_conditions: list[str] = Field(default_factory=list)  # 정리하지 못한 조건 문장 그대로
     ambiguous_fields: list[CriteriaField] = Field(default_factory=list)
     evidence: dict[CriteriaField, str] = Field(default_factory=dict)  # 필드별 근거 원문 문장
+    # 근거 문장이 나온 곳: "본문" 또는 입력의 `[첨부 …: 파일 이름]`에 적힌 파일 이름(extract_v4).
+    # 기본값이 빈 dict라 DB에 저장된 v3 결과도 그대로 읽힙니다.
+    evidence_source: dict[CriteriaField, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _check_values(self) -> Self:

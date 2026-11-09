@@ -123,7 +123,7 @@ def server_error(code: int) -> errors.APIError:
 def test_success(gemini, clock):
     models = gemini([json.dumps(VALID_RESPONSE)])
     result = extract(request())
-    assert result.model_version == "gemini-test-flash+extract_v3"
+    assert result.model_version == "gemini-test-flash+extract_v4"
     scholarship = result.criteria.scholarships[0]
     assert scholarship.apply_end == datetime(2026, 11, 12, 18, 0, tzinfo=SEOUL)
     assert scholarship.ambiguous_fields == ["max_income_bracket"]
@@ -168,8 +168,16 @@ def test_prompt_contains_required_rules():
         "나눈다",
         "글자 그대로",
         "정해진 값만",
+        "evidence_source",  # 근거 출처(extract_v4)
+        "**첨부 공고문**을 따른다",  # D4: 자격 조건은 첨부
+        "**본문**을 따른다",  # D4: 신청 기간은 본문(학과 마감)
     ):
         assert rule in prompt, rule
+
+
+def test_input_limit_is_100k_chars():
+    """D5: 3만 자면 공고문 첨부 하나(KOSAF 업무처리기준 2.8만 자)로도 넘치는 공지가 있습니다."""
+    assert MAX_INPUT_CHARS == 100_000
 
 
 # --- 재시도 ---
@@ -291,7 +299,7 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert extract(request()).model_version == "mock+extract_v3"
+    assert extract(request()).model_version == "mock+extract_v4"
 
 
 # --- import 경계 (8.1) ---
