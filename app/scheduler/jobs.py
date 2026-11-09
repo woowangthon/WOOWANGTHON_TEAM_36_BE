@@ -3,6 +3,7 @@
     uv run python -m app.scheduler.jobs                     # 정기 수집과 같은 1회 실행
     uv run python -m app.scheduler.jobs --backfill          # 게시일 기준 최근 1년 백필
     uv run python -m app.scheduler.jobs --source SW_DEPT    # 사이트 하나만
+    uv run python -m app.scheduler.jobs --reread-attachments  # 모집 중 공지의 첨부를 다시 읽기(D9)
 
 실행 흐름(`run_crawl`)
 1. 시작 잠금: 한 트랜잭션에서 `pg_advisory_xact_lock` → 1시간 안에 시작된 `RUNNING`이 있으면 건너뜀
@@ -17,6 +18,11 @@
    결과에서 사라진 장학금은 `CLOSED`(5.2).
 5. 상태 일괄 갱신: `OPEN`·`ALWAYS` → `CLOSED` 방향만(마감 경과, 상시 만료 60일·1년).
 6. `CRAWL_RUNS`를 `DONE`/`FAILED`로 마감합니다.
+
+`--reread-attachments`: 첨부 표가 생기기 전에 수집해 첨부 행이 없는 공지 중
+모집 중(`OPEN`·`ALWAYS`)인 것만 첨부를 다시 읽고 `PENDING`으로 둡니다(D9).
+추출은 대기열로 넘겨 한 번에 최대 20건씩 처리하므로 Gemini 비용이 한꺼번에 늘지 않습니다.
+이미 첨부 행이 있으면 건너뛰어 여러 번 실행해도 됩니다.
 
 요청 안에서 끝까지 동기로 실행합니다(`BackgroundTasks` 쓰지 않음, 9.3).
 추출 함수에는 공지 텍스트(`ExtractRequest`)만 넘깁니다(8.1).
@@ -97,6 +103,7 @@ def run_crawl(
     *,
     sources: Iterable[str] | None = None,
     backfill: bool = False,
+    reread_attachments: bool = False,
     session_factory: sessionmaker[Session] | None = None,
     crawler_factory: CrawlerFactory | None = None,
     extract_fn: ExtractFn | None = None,
@@ -122,7 +129,14 @@ def run_crawl(
         for run in runs:
             try:
                 with make_crawler(run.source_code) as crawler:
-                    result = crawl_source(session, crawler, run.source_code, now, backfill)
+                    result = crawl_source(
+                        session,
+                        crawler,
+                        run.source_code,
+                        now,
+                        backfill,
+                        reread_attachments=reread_attachments,
+                    )
                 changed.extend(result.changed)
                 run.new_count = result.new_count
                 run.status = "DONE"
@@ -181,7 +195,13 @@ def start_runs(factory: sessionmaker[Session], codes: list[str], now: datetime) 
 
 
 def crawl_source(
-    session: Session, crawler: Crawler, source_code: str, now: datetime, backfill: bool
+    session: Session,
+    crawler: Crawler,
+    source_code: str,
+    now: datetime,
+    backfill: bool,
+    *,
+    reread_attachments: bool = False,
 ) -> _SiteResult:
     result = _SiteResult()
     cutoff = now - BACKFILL_PERIOD if backfill else None
@@ -197,6 +217,11 @@ def crawl_source(
         # 1페이지 밖으로 밀려난 모집 중 공지는 24시간마다 다시 확인합니다(2장).
         for external_id in _recheck_targets(session, source_code, seen, now):
             _process_notice(session, crawler, source_code, external_id, now, None, result)
+    if reread_attachments:
+        for external_id in _reread_targets(session, source_code):
+            _process_notice(
+                session, crawler, source_code, external_id, now, None, result, reread=True
+            )
     return result
 
 
@@ -232,6 +257,21 @@ def _recheck_targets(
     return list(session.scalars(query))
 
 
+def _reread_targets(session: Session, source_code: str) -> list[str]:
+    """첨부가 있는데 첨부 행이 없는(첨부 표 이전에 수집한) 모집 중 공지(D9)."""
+    query = (
+        select(Notice.external_id)
+        .where(
+            Notice.source_code == source_code,
+            func.jsonb_array_length(Notice.attachments) > 0,
+            ~Notice.files.any(),
+            Notice.scholarships.any(Scholarship.status.in_(("OPEN", "ALWAYS"))),
+        )
+        .order_by(Notice.id)
+    )
+    return list(session.scalars(query))
+
+
 def _process_notice(
     session: Session,
     crawler: Crawler,
@@ -240,7 +280,14 @@ def _process_notice(
     now: datetime,
     cutoff: datetime | None,
     result: _SiteResult,
+    *,
+    reread: bool = False,
 ) -> None:
+    """상세를 받아 해시가 바뀌었으면 저장하고 `PENDING`으로 둡니다.
+
+    `reread`면 해시가 같아도 첨부를 다시 읽습니다. 이때는 이번 실행에서 바로 추출하지 않고
+    대기열(한 번에 20건)로 넘깁니다.
+    """
     raw = crawler.fetch_detail(external_id)
     if cutoff is not None and raw.posted_at < cutoff:
         return  # 백필 기간 밖의 고정 공지
@@ -248,7 +295,8 @@ def _process_notice(
     notice = session.scalar(
         select(Notice).where(Notice.source_code == source_code, Notice.external_id == external_id)
     )
-    if notice is not None and notice.content_hash == digest:
+    unchanged = notice is not None and notice.content_hash == digest
+    if unchanged and not reread:
         notice.last_checked_at = now
         session.commit()
         return
@@ -272,6 +320,8 @@ def _process_notice(
     notice.extract_attempts = 0  # 내용이 바뀌었으니 다시 처음부터 시도
     notice.last_checked_at = now
     session.commit()
+    if unchanged:
+        return  # 다시 읽기만 한 공지는 대기열로(이번 실행의 즉시 추출 대상이 아님)
     result.changed.append(notice.id)
     result.new_count += int(is_new)
 
@@ -507,10 +557,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="장학금 공지 수집 (계획서 9.3)")
     parser.add_argument("--backfill", action="store_true", help="게시일 기준 최근 1년 수집")
     parser.add_argument("--source", action="append", choices=SOURCE_CODES, help="이 출처만 수집")
+    parser.add_argument(
+        "--reread-attachments",
+        action="store_true",
+        help="첨부 행이 없는 모집 중 공지의 첨부를 다시 읽고 추출 대기열에 넣기(D9)",
+    )
     args = parser.parse_args(argv)
 
     configure_logging()
-    outcome = run_crawl(sources=args.source, backfill=args.backfill)
+    outcome = run_crawl(
+        sources=args.source, backfill=args.backfill, reread_attachments=args.reread_attachments
+    )
     if outcome.skipped:
         print("다른 수집이 진행 중이라 건너뛰었습니다.")
         return 0

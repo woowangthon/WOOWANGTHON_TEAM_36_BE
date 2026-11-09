@@ -398,6 +398,57 @@ def test_input_over_limit_is_marked_truncated(crawl, site, extractor, session_fa
     assert flags == {"100": False, "200": True}
 
 
+# --- 첨부 다시 읽기 (D9) ------------------------------------------------------------
+
+
+def _forget_attachment_rows(session_factory, external_id: str, status: str = "OPEN") -> None:
+    """첨부 표 이전에 수집한 공지처럼 만듭니다: 첨부 행 없음, 추출 완료, 장학금 상태 지정."""
+    with session_factory() as session:
+        notice = session.scalar(select(Notice).where(Notice.external_id == external_id))
+        notice.files.clear()
+        notice.extract_status = "DONE"
+        for scholarship in notice.scholarships:
+            scholarship.status = status
+        session.commit()
+
+
+def test_reread_attachments_of_open_notices(crawl, site, extractor, session_factory):
+    pdf = Attachment(name="공고문.pdf", url="https://example.test/f/1")
+    site.files[pdf.url] = PDF_BYTES
+    site.post("open", attachments=(pdf,), title="모집 중")
+    site.post("closed", attachments=(pdf,), title="마감됨")
+    site.post("plain", title="첨부 없음")
+    crawl()
+    _forget_attachment_rows(session_factory, "open")
+    _forget_attachment_rows(session_factory, "closed", status="CLOSED")
+    _forget_attachment_rows(session_factory, "plain")
+    site.pages = {}  # 목록에서 밀려난 공지도 대상
+    site.downloads.clear()
+    extractor.requests.clear()
+
+    crawl(at=NOW + timedelta(hours=1), reread_attachments=True)
+
+    assert site.downloads == ["공고문.pdf"]  # 모집 중 + 첨부 있음 + 첨부 행 없음만
+    rows = {n.external_id: [f.status for f in n.files] for n in notices(session_factory)}
+    assert rows == {"open": ["OK"], "closed": [], "plain": []}
+    # 해시가 같아 즉시 추출 대상은 아니고, 같은 실행의 대기열(최대 20건)에서 추출됩니다.
+    [request] = extractor.requests
+    assert request.title == "모집 중"
+    assert "[첨부 PDF: 공고문.pdf]" in request.text
+
+
+def test_reread_attachments_is_idempotent(crawl, site, extractor, session_factory):
+    pdf = Attachment(name="공고문.pdf", url="https://example.test/f/1")
+    site.files[pdf.url] = PDF_BYTES
+    site.post("open", attachments=(pdf,))
+    crawl()
+    site.downloads.clear()
+
+    crawl(at=NOW + timedelta(hours=1), reread_attachments=True)
+
+    assert site.downloads == []  # 이미 첨부 행이 있으면 건너뜀
+
+
 def test_notice_saved_before_attachment_table_uses_body_text(session_factory, extractor):
     """첨부 표 이전에 수집한 공지는 body_text에 PDF 텍스트가 붙어 있고 첨부 행이 없습니다."""
     with session_factory() as session:
@@ -888,5 +939,9 @@ def test_cli_passes_options(monkeypatch, capsys):
     monkeypatch.setattr(jobs, "configure_logging", lambda: None)
 
     assert jobs.main(["--backfill", "--source", "SW_DEPT", "--source", "KOSAF"]) == 0
-    assert calls == [{"sources": ["SW_DEPT", "KOSAF"], "backfill": True}]
+    assert jobs.main(["--reread-attachments"]) == 0
+    assert calls == [
+        {"sources": ["SW_DEPT", "KOSAF"], "backfill": True, "reread_attachments": False},
+        {"sources": None, "backfill": False, "reread_attachments": True},
+    ]
     assert "건너뛰었습니다" in capsys.readouterr().out
