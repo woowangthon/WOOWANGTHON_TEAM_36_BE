@@ -26,6 +26,11 @@ EXTRACT_STATUSES = ("PENDING", "DONE", "FAILED")
 BENEFIT_TYPES = ("등록금성", "생활비성", "혼합")
 DEADLINE_SOURCES = ("REGEX", "AI")
 SCHOLARSHIP_STATUSES = ("OPEN", "ALWAYS", "CLOSED")
+ATTACHMENT_KINDS = ("PDF", "HWP", "HWPX", "DOCX", "IMAGE", "ZIP", "OTHER")
+# SKIPPED = 일부러 읽지 않음(결과 공지·개수 상한).
+# 그 밖의 OK가 아닌 상태는 "못 읽은 첨부"입니다(D8).
+ATTACHMENT_STATUSES = ("OK", "NO_TEXT", "UNSUPPORTED", "FAILED", "TOO_LARGE", "SKIPPED")
+UNREAD_ATTACHMENT_STATUSES = ("NO_TEXT", "UNSUPPORTED", "FAILED", "TOO_LARGE")
 
 
 class Notice(Base):
@@ -59,6 +64,35 @@ class Notice(Base):
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     scholarships: Mapped[list["Scholarship"]] = relationship(back_populates="notice")
+    # 첨부를 읽은 결과. ZIP 안의 파일은 한 행씩입니다. 새 글·바뀐 글을 수집할 때 통째로 바꿉니다.
+    files: Mapped[list["NoticeAttachment"]] = relationship(
+        back_populates="notice",
+        order_by="NoticeAttachment.position",
+        cascade="all, delete-orphan",
+    )
+
+
+class NoticeAttachment(Base):
+    """첨부 1개(ZIP이면 안의 파일 1개)에서 읽은 텍스트와 상태. 원본 파일은 저장하지 않습니다."""
+
+    __tablename__ = "notice_attachments"
+    __table_args__ = (
+        UniqueConstraint("notice_id", "position"),
+        CheckConstraint(in_values("file_kind", ATTACHMENT_KINDS), name="file_kind"),
+        CheckConstraint(in_values("status", ATTACHMENT_STATUSES), name="status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    notice_id: Mapped[int] = mapped_column(ForeignKey("notices.id", ondelete="CASCADE"), index=True)
+    position: Mapped[int] = mapped_column(Integer)  # 추출 입력에 붙이는 순서
+    name: Mapped[str] = mapped_column(String(500))  # ZIP 안의 파일은 "ZIP 이름 / 파일 이름"
+    url: Mapped[str] = mapped_column(String(1000))  # ZIP 안의 파일은 ZIP의 URL
+    file_kind: Mapped[str] = mapped_column(String(10))
+    status: Mapped[str] = mapped_column(String(12))
+    text: Mapped[str] = mapped_column(Text, default="", server_default="")
+    extracted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    notice: Mapped[Notice] = relationship(back_populates="files")
 
 
 class Scholarship(Base):

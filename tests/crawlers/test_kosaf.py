@@ -185,17 +185,28 @@ def test_fetch_attachment_downloads_file():
     }
 
 
-def test_attachment_pdf_text_reaches_extraction_input():
-    """수집 작업이 KOSAF 첨부 PDF도 받아 추출 입력에 붙입니다(전에는 받지 않았음)."""
-    from app.scheduler.jobs import notice_text
+def test_zip_attachment_text_reaches_extraction_input():
+    """수집 작업이 KOSAF 첨부 ZIP을 받아 안의 PDF를 추출 입력에 붙입니다(전에는 받지 않았음)."""
+    from app.models import Notice
+    from app.parsers.dates import kst
+    from app.scheduler.jobs import extraction_text, read_attachments
 
-    pdf = (FIXTURES / "files" / f"{MINUTES}_1.pdf").read_bytes()
-    client = PoliteClient(
-        clock=InstantClock(),
-        transport=httpx.MockTransport(lambda _: httpx.Response(200, content=pdf)),
-    )
+    files = {"1": (FIXTURES / "files" / f"{RECRUIT}_1.zip").read_bytes()}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        data = files.get(request.url.params["pFile_No"])
+        return httpx.Response(200, content=data) if data else httpx.Response(404)
+
+    client = PoliteClient(clock=InstantClock(), transport=httpx.MockTransport(handler))
+    raw = detail(RECRUIT)
     with KosafCrawler(client) as crawler:
-        text = notice_text(crawler, detail(MINUTES))
+        rows = read_attachments(crawler, raw, kst(2026, 11, 9))
 
-    assert "[첨부 PDF: 2026년 제1차 국가과학기술 장학사업 운영위원회 회의록.pdf]" in text
-    assert "장학사업 운영위원회 회의록\n< 한국장학재단 AI우수장학부 >" in text
+    assert [(r.position, r.file_kind, r.status) for r in rows] == [
+        (0, "HWP", "UNSUPPORTED"),  # 붙임1 ZIP 안의 HWP(3번 카드에서 읽음)
+        (1, "PDF", "OK"),  # 붙임1 ZIP 안의 업무처리기준 PDF
+        (2, "OTHER", "FAILED"),  # 붙임2 다운로드 실패(404)
+    ]
+    text = extraction_text(Notice(body_text=raw.body_text, files=rows))
+    assert text.startswith(raw.body_text)
+    assert "업무처리기준.pdf]\n- 1 -\n2026년 2학기 푸른등대 기부장학금(2차)" in text

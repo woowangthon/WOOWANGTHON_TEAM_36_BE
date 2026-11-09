@@ -14,6 +14,7 @@ TABLES = {
     "user_profiles",
     "sources",
     "notices",
+    "notice_attachments",
     "scholarships",
     "user_scholarship_states",
     "crawl_runs",
