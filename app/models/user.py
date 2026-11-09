@@ -23,7 +23,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, in_values
 
-USER_SCHOLARSHIP_STATES = ("BOOKMARKED", "APPLIED", "HIDDEN")
+USER_SCHOLARSHIP_STATES = ("BOOKMARKED", "APPLIED")
 
 
 class User(Base):
