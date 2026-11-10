@@ -35,7 +35,7 @@ URL: `https://software.cbnu.ac.kr/index.php?mid=sub0401&document_srl=<id>`
 | `pdf/1154665_1.pdf` | 재단 선발 공고문 PDF(여러 쪽) |
 
 - **첨부 다운로드 주의**: XE 첨부는 상세 페이지를 연 **같은 세션 쿠키 + Referer(상세 URL)**가 있어야 받아집니다. 없으면 200 응답으로 42,284바이트짜리 "OOPS! 잘못된 요청" HTML이 옵니다. 크롤러는 Content-Type 또는 `%PDF` 시그니처로 확인해야 합니다.
-- HWP/HWPX 첨부는 텍스트를 추출하지 않습니다(계획서 2장 PDF만).
+- 첨부 텍스트는 `app/parsers/attachments.py`가 형식별로 뽑습니다(PDF·HWPX·DOCX·ZIP). HWP는 아직 읽지 않습니다.
 
 ## aibc/ — AI부트캠프사업단 공지
 
@@ -49,6 +49,7 @@ URL: `https://aibc.cbnu.ac.kr/menu/1108/<id>`
 | `pVAfFxOycuAihHhbGS0LAc.html` | 자격증 장학금 가점 안내(긴 표) |
 | `kiF1EPTNkL5vj4HVH5idK5.html` | **결과 공지**(동계 몰입형교육 선발 결과, 학번 마스킹) |
 | `ypFXkiw6xSDhBxkPBz3aht.html` | 장학금이 아닌 경비 지원 안내, HWPX·PDF 첨부 링크 |
+| `files/avlP7Izd8kzA7Ygfv67AO7.hwpx` | 위 글의 [붙임 1] 학생활동지원신청서(실제 HWPX, 표·체크 기호 포함). 2026-11-09 수집 |
 
 ## kosaf/ — 한국장학재단 장학금 공지
 

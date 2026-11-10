@@ -160,7 +160,7 @@ def notices(session_factory) -> list[Notice]:
     with session_factory() as session:
         rows = list(session.scalars(select(Notice).order_by(Notice.id)))
         for row in rows:
-            _ = row.scholarships
+            _ = row.scholarships, row.files
         return rows
 
 
@@ -298,7 +298,7 @@ def test_attachment_only_change_is_re_extracted(crawl, site, extractor, session_
     assert "[첨부 PDF: 공고문(수정).pdf]" in extractor.requests[-1].text
 
 
-def test_pdf_text_is_appended_and_other_files_are_skipped(crawl, site, extractor):
+def test_attachments_are_read_and_saved_per_file(crawl, site, extractor, session_factory):
     pdf = Attachment(name="공고문.PDF", url="https://example.test/f/1")
     hwp = Attachment(name="신청서.hwp", url="https://example.test/f/2")
     site.files[pdf.url] = PDF_BYTES
@@ -306,10 +306,73 @@ def test_pdf_text_is_appended_and_other_files_are_skipped(crawl, site, extractor
 
     crawl()
 
-    assert site.downloads == ["공고문.PDF"]
+    assert site.downloads == ["공고문.PDF", "신청서.hwp"]
     text = extractor.requests[0].text
     assert text.startswith("본문입니다\n\n[첨부 PDF: 공고문.PDF]\n")
-    assert len(text) > len("본문입니다\n\n[첨부 PDF: 공고문.PDF]\n")
+    assert "신청서.hwp" not in text  # 받지 못한 첨부는 입력에 넣지 않음
+    [notice] = notices(session_factory)
+    assert notice.body_text == "본문입니다"  # 첨부 텍스트는 첨부 표에만 저장
+    assert [(f.name, f.file_kind, f.status) for f in notice.files] == [
+        ("공고문.PDF", "PDF", "OK"),
+        ("신청서.hwp", "OTHER", "FAILED"),
+    ]
+
+
+def test_result_notice_attachments_are_not_downloaded(crawl, site, extractor, session_factory):
+    roster = Attachment(name="선발자 명단.pdf", url="https://example.test/f/1")
+    site.files[roster.url] = PDF_BYTES
+    site.post("100", title="2026 SOS장학금 최종 선발결과 안내", attachments=(roster,))
+
+    crawl()
+
+    assert site.downloads == []
+    [notice] = notices(session_factory)
+    assert [(f.name, f.status) for f in notice.files] == [("선발자 명단.pdf", "SKIPPED")]
+
+
+def test_attachment_count_is_capped(crawl, site, extractor, session_factory, monkeypatch):
+    monkeypatch.setattr(jobs, "MAX_ATTACHMENTS", 1)
+    files = tuple(Attachment(name=f"{i}.pdf", url=f"https://example.test/f/{i}") for i in (1, 2))
+    site.files = {f.url: PDF_BYTES for f in files}
+    site.post("100", attachments=files)
+
+    crawl()
+
+    assert site.downloads == ["1.pdf"]
+    [notice] = notices(session_factory)
+    assert [f.status for f in notice.files] == ["OK", "SKIPPED"]
+
+
+def test_re_crawl_replaces_attachment_rows(crawl, site, extractor, session_factory):
+    first = Attachment(name="공고문.pdf", url="https://example.test/f/1")
+    site.files[first.url] = PDF_BYTES
+    site.post("100", attachments=(first,))
+    crawl()
+
+    site.post("100", body="수정된 본문", attachments=())
+    crawl(at=NOW + timedelta(hours=1))
+
+    [notice] = notices(session_factory)
+    assert notice.files == []
+
+
+def test_notice_saved_before_attachment_table_uses_body_text(session_factory, extractor):
+    """첨부 표 이전에 수집한 공지는 body_text에 PDF 텍스트가 붙어 있고 첨부 행이 없습니다."""
+    with session_factory() as session:
+        notice = Notice(
+            source_code="SW_DEPT",
+            external_id="old",
+            title="예전 공지",
+            posted_at=POSTED,
+            url="https://example.test/old",
+            body_text="본문\n\n[첨부 PDF: 예전.pdf]\n평점 3.0",
+            content_hash="x",
+        )
+        session.add(notice)
+        session.commit()
+        jobs.extract_notices(session, [notice.id], extractor, NOW)
+
+    assert extractor.requests[-1].text == "본문\n\n[첨부 PDF: 예전.pdf]\n평점 3.0"
 
 
 # --- 마감일 -------------------------------------------------------------------

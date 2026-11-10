@@ -10,6 +10,7 @@
 """
 
 import logging
+from typing import Literal
 
 from app.core.logging import log_event
 
@@ -25,9 +26,17 @@ def is_pdf(data: bytes) -> bool:
 
 def extract_text(data: bytes, *, name: str = "") -> str:
     """PDF 바이트에서 텍스트를 쪽 순서대로 뽑습니다. 실패하면 빈 문자열."""
+    return read_pdf(data, name=name)[1]
+
+
+def read_pdf(data: bytes, *, name: str = "") -> tuple[Literal["OK", "NO_TEXT", "FAILED"], str]:
+    """`extract_text`와 같지만 빈 결과의 이유를 함께 돌려줍니다.
+
+    FAILED = PDF가 아니거나 암호·깨짐, NO_TEXT = 열렸지만 글자가 없음(스캔본).
+    """
     if not is_pdf(data):
         log_event(logger, "PDF가 아닌 첨부", logging.WARNING, file_name=name, size=len(data))
-        return ""
+        return "FAILED", ""
 
     import pymupdf
 
@@ -35,18 +44,19 @@ def extract_text(data: bytes, *, name: str = "") -> str:
         with pymupdf.open(stream=data, filetype="pdf") as document:
             if document.needs_pass:
                 log_event(logger, "암호가 걸린 PDF", logging.WARNING, file_name=name)
-                return ""
+                return "FAILED", ""
             pages = [page.get_text("text") for page in document]
     except Exception as error:  # PyMuPDF는 깨진 파일에 여러 종류의 예외를 던집니다.
         log_event(
             logger, "PDF를 읽지 못함", logging.WARNING, file_name=name, error=type(error).__name__
         )
-        return ""
+        return "FAILED", ""
     text = _clean("\n".join(pages))
     if not text:
-        # 스캔 이미지만 있는 PDF. OCR은 하지 않습니다(계획서 3장에 없음).
+        # 스캔 이미지만 있는 PDF. OCR은 하지 않습니다(D3).
         log_event(logger, "텍스트가 없는 PDF(스캔본)", logging.WARNING, file_name=name)
-    return text
+        return "NO_TEXT", ""
+    return "OK", text
 
 
 def _clean(text: str) -> str:

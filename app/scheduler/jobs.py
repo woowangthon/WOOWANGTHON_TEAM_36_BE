@@ -8,7 +8,8 @@
 1. 시작 잠금: 한 트랜잭션에서 `pg_advisory_xact_lock` → 1시간 안에 시작된 `RUNNING`이 있으면 건너뜀
    → 없으면 사이트별 `CRAWL_RUNS`를 `RUNNING`으로 넣고 커밋(9.3 중복 실행 방지)
 2. 사이트마다 목록 1페이지(백필은 1년치)의 상세를 받아 해시를 비교하고, 1페이지 밖의 `OPEN` 공지는
-   24시간마다 다시 확인합니다. 새 글·해시가 바뀐 글만 PDF를 받고 `PENDING`으로 둡니다(2장).
+   24시간마다 다시 확인합니다. 새 글·해시가 바뀐 글만 첨부를 받아 형식별로 텍스트를 뽑아
+   `NOTICE_ATTACHMENTS`에 첨부(ZIP 안의 파일 포함)마다 저장하고 `PENDING`으로 둡니다(2장).
 3. 이번에 새로 받았거나 바뀐 공지를 먼저 추출하고, 그다음 대기 중인 `PENDING`·`FAILED`를
    최대 20건 추출합니다. 추출 실패는 `FAILED`로 두고 다음 공지를 계속 처리합니다(9.3).
    `FAILED`는 연속 3번 실패하면 더 고르지 않습니다(크레딧 부족 402는 세지 않음).
@@ -40,10 +41,10 @@ from app.crawlers.base import Crawler, RawNotice
 from app.crawlers.kosaf import KosafCrawler
 from app.crawlers.sw_dept import SwDeptCrawler
 from app.extraction import ExtractionError, ExtractionResult, ExtractRequest, extract
-from app.models import CrawlRun, Notice, Scholarship
+from app.models import CrawlRun, Notice, NoticeAttachment, Scholarship
+from app.parsers.attachments import read_attachment
 from app.parsers.dates import now_kst
 from app.parsers.deadline import title_deadline
-from app.parsers.pdf import extract_text
 from app.schemas.api.admin import CrawlRunOut
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,9 @@ MAX_BACKFILL_PAGES = 60  # 목록 구조가 바뀌어 끝을 못 찾을 때의 �
 ALWAYS_RECRUIT_PERIOD = timedelta(days=60)  # 마감 없는 모집
 ALWAYS_CRITERIA_PERIOD = timedelta(days=365)  # 기준안내
 ERROR_TEXT_LIMIT = 500
+MAX_ATTACHMENTS = 10  # 공지 1건에서 받는 첨부 수 상한(넘는 것은 SKIPPED)
+# 결과 공지는 첨부가 대개 학번·이름 명단이라 받지 않습니다(D7, 개인정보).
+RESULT_TITLE_WORDS = ("선발 결과", "선발결과", "합격자", "최종 명단", "명단 발표", "결과 발표")
 
 ExtractFn = Callable[[ExtractRequest], ExtractionResult]
 CrawlerFactory = Callable[[str], Crawler]
@@ -252,7 +256,12 @@ def _process_notice(
     notice.title = raw.title
     notice.posted_at = raw.posted_at
     notice.url = raw.url
-    notice.body_text = notice_text(crawler, raw)  # PDF는 새 글·바뀐 글만 받음
+    notice.body_text = raw.body_text
+    if not is_new:
+        # 같은 (notice_id, position)으로 새 행을 넣기 전에 예전 행을 먼저 지웁니다.
+        notice.files.clear()
+        session.flush()
+    notice.files = read_attachments(crawler, raw, now)  # 첨부는 새 글·바뀐 글만 받음
     notice.attachments = [{"name": a.name, "url": a.url} for a in raw.attachments]
     notice.content_hash = digest
     notice.extract_status = "PENDING"
@@ -273,15 +282,28 @@ def content_hash(raw: RawNotice) -> str:
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode()).hexdigest()
 
 
-def notice_text(crawler: Crawler, raw: RawNotice) -> str:
-    """추출에 넘길 텍스트: 본문 + `[첨부 PDF: 파일명]` + PDF 텍스트(골든셋 입력과 같은 형식).
+def read_attachments(crawler: Crawler, raw: RawNotice, now: datetime) -> list[NoticeAttachment]:
+    """첨부를 받아 형식별로 읽습니다. 첨부 하나가 실패해도 공지 수집은 계속합니다."""
+    rows: list[NoticeAttachment] = []
 
-    대기 중인 공지를 나중에 다시 추출할 때 PDF를 또 받지 않도록 이 텍스트를 저장합니다.
-    """
-    parts = [raw.body_text]
-    for attachment in raw.attachments:
-        if not attachment.name.lower().endswith(".pdf"):
-            continue  # HWP·ZIP 등은 텍스트를 추출하지 않음(2장)
+    def add(name: str, url: str, kind: str, status: str, text: str = "") -> None:
+        rows.append(
+            NoticeAttachment(
+                position=len(rows),
+                name=name[:500],
+                url=url,
+                file_kind=kind,
+                status=status,
+                text=text,
+                extracted_at=now,
+            )
+        )
+
+    skip_all = any(word in raw.title for word in RESULT_TITLE_WORDS)
+    for index, attachment in enumerate(raw.attachments):
+        if skip_all or index >= MAX_ATTACHMENTS:
+            add(attachment.name, attachment.url, "OTHER", "SKIPPED")
+            continue
         try:
             data = crawler.fetch_attachment(attachment, referer=raw.url)
         except Exception as error:
@@ -292,10 +314,23 @@ def notice_text(crawler: Crawler, raw: RawNotice) -> str:
                 file_name=attachment.name,
                 error=type(error).__name__,
             )
-            continue
+            data = None
         if data is None:
+            add(attachment.name, attachment.url, "OTHER", "FAILED")
             continue
-        parts.append(f"[첨부 PDF: {attachment.name}]\n{extract_text(data, name=attachment.name)}")
+        for part in read_attachment(data, name=attachment.name):
+            add(part.name, attachment.url, part.kind, part.status, part.text)
+    return rows
+
+
+def extraction_text(notice: Notice) -> str:
+    """추출에 넘길 텍스트: 본문 + 읽은 첨부마다 `[첨부 {형식}: 이름]` + 텍스트.
+
+    골든셋 입력과 같은 형식입니다. 첨부 표가 생기기 전에 수집한 공지는 `body_text`에
+    PDF 텍스트가 이미 붙어 있고 첨부 행이 없어 그대로 쓰입니다.
+    """
+    parts = [notice.body_text]
+    parts += [f"[첨부 {f.file_kind}: {f.name}]\n{f.text}" for f in notice.files if f.status == "OK"]
     return "\n\n".join(part.strip() for part in parts)
 
 
@@ -338,7 +373,7 @@ def extract_notices(
             source_code=notice.source_code,
             title=notice.title,
             posted_at=notice.posted_at,
-            text=notice.body_text,
+            text=extraction_text(notice),
         )
         try:
             result = extractor(request)

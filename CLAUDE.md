@@ -14,7 +14,7 @@ app/
 ├─ models/      # SQLAlchemy 모델 (계획서 6장)        ★공용
 ├─ schemas/     # API DTO  ★공용
 ├─ crawlers/    # base.py, sw_dept.py, aibc.py, kosaf.py
-├─ parsers/     # pdf.py, deadline.py, dates.py
+├─ parsers/     # pdf.py, attachments.py(첨부 형식 판별·HWPX·DOCX·ZIP), deadline.py, dates.py
 ├─ extraction/  # schemas.py(ExtractRequest·ExtractedCriteria ★공용), extractor.py(Gemini 호출·재시도), prompts/extract_vN.md
 ├─ matching/    # rules.py(조건별 비교), engine.py(3단계 판정)
 ├─ scheduler/   # jobs.py (수집 작업, `python -m app.scheduler.jobs`)
