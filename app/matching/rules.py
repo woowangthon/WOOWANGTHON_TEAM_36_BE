@@ -92,7 +92,7 @@ def min_gpa(p: Profile, c: ScholarshipCriteria, *, basis_ambiguous: bool = False
 
 
 def min_score_100(p: Profile, c: ScholarshipCriteria, *, basis_ambiguous: bool = False) -> Outcome:
-    """100점 만점 성적. 평점에서 환산하지 않고 성적표의 100점 환산 점수와만 비교합니다."""
+    """100점 만점 성적. 프로필의 100점 환산(평점×10+52.5, `Profile`이 계산)과 비교합니다."""
     if c.min_score_100 is None:
         return None
     if basis_ambiguous:

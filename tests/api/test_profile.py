@@ -273,10 +273,7 @@ def test_requires_privacy_consent(app_client, factory, method):
         {"gpa": -0.1},
         {"gpa": 4.6},
         {"credits": 31},
-        {"score_100": 100.1},
-        {"score_100": -1},
         {"gpa_total": 4.6},
-        {"score_100_total": 101},
         {"birth_year": 1899},
         {"gender": "기타"},
         {"enrollment_status": "제적"},
@@ -362,7 +359,7 @@ def test_birth_year_range_uses_seoul_year(api, monkeypatch):
         assert "출생연도는 1950~2011" in errors(response)
 
 
-@pytest.mark.parametrize("field", ["gpa", "score_100", "gpa_total", "score_100_total"])
+@pytest.mark.parametrize("field", ["gpa", "gpa_total"])
 def test_scores_allow_two_decimals_only(api, field):
     assert api.put("/profile", json={**PROFILE, field: 3.45}).status_code == 200
     response = api.put("/profile", json={**PROFILE, field: 3.455})
@@ -393,18 +390,29 @@ def test_freshman_can_omit_grades(api):
     ("field", "message"),
     [
         ("gpa", "직전학기 평점을 입력하세요"),
-        ("score_100", "직전학기 100점 환산 점수를 입력하세요"),
         ("credits", "직전학기 이수학점을 입력하세요"),
         ("gpa_total", "전체 평점평균을 입력하세요"),
-        ("score_100_total", "전체 100점 환산 점수를 입력하세요"),
     ],
 )
 def test_grades_required_after_first_semester(api, field, message):
-    """성적 5칸은 이수학기 1 이상이면 모두 필수입니다(2026-11-10 결정)."""
+    """평점·이수학점·전체 평점평균은 이수학기 1 이상이면 필수입니다(2026-11-10 결정)."""
     body = {k: v for k, v in REQUIRED_ONLY.items() if k != field}
     response = api.put("/profile", json={**body, "completed_semesters": 1})
     assert response.status_code == 422
     assert errors(response) == message
+
+
+def test_score_100_computed_from_gpa(api, factory):
+    """100점 환산은 평점 × 10 + 52.5로 서버가 계산합니다. 보낸 값은 무시합니다(2026-11-10)."""
+    body = {k: v for k, v in REQUIRED_ONLY.items() if k not in ("score_100", "score_100_total")}
+    saved = api.put("/profile", json={**body, "completed_semesters": 1}).json()
+    assert (saved["score_100"], saved["score_100_total"]) == (90.5, 89.0)  # 평점 3.8, 3.65
+
+    hacked = api.put("/profile", json={**PROFILE, "score_100": 100.1, "score_100_total": -1})
+    assert hacked.status_code == 200
+    assert (hacked.json()["score_100"], hacked.json()["score_100_total"]) == (90.5, 89.0)
+    row = stored(factory)
+    assert (row.score_100, row.score_100_total) == (90.5, 89.0)
 
 
 @pytest.mark.parametrize("status", ["재학", "휴학"])
