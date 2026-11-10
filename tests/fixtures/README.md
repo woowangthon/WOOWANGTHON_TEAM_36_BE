@@ -33,9 +33,10 @@ URL: `https://software.cbnu.ac.kr/index.php?mid=sub0401&document_srl=<id>`
 | `pdf/1154721_0.pdf` | 1쪽짜리 짧은 PDF |
 | `pdf/1154905_0.pdf` | 재단 공문형 PDF |
 | `pdf/1154665_1.pdf` | 재단 선발 공고문 PDF(여러 쪽) |
+| `hwp/1154590_0.hwp` | 천사장학금 선발 계획(실제 HWP 5.0, 압축 본문·표 포함). 2026-11-09 수집 |
 
 - **첨부 다운로드 주의**: XE 첨부는 상세 페이지를 연 **같은 세션 쿠키 + Referer(상세 URL)**가 있어야 받아집니다. 없으면 200 응답으로 42,284바이트짜리 "OOPS! 잘못된 요청" HTML이 옵니다. 크롤러는 Content-Type 또는 `%PDF` 시그니처로 확인해야 합니다.
-- 첨부 텍스트는 `app/parsers/attachments.py`가 형식별로 뽑습니다(PDF·HWPX·DOCX·ZIP). HWP는 아직 읽지 않습니다.
+- 첨부 텍스트는 `app/parsers/attachments.py`가 형식별로 뽑습니다(PDF·HWP·HWPX·DOCX·ZIP).
 
 ## aibc/ — AI부트캠프사업단 공지
 

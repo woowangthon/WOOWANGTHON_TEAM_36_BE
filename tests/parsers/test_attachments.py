@@ -68,10 +68,7 @@ def test_extension_is_ignored_for_detection():
 @pytest.mark.parametrize(
     ("data", "kind"),
     [
-        (
-            b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\0" * 100,
-            "HWP",
-        ),  # HWP는 아직 읽지 않음(3번 카드)
+        (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\0" * 100, "OTHER"),  # HWP가 아닌 OLE
         (b"\x89PNG\r\n\x1a\n" + b"\0" * 100, "IMAGE"),
         (
             b"<html>OOPS! \xec\x9e\x98\xeb\xaa\xbb\xeb\x90\x9c \xec\x9a\x94\xec\xb2\xad</html>",
@@ -93,7 +90,7 @@ def test_real_kosaf_zip_gives_one_part_per_file():
         (
             "붙임1.zip / (KOSAF기부펀드 일상회복) 고립은둔 지원 프로그램 확인서.hwp",
             "HWP",
-            "UNSUPPORTED",
+            "OK",
         ),
         (
             "붙임1.zip / 2026년 2학기 푸른등대 기부장학금(2차) 사업계획서 및 업무처리기준.pdf",
@@ -101,6 +98,7 @@ def test_real_kosaf_zip_gives_one_part_per_file():
             "OK",
         ),
     ]
+    assert "고립·은둔 지원 프로그램 참가 확인서" in parts[0].text
     assert "KOSAF기부펀드 일상회복" in parts[1].text
 
 

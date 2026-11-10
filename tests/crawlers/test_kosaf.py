@@ -203,7 +203,7 @@ def test_zip_attachment_text_reaches_extraction_input():
         rows = read_attachments(crawler, raw, kst(2026, 11, 9))
 
     assert [(r.position, r.file_kind, r.status) for r in rows] == [
-        (0, "HWP", "UNSUPPORTED"),  # 붙임1 ZIP 안의 HWP(3번 카드에서 읽음)
+        (0, "HWP", "OK"),  # 붙임1 ZIP 안의 HWP(확인서 서식)
         (1, "PDF", "OK"),  # 붙임1 ZIP 안의 업무처리기준 PDF
         (2, "OTHER", "FAILED"),  # 붙임2 다운로드 실패(404)
     ]
