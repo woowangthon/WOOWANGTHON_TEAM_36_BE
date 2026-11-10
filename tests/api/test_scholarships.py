@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy import event
 
-from app.models import Notice, Scholarship
+from app.models import Notice, NoticeAttachment, Scholarship
 from app.parsers.dates import kst, now_kst
 from tests.api.test_auth import api, factory, signup  # noqa: F401
 from tests.models.conftest import alembic_config, db_url, migrated_engine  # noqa: F401
@@ -319,6 +319,7 @@ def test_detail(student, factory):  # noqa: F811
             "required_documents": ["재학증명서", "성적증명서"],
             "extra_conditions": ["봉사활동 20시간 이상"],
             "evidence": {"min_gpa": "직전학기 평점 3.5 이상"},
+            "evidence_source": {"min_gpa": "붙임1.zip / 선발 공고문.pdf"},
         },
         apply_end=kst(2026, 11, 12, 18),
     )
@@ -331,8 +332,18 @@ def test_detail(student, factory):  # noqa: F811
     assert body["result"] == "CONDITIONAL"
     assert body["my_state"] == "BOOKMARKED"
     assert body["conditions"] == [
-        {"condition": "min_gpa", "outcome": "MET", "evidence": "직전학기 평점 3.5 이상"},
-        {"condition": "max_income_bracket", "outcome": "UNKNOWN", "evidence": None},
+        {
+            "condition": "min_gpa",
+            "outcome": "MET",
+            "evidence": "직전학기 평점 3.5 이상",
+            "evidence_source": "붙임1.zip / 선발 공고문.pdf",
+        },
+        {
+            "condition": "max_income_bracket",
+            "outcome": "UNKNOWN",
+            "evidence": None,
+            "evidence_source": None,
+        },
     ]
     assert body["extra_conditions"] == ["봉사활동 20시간 이상"]
     assert body["required_documents"] == ["재학증명서", "성적증명서"]
@@ -343,6 +354,80 @@ def test_detail(student, factory):  # noqa: F811
         {"id": sibling_open, "name": "B재단", "status": "OPEN"},
         {"id": sibling_closed, "name": "C재단", "status": "CLOSED"},
     ]
+    assert body["unread_attachments"] == []
+    assert body["input_truncated"] is False
+
+
+# --- 읽지 못한 첨부 (D8) -------------------------------------------------------------
+
+
+def add_attachment(factory, notice_id: int, position: int, status: str, name: str = "첨부.hwp"):  # noqa: F811
+    with factory() as session:
+        session.add(
+            NoticeAttachment(
+                notice_id=notice_id,
+                position=position,
+                name=name,
+                url=f"https://example.com/file/{notice_id}/{position}",
+                file_kind="HWP",
+                status=status,
+                text="",
+                extracted_at=kst(2026, 11, 1),
+            )
+        )
+        session.commit()
+
+
+def test_unread_attachment_lowers_eligible_to_conditional(student, factory):  # noqa: F811
+    unread_notice = add_notice(factory)
+    add_attachment(factory, unread_notice, 0, "OK", name="공고문.pdf")
+    add_attachment(factory, unread_notice, 1, "NO_TEXT", name="스캔 공고문.pdf")
+    add_scholarship(
+        factory, unread_notice, "첨부 못 읽음", criteria=ELIGIBLE, apply_end=kst(2026, 11, 10)
+    )
+    read_notice = add_notice(factory)
+    add_attachment(factory, read_notice, 0, "OK", name="공고문.pdf")
+    add_attachment(factory, read_notice, 1, "SKIPPED", name="11번째 첨부.pdf")  # 일부러 안 읽음
+    add_scholarship(
+        factory, read_notice, "첨부 다 읽음", criteria=ELIGIBLE, apply_end=kst(2026, 11, 11)
+    )
+    blocked = add_notice(factory)
+    add_attachment(factory, blocked, 0, "FAILED")
+    add_scholarship(factory, blocked, "불충족", criteria=INELIGIBLE, apply_end=kst(2026, 11, 12))
+
+    items = student.get("/scholarships").json()["items"]
+    assert [(i["name"], i["result"]) for i in items] == [
+        ("첨부 못 읽음", "CONDITIONAL"),
+        ("첨부 다 읽음", "ELIGIBLE"),
+        ("불충족", "INELIGIBLE"),  # 불충족은 그대로
+    ]
+
+
+def test_detail_lists_unread_attachments(student, factory):  # noqa: F811
+    notice_id = add_notice(factory)
+    add_attachment(factory, notice_id, 0, "UNSUPPORTED", name="붙임.zip / 사진.png")
+    add_attachment(factory, notice_id, 1, "OK", name="공고문.pdf")
+    add_attachment(factory, notice_id, 2, "TOO_LARGE", name="대용량.pdf")
+    with factory() as session:
+        session.get(Notice, notice_id).input_truncated = True
+        session.commit()
+    sid = add_scholarship(factory, notice_id, "장학금", criteria=ELIGIBLE)
+
+    body = student.get(f"/scholarships/{sid}").json()
+    assert body["result"] == "CONDITIONAL"
+    assert body["unread_attachments"] == [
+        {
+            "name": "붙임.zip / 사진.png",
+            "url": f"https://example.com/file/{notice_id}/0",
+            "reason": "UNSUPPORTED",
+        },
+        {
+            "name": "대용량.pdf",
+            "url": f"https://example.com/file/{notice_id}/2",
+            "reason": "TOO_LARGE",
+        },
+    ]
+    assert body["input_truncated"] is True
 
 
 def test_detail_of_closed_scholarship(student, factory):  # noqa: F811

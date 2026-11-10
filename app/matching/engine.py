@@ -1,7 +1,9 @@
 """3단계 판정 (계획서 5.3). DB·HTTP·LLM에 의존하지 않는 순수 함수입니다.
 
 1. 하나라도 불충족 → 지원 불가(`INELIGIBLE`)
-2. 불충족은 없지만 알 수 없음이 있거나 `extra_conditions`가 있음 → 확인 필요(`CONDITIONAL`)
+2. 불충족은 없지만 알 수 없음이 있거나 `extra_conditions`가 있거나 **읽지 못한 첨부가 있음**
+   → 확인 필요(`CONDITIONAL`). 못 읽은 첨부에 조건이 있을 수 있어
+   "지원 가능"이라 단정하지 않습니다(D8).
 3. 전부 충족 → 지원 가능(`ELIGIBLE`)
 
 공지 조건이 null이면 비교하지 않습니다.
@@ -70,31 +72,43 @@ EVIDENCE_KEYS: dict[str, tuple[str, ...]] = {
 }
 
 
-def _evidence(c: ScholarshipCriteria, condition: str) -> str | None:
+def _evidence(c: ScholarshipCriteria, condition: str) -> tuple[str | None, str | None]:
+    """(근거 문장, 근거 출처). 출처는 "본문" 또는 첨부 파일 이름이고 v3 결과에는 없습니다."""
     for key in EVIDENCE_KEYS.get(condition, (condition,)):
         if text := c.evidence.get(key):  # type: ignore[call-overload]
-            return text
-    return None
+            return text, c.evidence_source.get(key)  # type: ignore[call-overload]
+    return None, None
 
 
-def evaluate(profile: Profile, criteria: ScholarshipCriteria, today: date) -> Evaluation:
+def evaluate(
+    profile: Profile,
+    criteria: ScholarshipCriteria,
+    today: date,
+    *,
+    has_unread_attachments: bool = False,
+) -> Evaluation:
     """프로필과 장학금 조건을 비교합니다.
 
     `today`는 한국 날짜이고, `apply_end`가 없을 때 나이 기준일로 씁니다.
+    `has_unread_attachments`는 공지 첨부 중 읽지 못한 것(스캔본·지원 안 하는 형식·실패)이
+    있는지입니다. 있으면 지원 가능을 확인 필요로 낮추고, 불충족은 그대로 둡니다.
     """
     checks: list[ConditionCheck] = []
     ambiguous = set(criteria.ambiguous_fields)
     for name, rule in RULES:
         outcome = rules.UNKNOWN if name in ambiguous else rule(profile, criteria, today)
         if outcome is not None:
+            evidence, source = _evidence(criteria, name)
             checks.append(
-                ConditionCheck(condition=name, outcome=outcome, evidence=_evidence(criteria, name))
+                ConditionCheck(
+                    condition=name, outcome=outcome, evidence=evidence, evidence_source=source
+                )
             )
 
     outcomes = {check.outcome for check in checks}
     if rules.UNMET in outcomes:
         result: MatchResult = "INELIGIBLE"
-    elif rules.UNKNOWN in outcomes or criteria.extra_conditions:
+    elif rules.UNKNOWN in outcomes or criteria.extra_conditions or has_unread_attachments:
         result = "CONDITIONAL"
     else:
         result = "ELIGIBLE"

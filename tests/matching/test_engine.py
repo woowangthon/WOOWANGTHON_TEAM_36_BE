@@ -501,6 +501,56 @@ def test_checks_follow_table_order_and_carry_evidence():
     assert evidence["target_grades"] is None
 
 
+# --- 읽지 못한 첨부 (D8) ---
+
+
+@pytest.mark.parametrize(
+    ("fields", "without", "with_unread"),
+    [
+        ({"min_gpa": 3.0}, "ELIGIBLE", "CONDITIONAL"),  # 지원 가능 → 확인 필요
+        ({"min_gpa": 4.0}, "INELIGIBLE", "INELIGIBLE"),  # 불충족은 그대로
+        (
+            {"min_gpa": 3.0, "extra_conditions": ["봉사활동 20시간 이상"]},
+            "CONDITIONAL",
+            "CONDITIONAL",
+        ),  # 이미 확인 필요
+    ],
+)
+def test_unread_attachments_lower_only_eligible(fields, without, with_unread):
+    c = criteria(target_department="제한없음", **fields)
+    assert evaluate(profile(), c, TODAY).result == without
+    assert evaluate(profile(), c, TODAY, has_unread_attachments=True).result == with_unread
+
+
+def test_unread_attachments_do_not_add_checks():
+    c = criteria(target_department="제한없음", min_gpa=3.0)
+    plain = evaluate(profile(), c, TODAY)
+    unread = evaluate(profile(), c, TODAY, has_unread_attachments=True)
+    assert unread.checks == plain.checks
+    assert unread.extra_conditions == plain.extra_conditions
+
+
+def test_checks_carry_evidence_source():
+    c = criteria(
+        min_gpa=3.5,
+        regions=["충청남도 논산시"],
+        region_basis="부모",
+        evidence={"min_gpa": "평점 3.5 이상", "region_basis": "부모가 논산시에 거주"},
+        evidence_source={"min_gpa": "붙임1.zip / 공고문.pdf", "region_basis": "본문"},
+    )
+    sources = {
+        check.condition: check.evidence_source for check in evaluate(profile(), c, TODAY).checks
+    }
+    assert sources["min_gpa"] == "붙임1.zip / 공고문.pdf"
+    assert sources["regions"] == "본문"  # 근거 문장과 같은 키의 출처
+
+
+def test_v3_result_has_no_evidence_source():
+    c = criteria(min_gpa=3.5, evidence={"min_gpa": "평점 3.5 이상"})
+    [check] = [ch for ch in evaluate(profile(), c, TODAY).checks if ch.condition == "min_gpa"]
+    assert (check.evidence, check.evidence_source) == ("평점 3.5 이상", None)
+
+
 def test_engine_is_pure():
     """matching은 DB·HTTP·LLM 모듈을 import하지 않습니다(5.3, backend CLAUDE.md)."""
     import ast

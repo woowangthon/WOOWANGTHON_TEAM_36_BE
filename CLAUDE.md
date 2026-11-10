@@ -61,7 +61,7 @@ tests/fixtures/ # 사이트별 저장 HTML, PDF 샘플, AI 응답 샘플, golden
 - 테스트: `uv run pytest` (DB가 필요한 테스트는 compose의 postgres 사용). 테스트는 `.env`와 셸 환경변수를 읽지 않으므로(`tests/conftest.py`), 설정값이 필요한 테스트는 `monkeypatch.setenv`로 넣습니다
 - 린트: `uv run ruff check . && uv run ruff format .`
 - 마이그레이션: `uv run alembic revision --autogenerate -m "..."`, `uv run alembic upgrade head`
-- 수집: `uv run python -m app.scheduler.jobs` (`--backfill`, `--source SW_DEPT`)
+- 수집: `uv run python -m app.scheduler.jobs` (`--backfill`, `--source SW_DEPT`, `--reread-attachments`: 첨부 행이 없는 모집 중 공지의 첨부를 다시 읽기)
 - 골든셋 평가: `uv run python -m eval.run`
 
 ## 환경변수 (계획서 9.6)

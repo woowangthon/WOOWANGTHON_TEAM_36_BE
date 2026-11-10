@@ -79,15 +79,16 @@ def test_stub_returns_501(client, method, path, body):
 
 
 def test_match_result_dto_shape(client):
-    """5.3 판정 결과 DTO: result 3종, 조건별 {condition, outcome, evidence}, 상태 3종."""
+    """5.3 판정 결과 DTO: result 3종, 조건별 {condition, outcome, evidence, 근거 출처}, 상태 3종."""
     schemas = client.get("/openapi.json").json()["components"]["schemas"]
     summary = schemas["ScholarshipSummary"]["properties"]
     assert summary["result"]["enum"] == ["ELIGIBLE", "CONDITIONAL", "INELIGIBLE"]
     assert summary["status"]["enum"] == ["OPEN", "ALWAYS", "CLOSED"]
     check = schemas["ConditionCheck"]["properties"]
-    assert set(check) == {"condition", "outcome", "evidence"}
+    assert set(check) == {"condition", "outcome", "evidence", "evidence_source"}
     assert check["outcome"]["enum"] == ["MET", "UNMET", "UNKNOWN"]
-    assert "conditions" in schemas["ScholarshipDetail"]["properties"]
+    detail = schemas["ScholarshipDetail"]["properties"]
+    assert {"conditions", "unread_attachments", "input_truncated"} <= set(detail)
 
 
 @pytest.mark.parametrize(
