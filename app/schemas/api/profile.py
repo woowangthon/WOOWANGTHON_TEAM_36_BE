@@ -117,6 +117,17 @@ def _between(value: float | None, low: float, high: float, label: str) -> float 
     return value
 
 
+def _grade_fields(p: "ProfileUpdate") -> list[tuple[float | int | None, str]]:
+    """성적 5칸과 빠졌을 때 쓰는 문장 앞부분(조사 포함). 화면의 칸 순서와 같습니다."""
+    return [
+        (p.gpa, "직전학기 평점을"),
+        (p.score_100, "직전학기 100점 환산 점수를"),
+        (p.credits, "직전학기 이수학점을"),
+        (p.gpa_total, "전체 평점평균을"),
+        (p.score_100_total, "전체 100점 환산 점수를"),
+    ]
+
+
 class ProfileUpdate(BaseModel):
     """PUT 요청. 입력 검증 규칙(4.3)을 여기서 지킵니다.
 
@@ -130,10 +141,13 @@ class ProfileUpdate(BaseModel):
     gender: Gender
     birth_year: int
     completed_semesters: int | None = None  # 필수. 전환 기간에만 옛 grade로 대신할 수 있음
-    enrollment_status: ProfileEnrollmentStatus
     aibc_member: StrictBool | None  # "yes"·1 같은 값은 거부
 
-    # 성적: 이수학기가 1 이상이면 직전학기 평점 필수, 0이면 모두 버리고 null로 저장
+    # 서비스 대상이 재학생이라 화면에서 묻지 않습니다(2026-11-10 결정). 보내지 않으면 재학으로 저장.
+    # 열려 있던 옛 화면이 보내는 값은 전환 기간에만 받습니다(배포 ③에서 칸을 지움).
+    enrollment_status: ProfileEnrollmentStatus | None = None
+
+    # 성적: 이수학기가 1 이상이면 5칸 모두 필수(2026-11-10 결정), 0이면 모두 버리고 null로 저장
     gpa: float | None = None
     score_100: float | None = None
     credits: int | None = None
@@ -220,8 +234,12 @@ class ProfileUpdate(BaseModel):
         if self.completed_semesters == 0:  # 신입생 첫 학기: 성적이 없음(4.1)
             self.gpa = self.score_100 = self.credits = None
             self.gpa_total = self.score_100_total = None
-        elif self.gpa is None:
-            raise ValueError("직전학기 평점을 입력하세요")
+        else:
+            for value, label in _grade_fields(self):
+                if value is None:
+                    raise ValueError(f"{label} 입력하세요")
+        if self.enrollment_status is None:
+            self.enrollment_status = "재학"
         if self.full_tuition_waiver == "모름":
             self.full_tuition_waiver = None
         return self
