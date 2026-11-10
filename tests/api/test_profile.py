@@ -37,10 +37,7 @@ REQUIRED_ONLY = {
     for k, v in PROFILE.items()
     if k
     not in {
-        "score_100",
-        "credits",
-        "gpa_total",
-        "score_100_total",
+        "enrollment_status",  # 화면에서 묻지 않음. 빠지면 재학 (2026-11-10)
         "income_bracket",
         "self_region",
         "parent_region",
@@ -132,10 +129,7 @@ def test_required_only_profile(api, factory):
 
     assert body == {
         **REQUIRED_ONLY,
-        "score_100": None,
-        "credits": None,
-        "gpa_total": None,
-        "score_100_total": None,
+        "enrollment_status": "재학",
         "income_bracket": None,
         "self_region": None,
         "parent_region": None,
@@ -144,7 +138,7 @@ def test_required_only_profile(api, factory):
     }
     row = stored(factory)
     assert row.enc_income_bracket is None and row.enc_special_flags is None
-    assert (row.score_100, row.credits, row.gpa_total, row.score_100_total) == (None,) * 4
+    assert row.enrollment_status == "재학"
 
 
 def test_put_updates_existing_profile(api, factory):
@@ -387,17 +381,39 @@ def test_freshman_without_grades(api, factory):
     assert (row.gpa, row.grade, row.extra_semester) == (None, 1, False)
 
 
-def test_freshman_can_omit_gpa(api):
-    body = {**REQUIRED_ONLY, "completed_semesters": 0}
-    del body["gpa"]
-    assert api.put("/profile", json=body).status_code == 200
+GRADES = ("gpa", "score_100", "credits", "gpa_total", "score_100_total")
 
 
-def test_gpa_required_after_first_semester(api):
-    body = {k: v for k, v in REQUIRED_ONLY.items() if k != "gpa"}
+def test_freshman_can_omit_grades(api):
+    body = {k: v for k, v in REQUIRED_ONLY.items() if k not in GRADES}
+    assert api.put("/profile", json={**body, "completed_semesters": 0}).status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("field", "message"),
+    [
+        ("gpa", "직전학기 평점을 입력하세요"),
+        ("score_100", "직전학기 100점 환산 점수를 입력하세요"),
+        ("credits", "직전학기 이수학점을 입력하세요"),
+        ("gpa_total", "전체 평점평균을 입력하세요"),
+        ("score_100_total", "전체 100점 환산 점수를 입력하세요"),
+    ],
+)
+def test_grades_required_after_first_semester(api, field, message):
+    """성적 5칸은 이수학기 1 이상이면 모두 필수입니다(2026-11-10 결정)."""
+    body = {k: v for k, v in REQUIRED_ONLY.items() if k != field}
     response = api.put("/profile", json={**body, "completed_semesters": 1})
     assert response.status_code == 422
-    assert "직전학기 평점" in errors(response)
+    assert errors(response) == message
+
+
+@pytest.mark.parametrize("status", ["재학", "휴학"])
+def test_enrollment_status_from_old_screen_kept(api, factory, status):
+    """열려 있던 옛 화면이 보내는 재학상태는 전환 기간에 그대로 받습니다."""
+    assert (
+        api.put("/profile", json={**REQUIRED_ONLY, "enrollment_status": status}).status_code == 200
+    )
+    assert stored(factory).enrollment_status == status
 
 
 @pytest.mark.parametrize(
@@ -570,13 +586,13 @@ def test_saved_out_of_list_region_still_readable(api, factory):
 
 def test_422_has_korean_message_per_field_without_input(api):
     body = {**PROFILE, "name": "1234", "gender": "기타", "birth_year": "이천사"}
-    del body["enrollment_status"]
+    del body["aibc_member"]
     response = api.put("/profile", json=body)
     assert response.status_code == 422
     detail = {tuple(e["loc"]): e for e in response.json()["detail"]}
     assert detail[("body", "name")]["msg"] == "닉네임은 숫자만으로 만들 수 없어요"  # 머리말 없음
     assert detail[("body", "gender")]["msg"] == "목록에 있는 값을 고르세요"
     assert detail[("body", "birth_year")]["msg"] == "정수로 입력하세요"
-    assert detail[("body", "enrollment_status")]["msg"] == "입력하세요"
+    assert detail[("body", "aibc_member")]["msg"] == "입력하세요"
     for error in detail.values():
         assert set(error) == {"loc", "msg", "type"}  # 보낸 값(input)을 돌려주지 않음
