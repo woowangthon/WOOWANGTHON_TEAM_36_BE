@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, 
 
 from app.extraction.schemas import INCOME_BRACKETS, Gender
 from app.parsers.dates import now_kst
+from app.schemas.api.regions import REGIONS
 
 # 프로필 전용 재학상태. 공지 추출용 EnrollmentStatus(4개)와 따로 둡니다(추출 스키마는 그대로).
 ProfileEnrollmentStatus = Literal["재학", "휴학"]
@@ -60,6 +61,23 @@ class Region(BaseModel):
 
     sido: str = Field(min_length=1, max_length=20)  # 예: 충청남도
     sigungu: str | None = Field(default=None, max_length=20)  # 예: 논산시
+
+
+class RegionUpdate(Region):
+    """PUT용 주소. 시/도·시/군/구가 목록(`regions.py`)에 있고 서로 맞는지 봅니다(정의서 15-4·15-5).
+
+    조회(`Region`)는 검사하지 않아, 목록이 바뀌어도 기존 사용자의 조회가 실패하지 않습니다(15-8).
+    """
+
+    @model_validator(mode="after")
+    def _in_list(self) -> "RegionUpdate":
+        if self.sido not in REGIONS:
+            raise ValueError("목록에 있는 시/도를 고르세요")
+        if self.sigungu == "":
+            self.sigungu = None
+        if self.sigungu is not None and self.sigungu not in REGIONS[self.sido]:
+            raise ValueError("고른 시/도에 있는 시/군/구를 고르세요")
+        return self
 
 
 class Profile(BaseModel):
@@ -124,8 +142,8 @@ class ProfileUpdate(BaseModel):
 
     # 선택
     income_bracket: float | None = None
-    self_region: Region | None = None
-    parent_region: Region | None = None
+    self_region: RegionUpdate | None = None
+    parent_region: RegionUpdate | None = None
     special_flags: list[SpecialFlag] | None = None
     full_tuition_waiver: LegacyFullTuitionWaiver | None = None  # "모름"은 전환 기간에만 받음
 
