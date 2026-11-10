@@ -12,15 +12,13 @@ from tests.api.test_auth import api, factory, signup  # noqa: F401
 from tests.models.conftest import alembic_config, db_url, migrated_engine  # noqa: F401
 
 PROFILE = {
-    "name": "홍길동",
+    "name": "길동",
     "gender": "여",
     "birth_year": 2004,
     "gpa": 3.6,
     "credits": 15,
-    "grade": 3,
-    "extra_semester": False,
+    "completed_semesters": 5,
     "enrollment_status": "재학",
-    "department": "소프트웨어학부",
     "aibc_member": False,
     "income_bracket": None,
     "self_region": None,

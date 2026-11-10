@@ -44,24 +44,27 @@ class UserProfile(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    name: Mapped[str] = mapped_column(String(100))
+    name: Mapped[str] = mapped_column(String(100))  # 닉네임. 배포 ③에서 nullable로 바꾸고 실명 삭제
     gender: Mapped[str] = mapped_column(String(10))
     birth_year: Mapped[int] = mapped_column(Integer)
-    gpa: Mapped[float] = mapped_column(Float)  # 직전학기 평점 (필수)
+    gpa: Mapped[float | None] = mapped_column(Float)  # 직전학기 평점. 이수학기 0이면 null
     score_100: Mapped[float | None] = mapped_column(Float)  # 직전학기 100점 환산
     credits: Mapped[int | None] = mapped_column(Integer)  # 직전학기 이수학점
     gpa_total: Mapped[float | None] = mapped_column(Float)
     score_100_total: Mapped[float | None] = mapped_column(Float)
+    # 마친 정규학기 수 0~16. 학년·초과학기는 여기서 계산(4.1). 배포 ④에서 NOT NULL
+    completed_semesters: Mapped[int | None] = mapped_column(Integer)
+    # 옛 칸: 전환 기간에는 이수학기에서 계산해 함께 저장하고, 배포 ④에서 지웁니다.
     grade: Mapped[int] = mapped_column(Integer)  # 1~4
     extra_semester: Mapped[bool] = mapped_column(Boolean)
-    enrollment_status: Mapped[str] = mapped_column(String(10))
-    department: Mapped[str] = mapped_column(String(20))  # 소프트웨어학부 / 기타
-    aibc_member: Mapped[bool] = mapped_column(Boolean)
+    enrollment_status: Mapped[str] = mapped_column(String(10))  # 재학 / 휴학
+    department: Mapped[str] = mapped_column(String(20))  # 옛 칸. 배포 ④에서 지움
+    aibc_member: Mapped[bool | None] = mapped_column(Boolean)  # null = 모름
     enc_income_bracket: Mapped[bytes | None] = mapped_column(LargeBinary)
     enc_self_region: Mapped[bytes | None] = mapped_column(LargeBinary)
     enc_parent_region: Mapped[bytes | None] = mapped_column(LargeBinary)
     enc_special_flags: Mapped[bytes | None] = mapped_column(LargeBinary)
-    full_tuition_waiver: Mapped[str | None] = mapped_column(String(10))  # 예 / 아니오 / 모름
+    full_tuition_waiver: Mapped[str | None] = mapped_column(String(10))  # 예 / 아니오 / null(모름)
 
 
 class UserScholarshipState(Base):

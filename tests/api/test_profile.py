@@ -15,15 +15,13 @@ from app.parsers.dates import kst
 from tests.models.conftest import alembic_config, db_url, migrated_engine  # noqa: F401
 
 PROFILE = {
-    "name": "홍길동",
+    "name": "길동",
     "gender": "여",
     "birth_year": 2004,
-    "gpa": 3.8,
-    "grade": 3,
-    "extra_semester": False,
+    "completed_semesters": 5,
     "enrollment_status": "재학",
-    "department": "소프트웨어학부",
     "aibc_member": False,
+    "gpa": 3.8,
     "score_100": 91.2,
     "credits": 18,
     "gpa_total": 3.65,
@@ -152,10 +150,17 @@ def test_required_only_profile(api, factory):
 def test_put_updates_existing_profile(api, factory):
     api.put("/profile", json=PROFILE)
 
-    changed = {**PROFILE, "gpa": 4.1, "grade": 4, "income_bracket": None, "self_region": None}
+    changed = {
+        **PROFILE,
+        "gpa": 4.1,
+        "completed_semesters": 7,
+        "income_bracket": None,
+        "self_region": None,
+    }
     assert api.put("/profile", json=changed).json() == changed
     row = stored(factory)
-    assert (row.gpa, row.grade) == (4.1, 4)
+    assert (row.gpa, row.completed_semesters) == (4.1, 7)
+    assert (row.grade, row.extra_semester, row.department) == (4, False, "소프트웨어학부")
     assert row.enc_income_bracket is None  # null로 보내면 지움
     assert row.enc_self_region is None
     assert row.enc_parent_region is not None
@@ -211,7 +216,7 @@ def test_profile_values_are_not_logged(api, caplog):
     caplog.set_level("DEBUG")
     api.put("/profile", json=PROFILE)
     api.get("/profile")
-    for plain in ("홍길동", "논산시", "보훈", "3.8"):
+    for plain in ("길동", "논산시", "보훈", "3.8"):
         assert plain not in caplog.text
 
 
@@ -268,8 +273,9 @@ def test_requires_privacy_consent(app_client, factory, method):
 @pytest.mark.parametrize(
     "overrides",
     [
-        {"grade": 0},
-        {"grade": 5},
+        {"completed_semesters": -1},
+        {"completed_semesters": 17},
+        {"completed_semesters": 2.5},
         {"gpa": -0.1},
         {"gpa": 4.6},
         {"credits": 31},
@@ -281,6 +287,7 @@ def test_requires_privacy_consent(app_client, factory, method):
         {"gender": "기타"},
         {"enrollment_status": "제적"},
         {"department": "컴퓨터공학과"},
+        {"grade": 0},
         {"income_bracket": 1.5},
         {"income_bracket": 11},
         {"special_flags": ["한부모"]},
@@ -296,7 +303,198 @@ def test_invalid_profile_is_422(api, factory, overrides):
     assert stored(factory) is None
 
 
-@pytest.mark.parametrize("missing", list(REQUIRED_ONLY))
+@pytest.mark.parametrize("missing", [k for k in REQUIRED_ONLY])
 def test_missing_required_field_is_422(api, missing):
     body = {k: v for k, v in PROFILE.items() if k != missing}
     assert api.put("/profile", json=body).status_code == 422
+
+
+def errors(response) -> str:
+    return " ".join(e["msg"] for e in response.json()["detail"])
+
+
+# --- 입력 검증 규칙 (4.3, 프로필 입력 정의서) ---------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("name", "saved"),
+    [
+        ("권모", "권모"),
+        (" 권모 ", "권모"),  # 앞뒤 공백 제거 (1-3)
+        ("kwonmo", "kwonmo"),
+        ("권모Kim2", "권모Kim2"),
+        ("가나다라마바사아자차", "가나다라마바사아자차"),  # 10자
+        ("\u1100\u1161\u11a8\u1100\u1161", "각가"),  # 분해된 한글은 완성형으로 (1-6f)
+    ],
+)
+def test_nickname_accepted(api, factory, name, saved):
+    assert api.put("/profile", json={**PROFILE, "name": name}).status_code == 200
+    assert stored(factory).name == saved
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "",
+        "   ",
+        "권",
+        "가나다라마바사아자차카",
+        "1234",
+        "권 모",
+        "권모!",
+        "ㅋㅋ",
+        "朴朴",
+        "권모😀",
+        "권모\n",
+        "권모\t",
+    ],
+)
+def test_nickname_rejected(api, factory, name):
+    response = api.put("/profile", json={**PROFILE, "name": name})
+    assert response.status_code == 422
+    assert "닉네임" in errors(response)
+    assert stored(factory) is None
+
+
+def test_birth_year_range_uses_seoul_year(api, monkeypatch):
+    from app.schemas.api import profile as schema
+
+    monkeypatch.setattr(schema, "now_kst", lambda: kst(2026, 1, 1))
+    assert api.put("/profile", json={**PROFILE, "birth_year": 1950}).status_code == 200
+    assert api.put("/profile", json={**PROFILE, "birth_year": 2011}).status_code == 200
+    for year in (1949, 2012):
+        response = api.put("/profile", json={**PROFILE, "birth_year": year})
+        assert response.status_code == 422
+        assert "출생연도는 1950~2011" in errors(response)
+
+
+@pytest.mark.parametrize("field", ["gpa", "score_100", "gpa_total", "score_100_total"])
+def test_scores_allow_two_decimals_only(api, field):
+    assert api.put("/profile", json={**PROFILE, field: 3.45}).status_code == 200
+    response = api.put("/profile", json={**PROFILE, field: 3.455})
+    assert response.status_code == 422
+    assert "소수 둘째 자리" in errors(response)
+
+
+def test_freshman_without_grades(api, factory):
+    """이수학기 0이면 성적 5칸을 보내도 버리고 null로 저장합니다(4.1)."""
+    body = api.put("/profile", json={**PROFILE, "completed_semesters": 0}).json()
+
+    assert body["completed_semesters"] == 0
+    for field in ("gpa", "score_100", "credits", "gpa_total", "score_100_total"):
+        assert body[field] is None
+    row = stored(factory)
+    assert (row.gpa, row.grade, row.extra_semester) == (None, 1, False)
+
+
+def test_freshman_can_omit_gpa(api):
+    body = {**REQUIRED_ONLY, "completed_semesters": 0}
+    del body["gpa"]
+    assert api.put("/profile", json=body).status_code == 200
+
+
+def test_gpa_required_after_first_semester(api):
+    body = {k: v for k, v in REQUIRED_ONLY.items() if k != "gpa"}
+    response = api.put("/profile", json={**body, "completed_semesters": 1})
+    assert response.status_code == 422
+    assert "직전학기 평점" in errors(response)
+
+
+@pytest.mark.parametrize(
+    ("semesters", "grade", "extra"), [(1, 1, False), (2, 2, False), (8, 4, True)]
+)
+def test_legacy_columns_are_written_for_rollback(api, factory, semesters, grade, extra):
+    api.put("/profile", json={**PROFILE, "completed_semesters": semesters})
+    row = stored(factory)
+    assert (row.grade, row.extra_semester, row.department) == (grade, extra, "소프트웨어학부")
+
+
+@pytest.mark.parametrize("value", ["yes", 1, "true"])
+def test_aibc_member_is_strict(api, value):
+    assert api.put("/profile", json={**PROFILE, "aibc_member": value}).status_code == 422
+
+
+def test_aibc_member_unknown_is_null(api):
+    assert api.put("/profile", json={**PROFILE, "aibc_member": None}).json()["aibc_member"] is None
+
+
+@pytest.mark.parametrize("status", ["수료", "졸업유예"])
+def test_removed_enrollment_status_is_rejected(api, status):
+    assert api.put("/profile", json={**PROFILE, "enrollment_status": status}).status_code == 422
+
+
+def test_duplicate_special_flags_are_merged(api):
+    flags = api.put("/profile", json={**PROFILE, "special_flags": ["보훈", "보훈", "다자녀"]})
+    assert flags.json()["special_flags"] == ["보훈", "다자녀"]
+
+
+def test_empty_special_flags_without_consent_is_null(app_client, factory):
+    """동의 없이 보낸 빈 목록은 '해당 없음'이 아니라 '모름'(17-4)."""
+    login_as(app_client, make_user(factory, sensitive=False))
+    response = app_client.put("/profile", json={**PROFILE, "special_flags": []})
+    assert response.json()["special_flags"] is None
+    assert stored(factory).enc_special_flags is None
+
+
+def test_unknown_field_is_rejected(api):
+    assert api.put("/profile", json={**PROFILE, "nickname": "권모"}).status_code == 422
+
+
+# --- 전환 기간: 열려 있던 옛 화면 (배포 ①~③) ----------------------------------------
+
+
+OLD_SCREEN = {
+    **{k: v for k, v in PROFILE.items() if k != "completed_semesters"},
+    "grade": 3,
+    "extra_semester": False,
+    "department": "기타",
+    "full_tuition_waiver": "모름",
+}
+
+
+@pytest.mark.parametrize(
+    ("grade", "extra", "semesters"), [(1, False, 1), (3, False, 5), (4, False, 7), (2, True, 8)]
+)
+def test_old_screen_grade_is_converted(api, factory, grade, extra, semesters):
+    body = {**OLD_SCREEN, "grade": grade, "extra_semester": extra}
+    response = api.put("/profile", json=body)
+
+    assert response.status_code == 200
+    assert response.json()["completed_semesters"] == semesters
+    assert response.json()["full_tuition_waiver"] is None  # 모름 → null
+    assert "grade" not in response.json() and "department" not in response.json()
+    assert stored(factory).department == "소프트웨어학부"  # 학과는 받고 무시
+
+
+def test_new_field_wins_over_old_grade(api):
+    body = {**OLD_SCREEN, "completed_semesters": 2}
+    assert api.put("/profile", json=body).json()["completed_semesters"] == 2
+
+
+def test_missing_semesters_and_grade_is_rejected(api):
+    body = {k: v for k, v in OLD_SCREEN.items() if k != "grade"}
+    response = api.put("/profile", json=body)
+    assert response.status_code == 422
+    assert "이수학기" in errors(response)
+
+
+def test_get_reads_rows_written_by_old_server(api, factory):
+    """옛 서버가 쓴 행(이수학기 없음, 수료, 모름, 이름 규칙 밖)도 조회가 실패하지 않습니다(4.3)."""
+    api.put("/profile", json=PROFILE)
+    with factory() as session:
+        row = session.get(UserProfile, 1)
+        row.completed_semesters = None
+        row.grade, row.extra_semester = 4, True
+        row.enrollment_status = "수료"
+        row.full_tuition_waiver = "모름"
+        row.name = "홍 길동!"
+        row.gpa = 3.555
+        session.commit()
+
+    body = api.get("/profile").json()
+
+    assert body["completed_semesters"] == 8
+    assert body["enrollment_status"] == "재학"
+    assert body["full_tuition_waiver"] is None
+    assert (body["name"], body["gpa"]) == ("홍 길동!", 3.555)
+    assert api.get("/scholarships").status_code == 200
