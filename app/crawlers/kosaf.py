@@ -5,9 +5,9 @@
   선발 결과·회의록처럼 신청과 무관한 글도 섞여 있지만, 여기서는 거르지 않고 AI 추출의
   `notice_kind`(모집/결과/기준안내/기타)로 나눕니다(5.2).
 - 글 ID는 `seqNo`입니다.
-- 상세에서는 본문 텍스트(`td#VIEW_MCONTENT`)만 읽습니다. 첨부는 자바스크립트 `fileDown()`으로
-  ZIP을 내려받는 방식이라 **받지 않고**, 파일 이름만 원문 페이지 링크와 함께 첨부 목록에 넣습니다
-  (첨부만 바뀐 수정을 해시로 잡기 위함, 2장).
+- 상세에서는 본문 텍스트(`td#VIEW_MCONTENT`)와 첨부 목록을 읽습니다. 첨부 링크는 자바스크립트
+  `fileDown(pPath, seqNo, fileNo)`인데, 이 함수는 `/ko/download.do`를 GET으로 여는 것뿐이라
+  같은 주소를 첨부 URL로 씁니다(2026-11-09 확인: 세션 쿠키·Referer 없이도 받아짐).
 - 게시일은 날짜만 있어 00:00(KST)으로 봅니다.
 - 게시물은 공공누리 제4유형(출처표시·상업적 이용금지·변경금지)입니다.
   화면에는 출처와 원문 링크를 표시합니다.
@@ -28,11 +28,14 @@ from app.crawlers.base import (
 from app.parsers.dates import parse_posted_at
 
 LIST_URL = "https://www.kosaf.go.kr/ko/notice.do"
+DOWNLOAD_URL = "https://www.kosaf.go.kr/ko/download.do"
 CATEGORY = "0000000002"  # 장학금 공지
 
 _SEQ_NO = re.compile(r"^\d+$")
 _FILE_SIZE = re.compile(r"\s*\(\s*[\d.,]+\s*[KMG]?B\s*\)\s*$", re.IGNORECASE)
 _POSTED = re.compile(r"작성일\s*:\s*([\d.]+)")
+# onclick="fileDown('HP.BRD.UPLOAD', '21427', '1'); return false;"
+_FILE_DOWN = re.compile(r"fileDown\(\s*'([\w.]+)'\s*,\s*'(\d+)'\s*,\s*'(\d+)'\s*\)")
 
 
 def detail_url(external_id: str) -> str:
@@ -53,9 +56,6 @@ class KosafCrawler(Crawler):
     def fetch_detail(self, external_id: str) -> RawNotice:
         url = detail_url(external_id)
         return parse_detail(self.client.get(url).text, external_id=external_id, url=url)
-
-    def fetch_attachment(self, attachment: Attachment, *, referer: str) -> bytes | None:
-        return None  # fileDown() ZIP은 받지 않음(2장)
 
 
 def parse_list(html: str) -> list[NoticeSummary]:
@@ -99,9 +99,11 @@ def parse_detail(html: str, *, external_id: str, url: str) -> RawNotice:
     if posted_at is None:
         raise ParseError(f"게시일을 읽지 못했습니다(seqNo={external_id})")
 
-    # fileDown()은 받지 않으므로 첨부 URL은 원문 페이지 링크로 둡니다.
     attachments = tuple(
-        Attachment(name=_FILE_SIZE.sub("", " ".join(a.get_text().split())), url=url)
+        Attachment(
+            name=_FILE_SIZE.sub("", " ".join(a.get_text().split())),
+            url=_download_url(str(a["onclick"])) or url,
+        )
         for a in page.select("#VIEW_FILE a[onclick*='fileDown']")
     )
     return RawNotice(
@@ -117,3 +119,16 @@ def parse_detail(html: str, *, external_id: str, url: str) -> RawNotice:
 def _seq_no(href: str) -> str | None:
     values = parse_qs(urlsplit(href).query).get("seqNo")
     return values[0] if values and _SEQ_NO.match(values[0]) else None
+
+
+def _download_url(onclick: str) -> str | None:
+    """`fileDown('HP.BRD.UPLOAD', '21427', '1')`이 여는 다운로드 주소.
+
+    형식이 다르면 None입니다. 그 첨부만 원문 페이지 링크로 두고(받아도 PDF가 아니라 건너뜀)
+    공지 본문은 계속 수집합니다.
+    """
+    match = _FILE_DOWN.search(onclick)
+    if match is None:
+        return None
+    path, seq_no, file_no = match.groups()
+    return f"{DOWNLOAD_URL}?pPath={path}&pSeq_No={seq_no}&pFile_No={file_no}"
