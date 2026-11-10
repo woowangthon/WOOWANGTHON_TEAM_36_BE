@@ -139,15 +139,17 @@ def test_min_gpa_unknown_when_grade_basis_ambiguous():
 @pytest.mark.parametrize(
     ("p", "basis", "ambiguous", "expected"),
     [
-        ({"score_100": 85.0}, "직전학기", [], "MET"),
-        ({"score_100": 84.9, "score_100_total": 99.0}, "직전학기", [], "UNMET"),
-        ({"score_100": None, "gpa": 4.5}, "직전학기", [], "UNKNOWN"),  # 평점에서 환산하지 않음
-        ({"score_100": 99.0, "score_100_total": 85.0}, "전체", [], "MET"),
-        ({"score_100": 99.0, "score_100_total": 80.0}, "전체", [], "UNMET"),
-        ({"score_100": 99.0, "score_100_total": None}, "전체", [], "UNKNOWN"),
-        ({"score_100": 85.0}, None, [], "MET"),  # 학기 기준이 없으면 직전학기
-        ({"score_100": 99.0, "score_100_total": 99.0}, "직전학기", ["grade_basis"], "UNKNOWN"),
-        ({"score_100": 99.0}, None, ["min_score_100"], "UNKNOWN"),
+        # 100점 환산 = 평점 × 10 + 52.5 (2026-11-10). 기준 85점이면 평점 3.25가 경계
+        ({"gpa": 3.25}, "직전학기", [], "MET"),
+        ({"gpa": 3.24, "gpa_total": 4.5}, "직전학기", [], "UNMET"),
+        ({"gpa": None}, "직전학기", [], "UNKNOWN"),
+        ({"gpa": 3.6, "score_100": 50.0}, "직전학기", [], "MET"),  # 저장된 옛 입력값은 안 씀
+        ({"gpa": 1.0, "gpa_total": 3.25}, "전체", [], "MET"),
+        ({"gpa": 4.5, "gpa_total": 3.0}, "전체", [], "UNMET"),
+        ({"gpa": 4.5, "gpa_total": None}, "전체", [], "UNKNOWN"),
+        ({"gpa": 3.25}, None, [], "MET"),  # 학기 기준이 없으면 직전학기
+        ({"gpa": 4.5, "gpa_total": 4.5}, "직전학기", ["grade_basis"], "UNKNOWN"),
+        ({"gpa": 4.5}, None, ["min_score_100"], "UNKNOWN"),
     ],
 )
 def test_min_score_100(p, basis, ambiguous, expected):
@@ -157,6 +159,15 @@ def test_min_score_100(p, basis, ambiguous, expected):
         ambiguous_fields=ambiguous,
     )
     assert outcome("min_score_100", profile(**p), c) == expected
+
+
+@pytest.mark.parametrize(
+    ("gpa", "score"),
+    [(3.6, 88.5), (4.5, 97.5), (3.0, 82.5), (0.0, 52.5), (3.45, 87.0), (None, None)],
+)
+def test_score_100_from_gpa(gpa, score):
+    p = profile(gpa=gpa, gpa_total=gpa, score_100=12.3, score_100_total=45.6)
+    assert (p.score_100, p.score_100_total) == (score, score)
 
 
 def test_either_basis_condition_is_conditional():

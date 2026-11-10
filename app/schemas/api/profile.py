@@ -32,6 +32,9 @@ MIN_BIRTH_YEAR = 1950
 MIN_AGE = 15
 MAX_SEMESTERS = 16
 NICKNAME = re.compile(r"[가-힣A-Za-z0-9]{2,10}")
+# 100점 환산 = 평점 × 10 + 52.5 (2026-11-10 결정, 시연용 추정값).
+# 충북대 등급표에서 원점수는 평점×10+50~55 사이라 그 가운데 값을 씁니다. 학생은 입력하지 않습니다.
+SCORE_100_OFFSET = 52.5
 
 
 def grade_of(semesters: int) -> int:
@@ -47,6 +50,13 @@ def is_extra_semester(semesters: int) -> bool:
 def semesters_from_grade(grade: int, extra_semester: bool) -> int:
     """옛 학년 값 → 이수학기 (4.1 기존 사용자 이전): 학년 n → (n−1)×2+1, 초과학기면 8."""
     return 8 if extra_semester else (grade - 1) * 2 + 1
+
+
+def score_100_from_gpa(gpa: float | None) -> float | None:
+    """평점(4.5 만점) → 100점 환산 추정값. 평점이 없으면 null, 최대 100."""
+    if gpa is None:
+        return None
+    return min(100.0, round(gpa * 10 + SCORE_100_OFFSET, 2))
 
 
 def max_birth_year() -> int:
@@ -92,10 +102,10 @@ class Profile(BaseModel):
 
     # 성적 (4.1, C안). 이수학기 0이면 모두 null
     gpa: float | None = None  # 직전학기 평점평균, 4.5 만점
-    score_100: float | None = None  # 직전학기 100점 환산(실점평균)
+    score_100: float | None = None  # 직전학기 100점 환산. 저장값과 상관없이 평점으로 계산
     credits: int | None = None  # 직전학기 취득학점(F 제외)
     gpa_total: float | None = None  # 전체 평점평균
-    score_100_total: float | None = None  # 전체 100점 환산
+    score_100_total: float | None = None  # 전체 100점 환산. 전체 평점평균으로 계산
 
     # 선택 (소득분위·주소·특수자격은 암호화 저장)
     income_bracket: float | None = None  # 기초 0, 차상위 0.5, 1~10구간. null = 모름
@@ -103,6 +113,13 @@ class Profile(BaseModel):
     parent_region: Region | None = None
     special_flags: list[SpecialFlag] | None = None
     full_tuition_waiver: FullTuitionWaiver | None = None
+
+    @model_validator(mode="after")
+    def _score_from_gpa(self) -> "Profile":
+        # 예전에 학생이 직접 입력해 저장된 값도 평점으로 다시 계산합니다(화면·판정이 같은 값).
+        self.score_100 = score_100_from_gpa(self.gpa)
+        self.score_100_total = score_100_from_gpa(self.gpa_total)
+        return self
 
 
 def _two_decimals(value: float | None, label: str) -> float | None:
@@ -118,13 +135,14 @@ def _between(value: float | None, low: float, high: float, label: str) -> float 
 
 
 def _grade_fields(p: "ProfileUpdate") -> list[tuple[float | int | None, str]]:
-    """성적 5칸과 빠졌을 때 쓰는 문장 앞부분(조사 포함). 화면의 칸 순서와 같습니다."""
+    """학생이 입력하는 성적 3칸과 빠졌을 때 쓰는 문장 앞부분(조사 포함). 화면의 칸 순서와 같습니다.
+
+    100점 환산 2칸은 평점으로 계산하므로 여기에 없습니다.
+    """
     return [
         (p.gpa, "직전학기 평점을"),
-        (p.score_100, "직전학기 100점 환산 점수를"),
         (p.credits, "직전학기 이수학점을"),
         (p.gpa_total, "전체 평점평균을"),
-        (p.score_100_total, "전체 100점 환산 점수를"),
     ]
 
 
@@ -147,11 +165,13 @@ class ProfileUpdate(BaseModel):
     # 열려 있던 옛 화면이 보내는 값은 전환 기간에만 받습니다(배포 ③에서 칸을 지움).
     enrollment_status: ProfileEnrollmentStatus | None = None
 
-    # 성적: 이수학기가 1 이상이면 5칸 모두 필수(2026-11-10 결정), 0이면 모두 버리고 null로 저장
+    # 성적: 이수학기가 1 이상이면 평점·이수학점·전체 평점평균 필수(2026-11-10 결정),
+    # 0이면 모두 버리고 null로 저장
     gpa: float | None = None
-    score_100: float | None = None
     credits: int | None = None
     gpa_total: float | None = None
+    # 100점 환산은 평점으로 계산합니다(2026-11-10 결정). 화면이 보내도 받고 무시합니다.
+    score_100: float | None = None
     score_100_total: float | None = None
 
     # 선택
@@ -201,11 +221,6 @@ class ProfileUpdate(BaseModel):
     def _gpa(cls, v: float | None) -> float | None:
         return _two_decimals(_between(v, 0, 4.5, "평점"), "평점")
 
-    @field_validator("score_100", "score_100_total")
-    @classmethod
-    def _score(cls, v: float | None) -> float | None:
-        return _two_decimals(_between(v, 0, 100, "100점 환산 점수"), "100점 환산 점수")
-
     @field_validator("credits")
     @classmethod
     def _credits(cls, v: int | None) -> int | None:
@@ -232,12 +247,13 @@ class ProfileUpdate(BaseModel):
                 raise ValueError("이수학기를 입력하세요")
             self.completed_semesters = semesters_from_grade(self.grade, self.extra_semester)
         if self.completed_semesters == 0:  # 신입생 첫 학기: 성적이 없음(4.1)
-            self.gpa = self.score_100 = self.credits = None
-            self.gpa_total = self.score_100_total = None
+            self.gpa = self.credits = self.gpa_total = None
         else:
             for value, label in _grade_fields(self):
                 if value is None:
                     raise ValueError(f"{label} 입력하세요")
+        self.score_100 = score_100_from_gpa(self.gpa)
+        self.score_100_total = score_100_from_gpa(self.gpa_total)
         if self.enrollment_status is None:
             self.enrollment_status = "재학"
         if self.full_tuition_waiver == "모름":
