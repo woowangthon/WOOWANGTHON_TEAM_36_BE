@@ -3,7 +3,7 @@
 - 판정은 요청마다 규칙 엔진(`app.matching`)으로 계산합니다. LLM을 부르지 않습니다(5.3).
 - 목록은 장학금·공지·출처·내 상태를 한 번의 JOIN 쿼리로 읽어 공지 수와 관계없이 쿼리 수가
   같습니다(9.8 N+1 금지).
-- 기본 목록은 `OPEN`·`ALWAYS`만, 공지가 `모집`·`기준안내`인 것만, 숨긴 장학금은 빼고 보여 줍니다.
+- 기본 목록은 `OPEN`·`ALWAYS`만, 공지가 `모집`·`기준안내`인 것만 보여 줍니다.
 - 공지에 읽지 못한 첨부가 있으면 판정을 "지원 가능"이 아니라 "확인 필요"로 낮춥니다(D8).
   목록은 같은 쿼리의 EXISTS 열로 확인해 쿼리 수를 늘리지 않습니다.
   `state`를 주면 내 장학금 화면용으로 마감(`CLOSED`)된 것도 포함합니다.
@@ -150,16 +150,13 @@ def list_scholarships(
 ) -> ScholarshipListResponse:
     """장학금 단위 맞춤 목록(판정 결과·내 상태 포함).
 
-    기본은 CLOSED와 숨긴 장학금을 빼고, state를 주면 내 장학금 화면용으로 마감된 것도 포함합니다.
+    기본은 CLOSED를 빼고, state를 주면 내 장학금 화면용으로 마감된 것도 포함합니다.
     정렬: deadline = 마감 임박순(마감일 없는 상시는 뒤), latest = 게시일 최신순.
     """
     profile = _load_profile(db, user)
     query = _base_query(user.id).where(Notice.notice_kind.in_(LISTED_NOTICE_KINDS))
     if state is None:
-        query = query.where(
-            Scholarship.status.in_(LISTED_STATUSES),
-            UserScholarshipState.state.is_distinct_from("HIDDEN"),
-        )
+        query = query.where(Scholarship.status.in_(LISTED_STATUSES))
     else:
         query = query.where(UserScholarshipState.state == STATE_FILTERS[state])
     if source is not None:
@@ -238,7 +235,7 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
 def put_state(
     scholarship_id: int, body: StateRequest, user: ConsentedUser, db: DB
 ) -> StateResponse:
-    """관심 / 신청완료 / 숨기기. 장학금마다 상태는 하나이며 새 값으로 바꿉니다."""
+    """관심 / 신청완료. 장학금마다 상태는 하나이며 새 값으로 바꿉니다."""
     if db.get(Scholarship, scholarship_id) is None:
         raise _not_found()
     upsert = insert(UserScholarshipState).values(

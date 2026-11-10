@@ -1,7 +1,7 @@
 """첨부별 텍스트·상태 표 추가: 첨부(ZIP 안의 파일 포함)마다 읽은 결과를 남겨 근거와 판정에 씀
 
 Revision ID: 7d3f9b2e6c51
-Revises: 8c2d4e6f1a37
+Revises: 5e9a1b7c3d42
 Create Date: 2026-11-09 21:30:00.000000+09:00
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "7d3f9b2e6c51"
-down_revision: str | Sequence[str] | None = "8c2d4e6f1a37"
+down_revision: str | Sequence[str] | None = "5e9a1b7c3d42"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

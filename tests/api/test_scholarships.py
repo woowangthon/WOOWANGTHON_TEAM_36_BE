@@ -12,15 +12,16 @@ from tests.api.test_auth import api, factory, signup  # noqa: F401
 from tests.models.conftest import alembic_config, db_url, migrated_engine  # noqa: F401
 
 PROFILE = {
-    "name": "홍길동",
+    "name": "길동",
     "gender": "여",
     "birth_year": 2004,
     "gpa": 3.6,
+    "score_100": 88.0,
     "credits": 15,
-    "grade": 3,
-    "extra_semester": False,
+    "gpa_total": 3.5,
+    "score_100_total": 87.0,
+    "completed_semesters": 5,
     "enrollment_status": "재학",
-    "department": "소프트웨어학부",
     "aibc_member": False,
     "income_bracket": None,
     "self_region": None,
@@ -239,7 +240,7 @@ def test_benefit_type_filter_includes_mixed(student, factory):  # noqa: F811
     ]
 
 
-# --- 상태(관심·신청완료·숨기기) ----------------------------------------------------------
+# --- 상태(관심·신청완료) ----------------------------------------------------------------
 
 
 def test_put_and_delete_state(student, factory):  # noqa: F811
@@ -258,20 +259,23 @@ def test_put_and_delete_state(student, factory):  # noqa: F811
 
 
 def test_state_on_missing_scholarship_is_404(student):
-    assert student.put("/scholarships/999/state", json={"state": "HIDDEN"}).status_code == 404
+    assert student.put("/scholarships/999/state", json={"state": "BOOKMARKED"}).status_code == 404
 
 
 def test_invalid_state_is_422(student, factory):  # noqa: F811
     sid = seed(factory, "x")
     assert student.put(f"/scholarships/{sid}/state", json={"state": "LIKED"}).status_code == 422
+    # 숨기기는 없앴습니다(되돌릴 화면이 없고 탭 필터로 충분).
+    assert student.put(f"/scholarships/{sid}/state", json={"state": "HIDDEN"}).status_code == 422
 
 
-def test_hidden_is_excluded_from_default_list(student, factory):  # noqa: F811
-    keep = seed(factory, "보임", apply_end=kst(2026, 11, 10))
-    hide = seed(factory, "숨김", apply_end=kst(2026, 11, 11))
-    student.put(f"/scholarships/{hide}/state", json={"state": "HIDDEN"})
-    student.put(f"/scholarships/{keep}/state", json={"state": "BOOKMARKED"})
-    assert names(student.get("/scholarships")) == ["보임"]
+def test_default_list_keeps_scholarships_with_state(student, factory):  # noqa: F811
+    bookmarked = seed(factory, "관심", apply_end=kst(2026, 11, 10))
+    applied = seed(factory, "신청함", apply_end=kst(2026, 11, 11))
+    seed(factory, "상태 없음", apply_end=kst(2026, 11, 12))
+    student.put(f"/scholarships/{bookmarked}/state", json={"state": "BOOKMARKED"})
+    student.put(f"/scholarships/{applied}/state", json={"state": "APPLIED"})
+    assert names(student.get("/scholarships")) == ["관심", "신청함", "상태 없음"]
 
 
 def test_my_list_includes_closed(student, factory):  # noqa: F811
@@ -290,7 +294,7 @@ def test_my_list_includes_closed(student, factory):  # noqa: F811
 
 def test_state_is_per_user(student, factory):  # noqa: F811
     sid = seed(factory, "공용")
-    student.put(f"/scholarships/{sid}/state", json={"state": "HIDDEN"})
+    student.put(f"/scholarships/{sid}/state", json={"state": "BOOKMARKED"})
     student.cookies.clear()
     signup(student, email="other@example.com")
     student.post("/auth/consent", json={"privacy": True, "sensitive": False})
