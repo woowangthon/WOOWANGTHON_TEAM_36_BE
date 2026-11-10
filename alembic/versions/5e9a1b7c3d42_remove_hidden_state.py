@@ -3,7 +3,7 @@
 저장된 HIDDEN 행은 지웁니다(상태 없음 = 기본 목록에 다시 보임).
 
 Revision ID: 5e9a1b7c3d42
-Revises: 8c2d4e6f1a37
+Revises: 5d1f7a3c9e42
 Create Date: 2026-11-09 12:00:00.000000+09:00
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "5e9a1b7c3d42"
-down_revision: str | Sequence[str] | None = "8c2d4e6f1a37"
+down_revision: str | Sequence[str] | None = "5d1f7a3c9e42"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
