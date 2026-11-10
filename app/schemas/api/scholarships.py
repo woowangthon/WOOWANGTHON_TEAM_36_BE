@@ -12,7 +12,7 @@ from app.extraction.schemas import BenefitType, SourceCode
 MatchResult = Literal["ELIGIBLE", "CONDITIONAL", "INELIGIBLE"]  # 지원 가능 / 확인 필요 / 지원 불가
 ConditionOutcome = Literal["MET", "UNMET", "UNKNOWN"]  # 충족 / 불충족 / 알 수 없음
 ScholarshipStatus = Literal["OPEN", "ALWAYS", "CLOSED"]
-UserState = Literal["BOOKMARKED", "APPLIED", "HIDDEN"]
+UserState = Literal["BOOKMARKED", "APPLIED"]  # 관심 / 신청완료
 
 # 5.3 표의 조건 행. 이름은 ScholarshipCriteria 필드 이름을 씁니다.
 ConditionName = Literal[
