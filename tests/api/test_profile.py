@@ -22,10 +22,10 @@ PROFILE = {
     "enrollment_status": "재학",
     "aibc_member": False,
     "gpa": 3.8,
-    "score_100": 91.2,
+    "score_100": 90.5,  # 서버가 평점으로 계산하는 값과 같게 (3.8 × 10 + 52.5)
     "credits": 18,
     "gpa_total": 3.65,
-    "score_100_total": 88.4,
+    "score_100_total": 89.0,  # 3.65 × 10 + 52.5
     "income_bracket": 3.0,
     "self_region": {"sido": "충청북도", "sigungu": "청주시"},
     "parent_region": {"sido": "충청남도", "sigungu": "논산시"},
@@ -147,6 +147,7 @@ def test_put_updates_existing_profile(api, factory):
     changed = {
         **PROFILE,
         "gpa": 4.1,
+        "score_100": 93.5,  # 평점이 바뀌면 100점 환산도 다시 계산됨
         "completed_semesters": 7,
         "income_bracket": None,
         "self_region": None,
@@ -294,7 +295,10 @@ def test_invalid_profile_is_422(api, factory, overrides):
     assert stored(factory) is None
 
 
-@pytest.mark.parametrize("missing", [k for k in REQUIRED_ONLY])
+# 100점 환산은 서버가 평점으로 계산하므로 빠져도 됩니다 (#41)
+@pytest.mark.parametrize(
+    "missing", [k for k in REQUIRED_ONLY if k not in ("score_100", "score_100_total")]
+)
 def test_missing_required_field_is_422(api, missing):
     body = {k: v for k, v in PROFILE.items() if k != missing}
     assert api.put("/profile", json=body).status_code == 422
