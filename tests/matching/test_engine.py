@@ -19,10 +19,8 @@ def profile(**overrides) -> Profile:
         "birth_year": 2004,
         "gpa": 3.6,
         "credits": 15,
-        "grade": 3,
-        "extra_semester": False,
+        "completed_semesters": 5,  # 3학년
         "enrollment_status": "재학",
-        "department": "소프트웨어학부",
         "aibc_member": False,
         "income_bracket": 4,
         "self_region": {"sido": "충청북도", "sigungu": "청주시"},
@@ -50,10 +48,14 @@ def outcome(condition: str, p: Profile, c: ScholarshipCriteria, today: date = TO
 @pytest.mark.parametrize(
     ("p", "grades", "expected"),
     [
-        ({"grade": 3}, [2, 3], "MET"),
-        ({"grade": 1}, [2, 3], "UNMET"),
-        ({"grade": 2, "extra_semester": True}, [4], "MET"),  # 초과학기는 4학년
-        ({"grade": 4, "extra_semester": True}, [2, 3], "UNMET"),
+        ({"completed_semesters": 5}, [2, 3], "MET"),
+        ({"completed_semesters": 0}, [1], "MET"),  # 신입생 첫 학기 = 1학년
+        ({"completed_semesters": 1}, [1], "MET"),
+        ({"completed_semesters": 1}, [2, 3], "UNMET"),
+        ({"completed_semesters": 2}, [2], "MET"),  # 2학기를 마치면 2학년
+        ({"completed_semesters": 7}, [4], "MET"),
+        ({"completed_semesters": 8}, [4], "MET"),  # 초과학기는 4학년
+        ({"completed_semesters": 16}, [2, 3], "UNMET"),
     ],
 )
 def test_target_grades(p, grades, expected):
@@ -75,14 +77,14 @@ def test_target_grades_ambiguous_is_unknown():
     ],
 )
 def test_excludes_extra_semester(grades, extra, expected):
-    p = profile(grade=4, extra_semester=extra)
+    p = profile(completed_semesters=8 if extra else 7)
     c = criteria(target_grades=grades, excludes_extra_semester=True)
     assert outcome("excludes_extra_semester", p, c) == expected
 
 
 def test_excludes_extra_semester_false_is_not_compared():
     c = criteria(excludes_extra_semester=False)
-    assert outcome("excludes_extra_semester", profile(extra_semester=True), c) is None
+    assert outcome("excludes_extra_semester", profile(completed_semesters=8), c) is None
 
 
 def test_excludes_extra_semester_ambiguous_is_unknown():
@@ -182,6 +184,23 @@ def test_score_evidence_falls_back_to_grade_basis():
 def test_min_credits(credits, ambiguous, expected):
     c = criteria(min_credits=None if ambiguous else 12, ambiguous_fields=ambiguous)
     assert outcome("min_credits", profile(credits=credits), c) == expected
+
+
+@pytest.mark.parametrize("basis", ["직전학기", "전체", None])
+def test_freshman_without_grades_is_unknown_not_unmet(basis):
+    """이수학기 0(신입생 첫 학기)은 성적이 없어 성적 조건이 모두 알 수 없음 → 확인 필요(5.3).
+
+    신입생 성적 기준 면제 여부가 공지마다 달라 불충족으로 보지 않습니다.
+    """
+    p = profile(completed_semesters=0, gpa=None, credits=None)
+    c = criteria(min_gpa=3.0, min_score_100=80, min_credits=12, grade_basis=basis)
+    result = evaluate(p, c, TODAY)
+    assert {check.condition: check.outcome for check in result.checks} == {
+        "min_gpa": "UNKNOWN",
+        "min_score_100": "UNKNOWN",
+        "min_credits": "UNKNOWN",
+    }
+    assert result.result == "CONDITIONAL"
 
 
 # --- 성별 ---------------------------------------------------------------------------
@@ -365,7 +384,7 @@ def test_required_special_ambiguous_is_unknown():
 
 @pytest.mark.parametrize(
     ("waiver", "expected"),
-    [("아니오", "MET"), ("예", "UNMET"), ("모름", "UNKNOWN"), (None, "UNKNOWN")],
+    [("아니오", "MET"), ("예", "UNMET"), (None, "UNKNOWN")],  # null = 모름
 )
 def test_excludes_full_tuition(waiver, expected):
     c = criteria(excludes_full_tuition=True)
@@ -381,20 +400,17 @@ def test_full_tuition_not_excluded_is_not_compared():
 
 
 @pytest.mark.parametrize(
-    ("target", "department", "expected"),
+    ("target", "expected"),
     [
-        ("제한없음", "기타", None),  # 조건 없음: 비교하지 않음(= 충족)
-        ("소프트웨어학부 포함", "소프트웨어학부", "MET"),
-        ("소프트웨어학부 포함", "기타", "UNMET"),
-        ("소프트웨어학부 불포함", "기타", "MET"),
-        ("소프트웨어학부 불포함", "소프트웨어학부", "UNMET"),
-        ("불명", "소프트웨어학부", "UNKNOWN"),
-        ("불명", "기타", "UNKNOWN"),
+        ("제한없음", None),  # 조건 없음: 비교하지 않음(= 충족)
+        ("소프트웨어학부 포함", "MET"),  # 모든 사용자를 소프트웨어학부로 봄(4.1)
+        ("소프트웨어학부 불포함", "UNMET"),
+        ("불명", "UNKNOWN"),
     ],
 )
-def test_target_department(target, department, expected):
+def test_target_department(target, expected):
     c = criteria(target_department=target)
-    assert outcome("target_department", profile(department=department), c) == expected
+    assert outcome("target_department", profile(), c) == expected
 
 
 # --- 사업단 ---------------------------------------------------------------------------
@@ -402,7 +418,12 @@ def test_target_department(target, department, expected):
 
 @pytest.mark.parametrize(
     ("program", "member", "expected"),
-    [("AIBC 양성인재", True, "MET"), ("AIBC 양성인재", False, "UNMET"), ("제한없음", False, None)],
+    [
+        ("AIBC 양성인재", True, "MET"),
+        ("AIBC 양성인재", False, "UNMET"),
+        ("AIBC 양성인재", None, "UNKNOWN"),  # 모름
+        ("제한없음", False, None),
+    ],
 )
 def test_target_program(program, member, expected):
     c = criteria(target_program=program)

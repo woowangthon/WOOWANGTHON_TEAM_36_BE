@@ -10,7 +10,7 @@ from datetime import date
 
 from app.extraction.schemas import ScholarshipCriteria
 from app.parsers.dates import to_kst
-from app.schemas.api.profile import Profile, Region
+from app.schemas.api.profile import Profile, Region, grade_of, is_extra_semester
 from app.schemas.api.scholarships import ConditionOutcome
 
 Outcome = ConditionOutcome | None
@@ -55,18 +55,17 @@ def _bool(value: bool) -> ConditionOutcome:
 
 
 def target_grades(p: Profile, c: ScholarshipCriteria) -> Outcome:
-    """초과학기 학생은 4학년으로 봅니다."""
+    """학년은 이수학기에서 계산합니다(4.1). 초과학기 학생(8학기 이상)은 4학년입니다."""
     if c.target_grades is None:
         return None
-    grade = 4 if p.extra_semester else p.grade
-    return _bool(grade in c.target_grades)
+    return _bool(grade_of(p.completed_semesters) in c.target_grades)
 
 
 def excludes_extra_semester(p: Profile, c: ScholarshipCriteria) -> Outcome:
     """`target_grades`가 null이어도 따로 비교합니다. false·null은 조건 없음."""
     if not c.excludes_extra_semester:
         return None
-    return _bool(not p.extra_semester)
+    return _bool(not is_extra_semester(p.completed_semesters))
 
 
 def enrollment_status(p: Profile, c: ScholarshipCriteria) -> Outcome:
@@ -239,21 +238,23 @@ def excludes_full_tuition(p: Profile, c: ScholarshipCriteria) -> Outcome:
 
 
 def target_department(p: Profile, c: ScholarshipCriteria) -> Outcome:
-    """제한없음은 비교하지 않음 / 포함·불포함은 소프트웨어학부 여부 / 불명은 알 수 없음."""
-    is_sw = p.department == "소프트웨어학부"
+    """프로필에 학과가 없고 모든 사용자를 소프트웨어학부로 봅니다(4.1, 2026-11-10).
+
+    제한없음은 비교하지 않음 / 포함은 충족 / 불포함은 불충족 / 불명은 알 수 없음.
+    """
     match c.target_department:
         case "제한없음":
             return None
         case "소프트웨어학부 포함":
-            return _bool(is_sw)
+            return MET
         case "소프트웨어학부 불포함":
-            return _bool(not is_sw)
+            return UNMET
         case _:  # 불명
             return UNKNOWN
 
 
 def target_program(p: Profile, c: ScholarshipCriteria) -> Outcome:
-    """AIBC 양성인재 대상이면 사업단 소속일 때만 충족."""
+    """AIBC 양성인재 대상이면 예 충족, 아니오 불충족, 모름(null) 알 수 없음."""
     if c.target_program == "제한없음":
         return None
-    return _bool(p.aibc_member)
+    return UNKNOWN if p.aibc_member is None else _bool(p.aibc_member)
