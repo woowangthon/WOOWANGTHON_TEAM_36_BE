@@ -67,6 +67,24 @@ def test_example_json_validates():
     assert s.evidence["min_gpa"].startswith("직전학기")
 
 
+def test_evidence_source_names_body_or_attachment():
+    data = _example(
+        evidence={
+            "min_gpa": "직전학기 평점평균 3.5 이상인 자",
+            "apply_end": "11.12.(수) 18:00까지",
+        },
+        evidence_source={"min_gpa": "붙임1.zip / 업무처리기준.pdf", "apply_end": "본문"},
+    )
+    s = ExtractedCriteria.model_validate(data).scholarships[0]
+    assert s.evidence_source == {"min_gpa": "붙임1.zip / 업무처리기준.pdf", "apply_end": "본문"}
+
+
+def test_v3_result_without_evidence_source_still_loads():
+    """DB에 저장된 v3 결과(evidence_source 없음)도 읽힙니다."""
+    s = ScholarshipCriteria.model_validate({"scholarship_name": "교내 장학금"})
+    assert s.evidence_source == {}
+
+
 def test_example_round_trips_through_json():
     criteria = ExtractedCriteria.model_validate(EXAMPLE_JSON)
     again = ExtractedCriteria.model_validate_json(criteria.model_dump_json())
@@ -105,7 +123,7 @@ def test_income_bracket_allowed_values(bracket):
 def test_criteria_fields_cover_scholarship_fields():
     """ambiguous_fields·evidence 키 목록이 조건 필드와 어긋나지 않게 합니다."""
     model_fields = set(ScholarshipCriteria.model_fields)
-    meta = {"extra_conditions", "ambiguous_fields", "evidence"}
+    meta = {"extra_conditions", "ambiguous_fields", "evidence", "evidence_source"}
     assert set(CRITERIA_FIELDS) == model_fields - meta
 
 
@@ -196,7 +214,7 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     result = extract(_request())
     assert isinstance(result, ExtractionResult)
-    assert result.model_version == "mock+extract_v3"
+    assert result.model_version == "mock+extract_v4"
     # 목 응답도 스키마 검증을 다시 통과해야 합니다.
     again = ExtractionResult.model_validate_json(result.model_dump_json())
     assert again.criteria.notice_kind == "모집"
