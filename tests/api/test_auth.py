@@ -423,3 +423,11 @@ def test_password_is_not_logged(api, caplog):
 
 def test_hash_helper_is_argon2():
     assert hash_password("x").startswith("$argon2")
+
+
+def test_signup_422_does_not_echo_password(client):
+    """기본 422는 보낸 값을 그대로 돌려줘 비밀번호가 응답에 실렸습니다(정의서 18-2)."""
+    response = client.post("/auth/signup", json={"email": 1, "password": "secret-pass-123"})
+    assert response.status_code == 422
+    assert "secret-pass-123" not in response.text
+    assert [e["msg"] for e in response.json()["detail"]] == ["글자로 입력하세요"]

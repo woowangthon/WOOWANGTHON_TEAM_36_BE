@@ -498,3 +498,85 @@ def test_get_reads_rows_written_by_old_server(api, factory):
     assert body["full_tuition_waiver"] is None
     assert (body["name"], body["gpa"]) == ("홍 길동!", 3.555)
     assert api.get("/scholarships").status_code == 200
+
+
+# --- 주소 목록 검사 (정의서 15-4·15-5·15-6·15-9, P6) ---------------------------------
+
+
+@pytest.mark.parametrize(
+    "region",
+    [
+        {"sido": "충청북도", "sigungu": "청주시"},
+        {"sido": "충청북도", "sigungu": None},  # 시/도만 (15-2)
+        {"sido": "충청북도", "sigungu": ""},  # 빈 시/군구는 시/도만으로
+        {"sido": "세종특별자치시", "sigungu": None},  # 시/군/구 없음 (15-6)
+        {"sido": "서울특별시", "sigungu": "중구"},  # 같은 이름 시/군/구 (15-9)
+        {"sido": "부산광역시", "sigungu": "중구"},
+    ],
+)
+def test_region_in_list_accepted(api, factory, region):
+    response = api.put("/profile", json={**PROFILE, "self_region": region, "parent_region": region})
+    assert response.status_code == 200
+    expected = {**region, "sigungu": region["sigungu"] or None}
+    assert response.json()["self_region"] == expected
+
+
+@pytest.mark.parametrize(
+    ("field", "region", "message"),
+    [
+        ("self_region", {"sido": "아무시도"}, "목록에 있는 시/도를 고르세요"),  # 15-4
+        ("self_region", {"sido": "충북"}, "목록에 있는 시/도를 고르세요"),  # 줄임말은 화면에 없음
+        ("self_region", {"sido": "충청북도", "sigungu": "강남구"}, "고른 시/도에 있는"),  # 15-5
+        ("parent_region", {"sido": "세종특별자치시", "sigungu": "조치원읍"}, "고른 시/도에 있는"),
+        ("parent_region", {"sido": "전남광주통합특별시"}, "목록에 있는 시/도를 고르세요"),  # 15-7
+    ],
+)
+def test_region_out_of_list_rejected(api, factory, field, region, message):
+    response = api.put("/profile", json={**PROFILE, field: region})
+    assert response.status_code == 422
+    [error] = response.json()["detail"]
+    assert error["loc"] == ["body", field]
+    assert message in error["msg"]
+    assert stored(factory) is None
+
+
+def test_region_list_matches_matching_rule_names():
+    """주소 목록의 시/도 이름은 판정 규칙의 정식 이름과 같아야 합니다(regions.ts 머리말)."""
+    from app.matching.rules import SIDO_ALIASES
+    from app.schemas.api.regions import REGIONS
+
+    assert set(REGIONS) == set(SIDO_ALIASES.values())
+    assert all(len(set(names)) == len(names) for names in REGIONS.values())
+
+
+def test_saved_out_of_list_region_still_readable(api, factory):
+    """목록 검사는 저장(PUT)에만 둡니다. 저장된 목록 밖 주소로 조회가 실패하지 않습니다(15-8)."""
+    from app.core.crypto import encrypt_json
+
+    assert api.put("/profile", json=PROFILE).status_code == 200
+    with factory() as db:
+        row = db.query(UserProfile).one()
+        row.enc_self_region = encrypt_json(
+            {"sido": "아무시도", "sigungu": None}, aad=field_aad(row.user_id, "self_region")
+        )
+        db.commit()
+    response = api.get("/profile")
+    assert response.status_code == 200
+    assert response.json()["self_region"] == {"sido": "아무시도", "sigungu": None}
+
+
+# --- 422 응답 모양 (정의서 18-2, P6) -------------------------------------------------
+
+
+def test_422_has_korean_message_per_field_without_input(api):
+    body = {**PROFILE, "name": "1234", "gender": "기타", "birth_year": "이천사"}
+    del body["enrollment_status"]
+    response = api.put("/profile", json=body)
+    assert response.status_code == 422
+    detail = {tuple(e["loc"]): e for e in response.json()["detail"]}
+    assert detail[("body", "name")]["msg"] == "닉네임은 숫자만으로 만들 수 없어요"  # 머리말 없음
+    assert detail[("body", "gender")]["msg"] == "목록에 있는 값을 고르세요"
+    assert detail[("body", "birth_year")]["msg"] == "정수로 입력하세요"
+    assert detail[("body", "enrollment_status")]["msg"] == "입력하세요"
+    for error in detail.values():
+        assert set(error) == {"loc", "msg", "type"}  # 보낸 값(input)을 돌려주지 않음
