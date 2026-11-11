@@ -37,6 +37,7 @@ from app.parsers.dates import now_kst, to_kst
 from app.schemas.api.profile import Profile
 from app.schemas.api.scholarships import (
     MatchResult,
+    NoticeAttachmentText,
     NoticeRef,
     ResultFilter,
     ScholarshipDetail,
@@ -193,14 +194,16 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
     if row is None:
         raise _not_found()
     s, notice, src, my_state, _ = row
-    unread = db.scalars(
+    attachments = db.scalars(
         select(NoticeAttachment)
         .where(
             NoticeAttachment.notice_id == notice.id,
-            NoticeAttachment.status.in_(UNREAD_ATTACHMENT_STATUSES),
+            NoticeAttachment.status.in_(("OK", *UNREAD_ATTACHMENT_STATUSES)),
         )
         .order_by(NoticeAttachment.position)
     ).all()
+    unread = [a for a in attachments if a.status in UNREAD_ATTACHMENT_STATUSES]
+    read = [a for a in attachments if a.status == "OK"]
     criteria = ScholarshipCriteria.model_validate(s.criteria)
     evaluation = evaluate(profile, criteria, now_kst().date(), has_unread_attachments=bool(unread))
     siblings = db.execute(
@@ -216,7 +219,14 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
             "extra_conditions": evaluation.extra_conditions,
             "required_documents": criteria.required_documents,
             "notice": NoticeRef(
-                id=notice.id, title=notice.title, url=notice.url, posted_at=_kst(notice.posted_at)
+                id=notice.id,
+                title=notice.title,
+                url=notice.url,
+                posted_at=_kst(notice.posted_at),
+                body_text=notice.body_text,
+                attachments=[
+                    NoticeAttachmentText(name=a.name, url=a.url, text=a.text) for a in read
+                ],
             ),
             "siblings": [SiblingScholarship(id=i, name=n, status=st) for i, n, st in siblings],
             "unread_attachments": [

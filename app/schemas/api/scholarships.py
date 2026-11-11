@@ -73,11 +73,24 @@ class ConditionCheck(BaseModel):
     evidence_source: str | None = None
 
 
+class NoticeAttachmentText(BaseModel):
+    """읽은 첨부(OK)의 텍스트. 상세 화면의 "원문 보기"에서 본문 아래에 펼쳐 보여 줍니다."""
+
+    name: str  # ZIP 안의 파일은 "ZIP 이름 / 파일 이름". evidence_source와 같은 이름
+    url: str  # 첨부(ZIP이면 ZIP) 다운로드 주소
+    text: str  # 첨부에서 읽은 평문. 표는 한 행을 한 줄로, 칸은 " | "로 구분
+
+
 class NoticeRef(BaseModel):
     id: int
     title: str
     url: str  # 원문 링크
     posted_at: AwareDatetime
+    # 수집 때 저장한 공지 본문 평문(줄바꿈 유지, 표는 " | " 구분).
+    # HTML이 아니므로 화면에서 그대로 텍스트로 표시합니다.
+    body_text: str
+    # 읽은 첨부만 position 순서로. 못 읽은 첨부는 ScholarshipDetail.unread_attachments에 있습니다.
+    attachments: list[NoticeAttachmentText]
 
 
 class UnreadAttachment(BaseModel):
