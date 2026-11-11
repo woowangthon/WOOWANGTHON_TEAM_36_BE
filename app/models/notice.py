@@ -15,6 +15,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -118,5 +119,7 @@ class Scholarship(Base):
     )  # "마감일 확인 필요" 표시
     status: Mapped[str] = mapped_column(String(10))
     criteria: Mapped[dict[str, Any]] = mapped_column(JSONB)  # ScholarshipCriteria (5.2)
+    # 처음 저장된 시각. 재추출해도 id와 함께 유지되고, 새 장학금 알림의 기준입니다(7.4)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     notice: Mapped[Notice] = relationship(back_populates="scholarships")

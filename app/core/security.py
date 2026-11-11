@@ -340,6 +340,36 @@ def read_signup_token(token: str, *, now: datetime | None = None) -> str:
     return _decode_purpose(token, SIGNUP_PURPOSE, now)["email"]
 
 
+# --- 알림 수신 거부 토큰 (7.4) -----------------------------------------------------
+#
+# 알림 메일의 수신 거부 링크에 넣습니다. 로그인 없이 알림만 끌 수 있고 다른 일은 할 수 없습니다.
+# 오래된 메일의 링크도 동작해야 하므로 만료를 두지 않습니다. `purpose`가 달라 로그인 JWT·가입
+# 토큰과 서로 바꿔 쓸 수 없습니다(로그인 JWT 검증은 `ver`·`exp`가 없는 이 토큰을 거절합니다).
+
+UNSUBSCRIBE_PURPOSE = "unsubscribe"
+
+
+def create_unsubscribe_token(user_id: int) -> str:
+    payload = {"sub": str(user_id), "purpose": UNSUBSCRIBE_PURPOSE}
+    return jwt.encode(payload, _jwt_secret(), algorithm=JWT_ALGORITHM)
+
+
+def read_unsubscribe_token(token: str) -> int:
+    """서명과 용도를 확인하고 user_id를 돌려줍니다. 틀리면 `InvalidTokenError`."""
+    try:
+        payload = jwt.decode(
+            token,
+            _jwt_secret(),
+            algorithms=[JWT_ALGORITHM],
+            options={"require": ["sub", "purpose"], "verify_exp": False},
+        )
+        if payload["purpose"] != UNSUBSCRIBE_PURPOSE:
+            raise InvalidTokenError("유효하지 않은 토큰")
+        return int(payload["sub"])
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError):
+        raise InvalidTokenError("유효하지 않은 토큰") from None
+
+
 class WindowRateLimiter:
     """규칙마다 (최대 횟수, 시간 창 초)를 두는 슬라이딩 윈도. `LoginRateLimiter`와 같은 방식."""
 

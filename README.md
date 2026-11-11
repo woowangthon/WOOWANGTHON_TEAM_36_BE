@@ -127,7 +127,7 @@ python3 -c "import base64, secrets; print(base64.b64encode(secrets.token_bytes(3
 - [ ] `FIELD_ENCRYPTION_KEY`는 잃어버리면 암호화 필드를 복구할 수 없으므로 담당자만 아는 곳에 따로 백업
 - [ ] 값을 바꾸면 `gcloud secrets versions add`로 새 버전을 넣고, 이전 버전은 `versions disable` 후 확인되면 `versions destroy`(무료 활성 버전 6개)
 
-비밀이 아닌 값(`GEMINI_MODEL`, `GOOGLE_CLIENT_ID`, `GOOGLE_REDIRECT_URI`, `ADMIN_EMAILS`)은 Cloud Run 환경변수로 직접 넣습니다(T28).
+비밀이 아닌 값(`GEMINI_MODEL`, `GOOGLE_CLIENT_ID`, `GOOGLE_REDIRECT_URI`, `ADMIN_EMAILS`, `APP_BASE_URL`)은 Cloud Run 환경변수로 직접 넣습니다(T28).
 
 ## 배포 (T28)
 
@@ -136,7 +136,7 @@ python3 -c "import base64, secrets; print(base64.b64encode(secrets.token_bytes(3
 - 순서: 담당자 승인(GitHub Environment `production`) → 마이그레이션(`DATABASE_URL_DIRECT`) → `gcloud run deploy --source .` → `GET /health` 확인
 - 인증: Workload Identity Federation. 서비스 계정 키는 만들지 않습니다.
 - 서비스: `scholarship-backend` (`asia-southeast1`), 런타임 서비스 계정 `scholarship-backend@`(Secret Manager 읽기만)
-- 비밀값은 Secret Manager에서 연결하고, 비밀이 아닌 값(`GEMINI_MODEL`, `GOOGLE_REDIRECT_URI`)은 워크플로에 적고, `GOOGLE_CLIENT_ID`·`ADMIN_EMAILS`는 Environment 변수로 둡니다.
+- 비밀값은 Secret Manager에서 연결하고, 비밀이 아닌 값(`GEMINI_MODEL`, `GOOGLE_REDIRECT_URI`, `APP_BASE_URL`)은 워크플로에 적고, `GOOGLE_CLIENT_ID`·`ADMIN_EMAILS`는 Environment 변수로 둡니다.
 - 소스 업로드에서 빼는 파일은 `.gcloudignore`에 있습니다(`.env` 포함).
 
 ### 최초 1회: 권한 설정 (담당자)

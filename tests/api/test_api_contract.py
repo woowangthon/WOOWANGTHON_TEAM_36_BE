@@ -14,6 +14,8 @@ SPEC_ENDPOINTS = {
     ("post", "/auth/consent"),
     ("get", "/auth/me"),
     ("delete", "/auth/me"),
+    ("put", "/auth/me/notifications"),
+    ("post", "/notifications/unsubscribe"),
     ("get", "/profile"),
     ("put", "/profile"),
     ("delete", "/auth/consent/sensitive"),
@@ -42,6 +44,8 @@ IMPLEMENTED = {
     ("post", "/auth/consent"),
     ("get", "/auth/me"),
     ("delete", "/auth/me"),
+    ("put", "/auth/me/notifications"),
+    ("post", "/notifications/unsubscribe"),
     ("delete", "/auth/consent/sensitive"),
     # T20 (tests/api/test_google.py)
     ("get", "/auth/google/login"),

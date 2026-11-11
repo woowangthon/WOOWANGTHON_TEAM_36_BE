@@ -72,7 +72,7 @@ def _open(user_id: int, name: str, data: bytes | None) -> Any:
     return None if data is None else decrypt_json(data, aad=field_aad(user_id, name))
 
 
-def _to_response(row: UserProfile) -> Profile:
+def profile_from_row(row: UserProfile) -> Profile:
     values = {field: getattr(row, field) for field in PLAIN_FIELDS}
     if values["completed_semesters"] is None:  # 옛 서버가 쓴 행
         values["completed_semesters"] = semesters_from_grade(row.grade, row.extra_semester)
@@ -91,7 +91,7 @@ def get_profile(user: ConsentedUser, db: DB) -> Profile:
     row = db.get(UserProfile, user.id)
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="프로필을 입력하세요")
-    return _to_response(row)
+    return profile_from_row(row)
 
 
 @router.put(
@@ -123,4 +123,4 @@ def put_profile(body: ProfileUpdate, user: ConsentedUser, db: DB) -> Profile:
     for field, column, aad_name in ENCRYPTED_FIELDS:
         setattr(row, column, _seal(user.id, aad_name, getattr(body, field)))
     db.commit()
-    return _to_response(row)
+    return profile_from_row(row)

@@ -18,7 +18,8 @@ app/
 ├─ extraction/  # schemas.py(ExtractRequest·ExtractedCriteria ★공용), extractor.py(Gemini 호출·재시도), prompts/extract_vN.md
 ├─ matching/    # rules.py(조건별 비교), engine.py(3단계 판정)
 ├─ scheduler/   # jobs.py (수집 작업, `python -m app.scheduler.jobs`)
-└─ api/         # health, auth, google, profile, scholarships, admin, internal
+├─ notifications/ # select.py(알림 대상 선정), message.py(메일 내용), jobs.py(하루 1회 발송, `python -m app.notifications.jobs`)
+└─ api/         # health, auth, google, profile, scholarships, notifications, admin, internal
 eval/           # 골든셋 평가 스크립트 (`python -m eval.run`), results/
 tests/fixtures/ # 사이트별 저장 HTML, PDF 샘플, AI 응답 샘플, golden/(공지 30건 + 정답 JSON)
 ```
@@ -31,6 +32,13 @@ tests/fixtures/ # 사이트별 저장 HTML, PDF 샘플, AI 응답 샘플, golden
   - `crawlers/base.py`의 요청 함수만 씁니다(1초 간격, User-Agent, 타임아웃).
   - 테스트는 `tests/fixtures/`의 저장 HTML로만 합니다. 테스트에서 네트워크 요청은 금지입니다.
 - **수집 작업**(`scheduler/jobs.py`)은 요청 안에서 동기로 끝까지 실행합니다. `BackgroundTasks`는 쓰지 않습니다. 중복 실행은 한 트랜잭션 안에서 `pg_advisory_xact_lock`을 잡은 뒤 `CRAWL_RUNS`의 `RUNNING` 행을 확인·INSERT해서 막습니다. 조건부 INSERT 한 문장만으로는 동시 실행을 막지 못합니다(계획서 9.3).
+- **이메일 알림**(`notifications/`, 계획서 7.4·9.3):
+  - `POST /internal/crawl`이 수집을 마친 뒤 같은 요청 안에서 `run_daily_notifications()`를 부릅니다. 서울 9시 이후이고 오늘 보내지 않았을 때만 발송합니다. 알림이 실패해도 수집 응답은 실패로 만들지 않습니다.
+  - 하루 1회 실행은 `pg_advisory_xact_lock`을 잡은 뒤 `NOTIFICATION_RUNS`의 오늘 행을 확인·기록해서 지킵니다. 보낸 항목은 `NOTIFICATION_LOGS`에 남기고, 실패한 사용자는 기록하지 않아 다음 날 다시 시도됩니다.
+  - 대상 선정(`select.py`)은 DB 없는 순수 함수이고, 판정은 대시보드와 같은 규칙 엔진만 씁니다. LLM을 부르지 않습니다.
+  - 메일에는 장학금 이름·마감·판정 표시·링크만 넣습니다. **판정 근거, 프로필 값, 조건 내용은 넣지 않습니다.**
+  - 발송은 `core/mail.py`의 `mail_session()`만 씁니다(가입 인증번호와 공용). 로그에는 `user_id`만 남기고 이메일 주소·수신 거부 토큰은 남기지 않습니다.
+  - 조회 쿼리 수는 사용자 수와 무관해야 합니다(후보 1번 + 상태·기록·수신자 3번).
 - **규칙 엔진**(`matching/`)은 DB나 HTTP에 의존하지 않는 순수 함수로 만듭니다. 계획서 5.3 표의 **행마다 충족/불충족/알 수 없음 테스트**를 둡니다.
 - **인증**:
   - JWT는 httpOnly·Secure·SameSite=Lax 쿠키로만 발급합니다. 토큰의 `token_version`을 요청마다 DB 값과 비교합니다.
@@ -62,7 +70,8 @@ tests/fixtures/ # 사이트별 저장 HTML, PDF 샘플, AI 응답 샘플, golden
 - 린트: `uv run ruff check . && uv run ruff format .`
 - 마이그레이션: `uv run alembic revision --autogenerate -m "..."`, `uv run alembic upgrade head`
 - 수집: `uv run python -m app.scheduler.jobs` (`--backfill`, `--source SW_DEPT`, `--reread-attachments`: 첨부 행이 없는 모집 중 공지의 첨부를 다시 읽기)
+- 알림 발송: `uv run python -m app.notifications.jobs` (`--force`: 9시 조건과 오늘 실행 여부 무시). 로컬에서는 `MAIL_MOCK=1`로 실제 메일을 보내지 않습니다
 - 골든셋 평가: `uv run python -m eval.run`
 
 ## 환경변수 (계획서 9.6)
-`DATABASE_URL`, `DATABASE_URL_DIRECT`, `JWT_SECRET`, `FIELD_ENCRYPTION_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL`(최신 안정 Flash 모델 이름, 계획서 9.6·T08에서 확정), `AI_MOCK`(로컬 전용), `CRON_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `ADMIN_EMAILS`
+`DATABASE_URL`, `DATABASE_URL_DIRECT`, `JWT_SECRET`, `FIELD_ENCRYPTION_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL`(최신 안정 Flash 모델 이름, 계획서 9.6·T08에서 확정), `AI_MOCK`(로컬 전용), `CRON_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `ADMIN_EMAILS`, `SMTP_USER`, `SMTP_PASSWORD`(Gmail 앱 비밀번호), `MAIL_MOCK`(로컬 전용), `APP_BASE_URL`(알림 메일 링크의 기준 주소, 계획서 7.4)

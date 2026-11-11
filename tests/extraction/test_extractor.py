@@ -304,7 +304,14 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
 
 # --- import 경계 (8.1) ---
 
-FORBIDDEN_MODULES = ("app.api", "app.core.crypto", "app.core.security", "app.models.user")
+FORBIDDEN_MODULES = (
+    "app.api",
+    "app.core.crypto",
+    "app.core.security",
+    "app.models.user",
+    "app.models.notification",
+    "app.notifications",
+)
 FORBIDDEN_NAMES = {"User", "UserProfile", "UserScholarshipState"}
 
 

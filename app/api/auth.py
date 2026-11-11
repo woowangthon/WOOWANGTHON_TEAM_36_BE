@@ -42,6 +42,7 @@ from app.schemas.api.auth import (
     ConsentRequest,
     LoginRequest,
     MeResponse,
+    NotificationSettingRequest,
     SignupCodeRequest,
     SignupCodeResponse,
     SignupRequest,
@@ -97,6 +98,7 @@ def _me(db: Session, user: User) -> MeResponse:
         nickname=profile.name if profile else None,
         completed_semesters=profile.completed_semesters if profile else None,
         gpa=profile.gpa if profile else None,
+        email_notifications=user.email_notifications,
     )
 
 
@@ -268,6 +270,14 @@ def withdraw_sensitive_consent(user: CurrentUser, db: DB) -> None:
 @router.get("/me", response_model=MeResponse, responses=UNAUTHORIZED)
 def me(user: CurrentUser, db: DB) -> MeResponse:
     """로그인 사용자 (동의 여부, 프로필 입력 여부, 관리자 여부 포함)."""
+    return _me(db, user)
+
+
+@router.put("/me/notifications", response_model=MeResponse, responses=UNAUTHORIZED)
+def set_notifications(body: NotificationSettingRequest, user: CurrentUser, db: DB) -> MeResponse:
+    """장학금 알림 메일 수신을 켜거나 끕니다(7.4). 동의 전에도 끌 수 있습니다."""
+    user.email_notifications = body.email_notifications
+    db.commit()
     return _me(db, user)
 
 
