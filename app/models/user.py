@@ -36,6 +36,8 @@ class User(Base):
     token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     privacy_agreed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sensitive_agreed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 장학금 알림 메일 수신(7.4). 기본 켬, 수신 거부 링크나 내 정보 화면에서 끔
+    email_notifications: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
 
 class UserProfile(Base):

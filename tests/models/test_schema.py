@@ -18,6 +18,8 @@ TABLES = {
     "scholarships",
     "user_scholarship_states",
     "crawl_runs",
+    "notification_logs",
+    "notification_runs",
 }
 
 
@@ -153,3 +155,80 @@ def test_deleting_user_cascades_profile_and_states(conn):
     assert conn.scalar(text("SELECT count(*) FROM user_profiles")) == 0
     assert conn.scalar(text("SELECT count(*) FROM user_scholarship_states")) == 0
     assert conn.scalar(text("SELECT count(*) FROM scholarships")) == 1
+
+
+# --- 이메일 알림 (7.4) -------------------------------------------------------
+
+
+def _insert_scholarship(conn):
+    _insert_notice(conn)
+    conn.execute(
+        text(
+            "INSERT INTO scholarships (notice_id, name, status, criteria)"
+            " SELECT id, '장학금', 'OPEN', '{}' FROM notices"
+        )
+    )
+
+
+def test_notification_columns(migrated_engine):
+    insp = inspect(migrated_engine)
+    users = {c["name"]: c for c in insp.get_columns("users")}
+    assert users["email_notifications"]["nullable"] is False
+    scholarships = {c["name"]: c for c in insp.get_columns("scholarships")}
+    assert scholarships["created_at"]["nullable"] is False
+
+
+def test_new_rows_get_notification_defaults(conn):
+    _insert_user(conn, "a@example.com")
+    _insert_scholarship(conn)
+    assert conn.scalar(text("SELECT email_notifications FROM users")) is True
+    assert conn.scalar(text("SELECT created_at IS NOT NULL FROM scholarships")) is True
+
+
+def test_notification_log_kind_check_constraint(conn):
+    _insert_user(conn, "a@example.com")
+    _insert_scholarship(conn)
+    with pytest.raises(IntegrityError, match="ck_notification_logs_kind"):
+        with conn.begin_nested():
+            conn.execute(
+                text(
+                    "INSERT INTO notification_logs (user_id, scholarship_id, kind, sent_at)"
+                    " SELECT u.id, s.id, 'WRONG', now() FROM users u, scholarships s"
+                )
+            )
+
+
+def test_deleting_user_removes_notification_logs(conn):
+    """4.2: 탈퇴 시 알림 발송 기록도 지워집니다."""
+    _insert_user(conn, "a@example.com")
+    _insert_scholarship(conn)
+    conn.execute(
+        text(
+            "INSERT INTO notification_logs (user_id, scholarship_id, kind, sent_at)"
+            " SELECT u.id, s.id, 'NEW_MATCH', now() FROM users u, scholarships s"
+        )
+    )
+    assert conn.scalar(text("SELECT count(*) FROM notification_logs")) == 1
+    conn.execute(text("DELETE FROM users"))
+    assert conn.scalar(text("SELECT count(*) FROM notification_logs")) == 0
+
+
+def test_existing_scholarships_get_posted_at_as_created_at(migrated_engine, alembic_config):
+    """기존 장학금은 공지 게시일을 created_at으로 받습니다(첫 발송에 몰리지 않게)."""
+    command.downgrade(alembic_config, "a4c8e1f5b2d9")
+    try:
+        with migrated_engine.begin() as c:
+            _insert_scholarship(c)
+        command.upgrade(alembic_config, "head")
+        with migrated_engine.connect() as c:
+            created, posted = c.execute(
+                text(
+                    "SELECT s.created_at, n.posted_at FROM scholarships s"
+                    " JOIN notices n ON n.id = s.notice_id"
+                )
+            ).one()
+        assert created == posted
+    finally:
+        command.upgrade(alembic_config, "head")
+        with migrated_engine.begin() as c:
+            c.execute(text("TRUNCATE scholarships, notices RESTART IDENTITY CASCADE"))
