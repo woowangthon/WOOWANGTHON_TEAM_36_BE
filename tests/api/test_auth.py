@@ -34,7 +34,8 @@ def api(factory, monkeypatch) -> TestClient:
     monkeypatch.setenv("JWT_SECRET", "test-jwt-secret-" + "x" * 48)
     monkeypatch.setenv("FIELD_ENCRYPTION_KEY", "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=")
     monkeypatch.setenv("ADMIN_EMAILS", "admin@gmail.com")
-    security.login_limiter.reset()
+    monkeypatch.setenv("MAIL_MOCK", "1")  # 메일을 보내지 않고 인증번호 000000 (7.3)
+    reset_limiters()
 
     def override():
         session = factory()
@@ -46,11 +47,43 @@ def api(factory, monkeypatch) -> TestClient:
     app = create_app()
     app.dependency_overrides[get_db] = override
     yield TestClient(app, base_url="https://testserver")  # Secure 쿠키를 보내려면 https
-    security.login_limiter.reset()
+    reset_limiters()
+
+
+def reset_limiters() -> None:
+    for limiter in (
+        security.login_limiter,
+        security.signup_code_limiter,
+        security.signup_verify_limiter,
+    ):
+        limiter.reset()
+
+
+def signup_token(api: TestClient, email: str = "student@example.com") -> str:
+    """인증번호 받기 → 확인까지 하고 `signup_token`을 돌려줍니다(MAIL_MOCK 번호 000000)."""
+    code = api.post("/auth/signup/code", json={"email": email})
+    assert code.status_code == 200, code.text
+    verify = api.post(
+        "/auth/signup/verify",
+        json={"code_token": code.json()["code_token"], "code": security.MOCK_SIGNUP_CODE},
+    )
+    assert verify.status_code == 200, verify.text
+    return verify.json()["signup_token"]
 
 
 def signup(api: TestClient, email: str = "student@example.com", password: str = PASSWORD):
-    return api.post("/auth/signup", json={"email": email, "password": password})
+    """인증번호 3단계를 거쳐 가입합니다. 이미 가입된 이메일이면 1단계의 409 응답을 돌려줍니다."""
+    code = api.post("/auth/signup/code", json={"email": email})
+    if code.status_code != 200:
+        return code
+    verify = api.post(
+        "/auth/signup/verify",
+        json={"code_token": code.json()["code_token"], "code": security.MOCK_SIGNUP_CODE},
+    )
+    assert verify.status_code == 200, verify.text
+    return api.post(
+        "/auth/signup", json={"signup_token": verify.json()["signup_token"], "password": password}
+    )
 
 
 def login(api: TestClient, email: str = "student@example.com", password: str = PASSWORD, **kw):
@@ -129,6 +162,7 @@ def test_signup_creates_user_and_sets_cookie(api, factory):
 
 def test_signup_duplicate_email_is_409(api):
     assert signup(api).status_code == 201
+    reset_limiters()  # 같은 이메일 발송 제한(1분 1회)과 따로 확인
     assert signup(api, email="STUDENT@example.com").status_code == 409
 
 
@@ -140,14 +174,19 @@ def test_signup_with_google_account_email_is_409(api, factory):
 @pytest.mark.parametrize(
     "body",
     [
-        {"email": "not-an-email", "password": PASSWORD},
-        {"email": "a@example.com", "password": "short"},
-        {"email": "a@example.com"},
-        {"email": "a@example.com", "password": PASSWORD, "is_admin": True},
+        {"password": "short"},
+        {},
+        {"password": PASSWORD, "is_admin": True},
+        {"password": PASSWORD, "email": "other@example.com"},  # 이메일 바꿔치기 불가
     ],
 )
 def test_signup_validation_is_422(api, body):
-    assert api.post("/auth/signup", json=body).status_code == 422
+    token = signup_token(api, email="a@example.com")
+    assert api.post("/auth/signup", json={"signup_token": token, **body}).status_code == 422
+
+
+def test_signup_without_token_is_422(api):
+    assert api.post("/auth/signup", json={"password": PASSWORD}).status_code == 422
 
 
 # --- login --------------------------------------------------------------------
@@ -412,6 +451,7 @@ def test_deleted_user_cookie_no_longer_works(api):
 def test_can_sign_up_again_after_delete(api):
     signup(api)
     api.delete("/auth/me")
+    reset_limiters()  # 같은 이메일 발송 제한(1분 1회)과 따로 확인
     assert signup(api).status_code == 201
 
 
@@ -434,7 +474,7 @@ def test_hash_helper_is_argon2():
 
 def test_signup_422_does_not_echo_password(client):
     """기본 422는 보낸 값을 그대로 돌려줘 비밀번호가 응답에 실렸습니다(정의서 18-2)."""
-    response = client.post("/auth/signup", json={"email": 1, "password": "secret-pass-123"})
+    response = client.post("/auth/signup", json={"signup_token": 1, "password": "secret-pass-123"})
     assert response.status_code == 422
     assert "secret-pass-123" not in response.text
     assert [e["msg"] for e in response.json()["detail"]] == ["글자로 입력하세요"]

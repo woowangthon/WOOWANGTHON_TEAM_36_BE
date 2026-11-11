@@ -4,6 +4,8 @@ import pytest
 
 # 계획서 7.2 표 (메서드, 경로)
 SPEC_ENDPOINTS = {
+    ("post", "/auth/signup/code"),
+    ("post", "/auth/signup/verify"),
     ("post", "/auth/signup"),
     ("post", "/auth/login"),
     ("post", "/auth/logout"),
@@ -31,7 +33,9 @@ STUB_REQUESTS: list[tuple[str, str, None]] = []  # T27로 모든 엔드포인트
 # 기능 카드에서 구현해 더 이상 501이 아닌 엔드포인트
 IMPLEMENTED = {
     ("post", "/internal/crawl"),  # T17 (tests/scheduler/test_internal_api.py)
-    # T19 (tests/api/test_auth.py)
+    # T19 (tests/api/test_auth.py), 가입 인증번호 (tests/api/test_signup_code.py)
+    ("post", "/auth/signup/code"),
+    ("post", "/auth/signup/verify"),
     ("post", "/auth/signup"),
     ("post", "/auth/login"),
     ("post", "/auth/logout"),
@@ -94,8 +98,10 @@ def test_match_result_dto_shape(client):
 @pytest.mark.parametrize(
     ("path", "body"),
     [
-        ("/auth/signup", {"email": "not-an-email", "password": "password123"}),
-        ("/auth/signup", {"email": "a@example.com", "password": "short"}),
+        ("/auth/signup/code", {"email": "not-an-email"}),
+        ("/auth/signup/verify", {"code_token": "x", "code": "12345"}),
+        ("/auth/signup", {"signup_token": "x", "password": "short"}),
+        ("/auth/signup", {"email": "a@example.com", "password": "password123"}),
         # /auth/consent 본문 검증은 로그인이 필요해 tests/api/test_auth.py에서 확인
     ],
 )

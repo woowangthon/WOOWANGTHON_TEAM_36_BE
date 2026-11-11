@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     google_redirect_uri: str | None = None
     admin_emails: str = ""
 
+    # 가입 인증번호 메일 (7.3): Gmail 주소와 앱 비밀번호
+    smtp_user: str | None = None
+    smtp_password: SecretStr | None = None
+    mail_mock: bool = False  # 로컬 전용: 1이면 메일을 보내지 않고 인증번호를 000000으로 고정
+
     @property
     def migration_database_url(self) -> str:
         """Alembic이 쓸 연결 문자열. direct가 없으면(로컬) 앱과 같은 주소를 씁니다."""

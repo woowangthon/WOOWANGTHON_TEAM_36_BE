@@ -14,18 +14,40 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.logging import log_event
+from app.core.mail import MailError, send_signup_code
 from app.core.security import (
+    SIGNUP_CODE_TTL,
+    SIGNUP_TOKEN_TTL,
     CurrentUser,
+    ExpiredTokenError,
+    InvalidTokenError,
     check_login_rate,
+    check_signup_code_rate,
+    check_signup_verify_rate,
     clear_auth_cookie,
+    create_signup_code_token,
+    create_signup_token,
     hash_password,
     is_admin,
     issue_session,
+    new_signup_code,
+    read_signup_code_token,
+    read_signup_token,
+    signup_code_matches,
     verify_password,
 )
 from app.models import User, UserProfile
 from app.parsers.dates import now_kst
-from app.schemas.api.auth import ConsentRequest, LoginRequest, MeResponse, SignupRequest
+from app.schemas.api.auth import (
+    ConsentRequest,
+    LoginRequest,
+    MeResponse,
+    SignupCodeRequest,
+    SignupCodeResponse,
+    SignupRequest,
+    SignupVerifyRequest,
+    SignupVerifyResponse,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -35,6 +57,17 @@ DB = Annotated[Session, Depends(get_db)]
 UNAUTHORIZED = {401: {"description": "로그인이 필요함"}}
 INVALID_CREDENTIALS = "이메일 또는 비밀번호가 올바르지 않습니다"
 GOOGLE_ONLY = "Google 계정으로 가입한 이메일입니다. Google로 로그인하세요"
+ALREADY_SIGNED_UP = "이미 가입된 이메일입니다"
+CODE_MISMATCH = "인증번호가 맞지 않아요"
+CODE_EXPIRED = "인증번호가 만료됐어요. 다시 받아 주세요"
+SIGNUP_EXPIRED = "인증 시간이 지났어요. 이메일 인증을 다시 해 주세요"
+VERIFY_AGAIN = "이메일 인증을 처음부터 다시 해 주세요"
+MAIL_FAILED = "메일을 보내지 못했어요. 잠시 후 다시 시도하세요"
+RESEND_AFTER_SECONDS = 60
+
+
+def _bad_request(detail: str) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
 
 @lru_cache
@@ -75,16 +108,79 @@ def _clear_special_flags(db: Session, user_id: int) -> None:
 
 
 @router.post(
+    "/signup/code",
+    response_model=SignupCodeResponse,
+    responses={
+        409: {"description": "이미 가입된 이메일"},
+        429: {"description": "발송 제한 초과"},
+        502: {"description": "메일 발송 실패"},
+    },
+)
+def signup_code(body: SignupCodeRequest, request: Request, db: DB) -> SignupCodeResponse:
+    """가입 1단계: 6자리 인증번호를 메일로 보냅니다(7.3). 번호는 저장하지 않습니다."""
+    email = normalize_email(body.email)
+    check_signup_code_rate(request, email)
+    if db.scalar(select(User.id).where(User.email == email)) is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=ALREADY_SIGNED_UP)
+    code = new_signup_code()
+    try:
+        send_signup_code(email, code)
+    except MailError as exc:
+        # 주소·번호 없이 실패 종류만 남깁니다(4.2).
+        log_event(logger, "인증 메일 발송 실패", logging.ERROR, reason=str(exc))
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=MAIL_FAILED) from None
+    log_event(logger, "인증 메일 발송")
+    return SignupCodeResponse(
+        code_token=create_signup_code_token(email, code),
+        expires_in=int(SIGNUP_CODE_TTL.total_seconds()),
+        resend_after=RESEND_AFTER_SECONDS,
+    )
+
+
+@router.post(
+    "/signup/verify",
+    response_model=SignupVerifyResponse,
+    responses={
+        400: {"description": "인증번호 불일치·만료"},
+        429: {"description": "확인 시도 제한 초과"},
+    },
+)
+def signup_verify(body: SignupVerifyRequest) -> SignupVerifyResponse:
+    """가입 2단계: 번호가 맞으면 30분 동안 가입할 수 있는 `signup_token`을 줍니다(7.3)."""
+    try:
+        email = read_signup_code_token(body.code_token)
+    except ExpiredTokenError:
+        raise _bad_request(CODE_EXPIRED) from None
+    except InvalidTokenError:
+        raise _bad_request(VERIFY_AGAIN) from None
+    check_signup_verify_rate(email)
+    if not signup_code_matches(body.code_token, body.code):
+        raise _bad_request(CODE_MISMATCH)
+    return SignupVerifyResponse(
+        signup_token=create_signup_token(email),
+        expires_in=int(SIGNUP_TOKEN_TTL.total_seconds()),
+    )
+
+
+@router.post(
     "/signup",
     response_model=MeResponse,
     status_code=status.HTTP_201_CREATED,
-    responses={409: {"description": "이미 가입된 이메일"}},
+    responses={
+        400: {"description": "인증이 만료됐거나 유효하지 않음"},
+        409: {"description": "이미 가입된 이메일"},
+    },
 )
 def signup(body: SignupRequest, response: Response, db: DB) -> MeResponse:
-    """가입하고 JWT 쿠키를 발급합니다. 메일 발송이 없어 이메일 소유 확인은 하지 않습니다(7.3)."""
-    email = normalize_email(body.email)
+    """가입 3단계: 인증번호로 확인한 이메일로 계정을 만들고 JWT 쿠키를 발급합니다(7.3)."""
+    try:
+        email = read_signup_token(body.signup_token)
+    except ExpiredTokenError:
+        raise _bad_request(SIGNUP_EXPIRED) from None
+    except InvalidTokenError:
+        raise _bad_request(VERIFY_AGAIN) from None
     if db.scalar(select(User.id).where(User.email == email)) is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="이미 가입된 이메일입니다")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=ALREADY_SIGNED_UP)
     user = User(email=email, password_hash=hash_password(body.password), token_version=0)
     db.add(user)
     try:
@@ -92,7 +188,7 @@ def signup(body: SignupRequest, response: Response, db: DB) -> MeResponse:
     except IntegrityError:  # 동시에 같은 이메일로 가입
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="이미 가입된 이메일입니다"
+            status_code=status.HTTP_409_CONFLICT, detail=ALREADY_SIGNED_UP
         ) from None
     issue_session(response, user)
     log_event(logger, "가입", user_id=user.id)
