@@ -338,3 +338,53 @@ def test_client_ip_uses_first_forwarded_value():
 def test_secret_values_are_not_in_repr():
     claims = decode_access_token(create_access_token(1, 0))
     assert SECRET not in repr(claims)
+
+
+# --- 수신 거부 토큰 (7.4) -----------------------------------------------------------
+
+
+def test_unsubscribe_token_round_trip():
+    assert security.read_unsubscribe_token(security.create_unsubscribe_token(7)) == 7
+
+
+def test_unsubscribe_token_does_not_expire():
+    import jwt
+
+    payload = jwt.decode(security.create_unsubscribe_token(7), SECRET, algorithms=["HS256"])
+    assert payload == {"sub": "7", "purpose": "unsubscribe"}  # exp 없음: 오래된 메일의 링크도 동작
+
+
+def test_access_token_is_not_an_unsubscribe_token():
+    with pytest.raises(InvalidTokenError):
+        security.read_unsubscribe_token(create_access_token(7, 0))
+
+
+def test_unsubscribe_token_is_not_an_access_token():
+    with pytest.raises(InvalidTokenError):
+        decode_access_token(security.create_unsubscribe_token(7))
+
+
+def test_signup_token_is_not_an_unsubscribe_token():
+    with pytest.raises(InvalidTokenError):
+        security.read_unsubscribe_token(security.create_signup_token("a@example.com"))
+
+
+@pytest.mark.parametrize("token", ["", "abc", "a.b.c"])
+def test_garbage_unsubscribe_token_is_rejected(token):
+    with pytest.raises(InvalidTokenError):
+        security.read_unsubscribe_token(token)
+
+
+def test_tampered_unsubscribe_token_is_rejected():
+    token = security.create_unsubscribe_token(7)
+    tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+    with pytest.raises(InvalidTokenError):
+        security.read_unsubscribe_token(tampered)
+
+
+def test_unsubscribe_token_with_non_numeric_subject_is_rejected():
+    import jwt
+
+    token = jwt.encode({"sub": "abc", "purpose": "unsubscribe"}, SECRET, algorithm="HS256")
+    with pytest.raises(InvalidTokenError):
+        security.read_unsubscribe_token(token)

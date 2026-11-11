@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     smtp_password: SecretStr | None = None
     mail_mock: bool = False  # 로컬 전용: 1이면 메일을 보내지 않고 인증번호를 000000으로 고정
 
+    # 장학금 알림 메일 (7.4): 메일 속 링크(상세 화면, 수신 거부)의 기준 주소.
+    # 없으면 알림을 보내지 않음
+    app_base_url: str | None = None
+
     @property
     def migration_database_url(self) -> str:
         """Alembic이 쓸 연결 문자열. direct가 없으면(로컬) 앱과 같은 주소를 씁니다."""
