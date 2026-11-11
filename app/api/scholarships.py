@@ -18,7 +18,7 @@ from sqlalchemy import and_, exists, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.api.profile import _to_response as profile_from_row
+from app.api.profile import profile_from_row
 from app.core.db import get_db
 from app.core.security import ConsentedUser
 from app.extraction.schemas import BenefitType, ScholarshipCriteria
@@ -111,7 +111,7 @@ def _summary(
     }
 
 
-def _unread_attachments_exist():
+def unread_attachments_exist():
     """공지에 읽지 못한 첨부가 있는지(상관 EXISTS). 목록 쿼리 한 번에 함께 읽습니다."""
     return (
         exists()
@@ -126,7 +126,7 @@ def _unread_attachments_exist():
 def _base_query(user_id: int):
     """장학금 + 공지 + 출처 + 내 상태 + 못 읽은 첨부 여부를 한 번에 읽는 쿼리."""
     return (
-        select(Scholarship, Notice, Source, UserScholarshipState.state, _unread_attachments_exist())
+        select(Scholarship, Notice, Source, UserScholarshipState.state, unread_attachments_exist())
         .join(Notice, Scholarship.notice_id == Notice.id)
         .join(Source, Notice.source_code == Source.code)
         .outerjoin(
