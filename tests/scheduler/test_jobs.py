@@ -945,3 +945,39 @@ def test_cli_passes_options(monkeypatch, capsys):
         {"sources": None, "backfill": False, "reread_attachments": True},
     ]
     assert "건너뛰었습니다" in capsys.readouterr().out
+
+
+def _always(session, source: str, name: str, posted_at: datetime, n: int) -> int:
+    notice = Notice(
+        source_code=source,
+        external_id=f"always-{n}",
+        title=f"{name} 선발 기준 안내",
+        posted_at=posted_at,
+        url=f"https://example.com/always/{n}",
+        body_text="본문",
+        content_hash=f"{n:064d}",
+        notice_kind="기준안내",
+        extract_status="DONE",
+    )
+    session.add(notice)
+    session.flush()
+    scholarship = Scholarship(
+        notice_id=notice.id, name=name, status="ALWAYS", criteria={"scholarship_name": name}
+    )
+    session.add(scholarship)
+    session.flush()
+    return scholarship.id
+
+
+def test_older_always_notice_with_same_name_is_closed(session_factory):
+    """QA 문제-2: 새 학기 기준안내가 올라오면 같은 이름의 지난 학기 기준안내는 닫힘."""
+    with session_factory() as session:
+        old = _always(session, "SW_DEPT", "성적우수장학생", kst(2026, 4, 1), 1)
+        new = _always(session, "SW_DEPT", "성적우수장학생", kst(2026, 9, 8), 2)
+        other_source = _always(session, "KOSAF", "성적우수장학생", kst(2026, 3, 1), 3)
+        session.commit()
+        closed = jobs.close_expired(session, kst(2026, 11, 11))
+    assert closed == 1
+    with session_factory() as session:
+        status = {s.id: s.status for s in session.scalars(select(Scholarship))}
+    assert status == {old: "CLOSED", new: "ALWAYS", other_source: "ALWAYS"}

@@ -534,16 +534,59 @@ def scholarship_status(
 # --- 상태 일괄 갱신 ----------------------------------------------------------
 
 
+@dataclass(frozen=True)
+class AlwaysRow:
+    """상시(ALWAYS) 장학금 1건. 옛 공지를 고를 때 쓰는 값만 담습니다."""
+
+    id: int
+    source_code: str
+    name: str
+    posted_at: datetime
+
+
+def _same_name_key(source_code: str, name: str) -> tuple[str, str]:
+    return source_code, " ".join(name.split())
+
+
+def superseded_always_ids(rows: Iterable[AlwaysRow]) -> set[int]:
+    """같은 출처·같은 이름의 상시 장학금이 여럿이면 최근 공지만 남기고 나머지 id를 돌려줍니다.
+
+    학기마다 다시 올라오는 기준안내(예: 성적우수장학생 2026-2학기 → 2027-1학기)는 마감일이 없어
+    게시 후 1년 동안 상시로 남습니다(5.2). 새 학기 공지가 있으면 옛 공지는 지난 기준이라 닫습니다.
+    출처가 다르면 같은 이름이어도 합치지 않습니다(학부·재단 공지는 조건이 다를 수 있음, 1.1).
+    게시 시각이 같은 공지는 모두 남깁니다.
+    """
+    groups: dict[tuple[str, str], list[AlwaysRow]] = {}
+    for row in rows:
+        groups.setdefault(_same_name_key(row.source_code, row.name), []).append(row)
+    superseded: set[int] = set()
+    for group in groups.values():
+        latest = max(row.posted_at for row in group)
+        superseded.update(row.id for row in group if row.posted_at < latest)
+    return superseded
+
+
 def close_expired(session: Session, now: datetime) -> int:
-    """OPEN·ALWAYS → CLOSED 방향만 갱신합니다. CLOSED는 되살리지 않습니다(5.2)."""
+    """OPEN·ALWAYS → CLOSED 방향만 갱신합니다. CLOSED는 되살리지 않습니다(5.2).
+
+    마감·상시 기간이 지난 것에 더해, 같은 출처·이름의 새 상시 공지가 있는 옛 상시 공지도 닫습니다.
+    """
     rows = session.execute(
-        select(Scholarship, Notice.notice_kind, Notice.posted_at)
+        select(Scholarship, Notice.notice_kind, Notice.posted_at, Notice.source_code)
         .join(Notice)
         .where(Scholarship.status.in_(("OPEN", "ALWAYS")))
     ).all()
     closed = 0
-    for row, kind, posted_at in rows:
+    still_always: list[tuple[Scholarship, AlwaysRow]] = []
+    for row, kind, posted_at, source_code in rows:
         if scholarship_status(kind, row.apply_end, posted_at, now) == "CLOSED":
+            row.status = "CLOSED"
+            closed += 1
+        elif row.status == "ALWAYS":
+            still_always.append((row, AlwaysRow(row.id, source_code, row.name, posted_at)))
+    superseded = superseded_always_ids(always for _, always in still_always)
+    for row, always in still_always:
+        if always.id in superseded:
             row.status = "CLOSED"
             closed += 1
     session.commit()
