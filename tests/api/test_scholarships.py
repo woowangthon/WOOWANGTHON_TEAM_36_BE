@@ -350,6 +350,8 @@ def test_detail(student, factory):  # noqa: F811
     assert body["apply_start"] == "2026-11-01T00:00:00+09:00"
     assert body["notice"]["title"] == "교외장학금 3종 모집"
     assert body["notice"]["url"].startswith("https://example.com/notice/")
+    assert body["notice"]["body_text"] == "본문"
+    assert body["notice"]["attachments"] == []
     assert body["siblings"] == [
         {"id": sibling_open, "name": "B재단", "status": "OPEN"},
         {"id": sibling_closed, "name": "C재단", "status": "CLOSED"},
@@ -361,7 +363,14 @@ def test_detail(student, factory):  # noqa: F811
 # --- 읽지 못한 첨부 (D8) -------------------------------------------------------------
 
 
-def add_attachment(factory, notice_id: int, position: int, status: str, name: str = "첨부.hwp"):  # noqa: F811
+def add_attachment(
+    factory,  # noqa: F811
+    notice_id: int,
+    position: int,
+    status: str,
+    name: str = "첨부.hwp",
+    text: str = "",
+):
     with factory() as session:
         session.add(
             NoticeAttachment(
@@ -371,7 +380,7 @@ def add_attachment(factory, notice_id: int, position: int, status: str, name: st
                 url=f"https://example.com/file/{notice_id}/{position}",
                 file_kind="HWP",
                 status=status,
-                text="",
+                text=text,
                 extracted_at=kst(2026, 11, 1),
             )
         )
@@ -403,11 +412,15 @@ def test_unread_attachment_lowers_eligible_to_conditional(student, factory):  # 
     ]
 
 
+READ_TEXT = "선발 기준\n평점 3.0 이상 | 이수학점 12학점"
+
+
 def test_detail_lists_unread_attachments(student, factory):  # noqa: F811
     notice_id = add_notice(factory)
     add_attachment(factory, notice_id, 0, "UNSUPPORTED", name="붙임.zip / 사진.png")
-    add_attachment(factory, notice_id, 1, "OK", name="공고문.pdf")
+    add_attachment(factory, notice_id, 1, "OK", name="공고문.pdf", text=READ_TEXT)
     add_attachment(factory, notice_id, 2, "TOO_LARGE", name="대용량.pdf")
+    add_attachment(factory, notice_id, 3, "SKIPPED", name="11번째 첨부.pdf")
     with factory() as session:
         session.get(Notice, notice_id).input_truncated = True
         session.commit()
@@ -428,6 +441,14 @@ def test_detail_lists_unread_attachments(student, factory):  # noqa: F811
         },
     ]
     assert body["input_truncated"] is True
+    # 원문 보기: 읽은 첨부만 텍스트와 함께 (SKIPPED·못 읽은 첨부 제외)
+    assert body["notice"]["attachments"] == [
+        {
+            "name": "공고문.pdf",
+            "url": f"https://example.com/file/{notice_id}/1",
+            "text": READ_TEXT,
+        }
+    ]
 
 
 def test_detail_of_closed_scholarship(student, factory):  # noqa: F811
