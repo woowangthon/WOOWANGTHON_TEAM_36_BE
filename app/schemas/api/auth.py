@@ -68,6 +68,14 @@ class ConsentRequest(BaseModel):
     sensitive: bool
 
 
+class NotificationSettingRequest(BaseModel):
+    """장학금 알림 메일 수신 켜기·끄기 (7.4)."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    email_notifications: bool
+
+
 class MeResponse(BaseModel):
     """로그인 사용자. 프론트 라우팅 가드가 이 값으로 이동할 화면을 정합니다."""
 
@@ -84,3 +92,4 @@ class MeResponse(BaseModel):
     nickname: str | None = None
     completed_semesters: int | None = None
     gpa: float | None = None  # 직전학기 평점. 이수학기 0이면 null
+    email_notifications: bool = True  # 장학금 알림 메일 수신 (7.4)

@@ -150,6 +150,7 @@ def test_signup_creates_user_and_sets_cookie(api, factory):
         "nickname": None,  # 프로필 전
         "completed_semesters": None,
         "gpa": None,
+        "email_notifications": True,  # 알림 메일은 기본 켬 (7.4)
     }
     header = cookie_header(response)
     assert header.startswith(f"{AUTH_COOKIE}=")
