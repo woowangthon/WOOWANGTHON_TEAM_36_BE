@@ -107,7 +107,15 @@ class ScholarshipCriteria(BaseModel):
     target_program: TargetProgram = "제한없음"
 
     required_documents: list[str] = Field(default_factory=list)
-    extra_conditions: list[str] = Field(default_factory=list)  # 정리하지 못한 조건 문장 그대로
+    # 필드로 옮기지 못한 문장은 판정에 미치는 영향에 따라 세 갈래로 나눕니다(extract_v5).
+    # - extra_conditions: 지원 자격을 좁히는 조건(특정 프로그램 수료, 신·편입생 제외 등) → 확인 필요
+    # - basic_conditions: 충북대 학부 재학생 대부분이 충족하는 기본 조건(국적, 중복 수혜 제한,
+    #   징계 없음 등) → 판정은 바꾸지 않고 상세에 "지원 전 확인"으로 보여 줌
+    # - notes: 자격이 아닌 안내(선발 방식, 관리지침 참조, 선발 후 의무, 예외·완화 규정 등)
+    # 기본값이 빈 목록이라 DB에 저장된 v4 결과도 그대로 읽힙니다(v4는 셋 모두 extra_conditions).
+    extra_conditions: list[str] = Field(default_factory=list)
+    basic_conditions: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
     ambiguous_fields: list[CriteriaField] = Field(default_factory=list)
     evidence: dict[CriteriaField, str] = Field(default_factory=dict)  # 필드별 근거 원문 문장
     # 근거 문장이 나온 곳: "본문" 또는 입력의 `[첨부 …: 파일 이름]`에 적힌 파일 이름(extract_v4).

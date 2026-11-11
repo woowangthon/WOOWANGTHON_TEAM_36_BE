@@ -123,7 +123,7 @@ def server_error(code: int) -> errors.APIError:
 def test_success(gemini, clock):
     models = gemini([json.dumps(VALID_RESPONSE)])
     result = extract(request())
-    assert result.model_version == "gemini-test-flash+extract_v4"
+    assert result.model_version == "gemini-test-flash+extract_v5"
     scholarship = result.criteria.scholarships[0]
     assert scholarship.apply_end == datetime(2026, 11, 12, 18, 0, tzinfo=SEOUL)
     assert scholarship.ambiguous_fields == ["max_income_bracket"]
@@ -171,6 +171,8 @@ def test_prompt_contains_required_rules():
         "evidence_source",  # 근거 출처(extract_v4)
         "**첨부 공고문**을 따른다",  # D4: 자격 조건은 첨부
         "**본문**을 따른다",  # D4: 신청 기간은 본문(학과 마감)
+        "`basic_conditions`",  # 기타 조건 세 갈래(extract_v5)
+        "`notes`",
     ):
         assert rule in prompt, rule
 
@@ -299,7 +301,7 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert extract(request()).model_version == "mock+extract_v4"
+    assert extract(request()).model_version == "mock+extract_v5"
 
 
 # --- import 경계 (8.1) ---

@@ -1,13 +1,16 @@
 """3단계 판정 (계획서 5.3). DB·HTTP·LLM에 의존하지 않는 순수 함수입니다.
 
 1. 하나라도 불충족 → 지원 불가(`INELIGIBLE`)
-2. 불충족은 없지만 알 수 없음이 있거나 `extra_conditions`가 있거나 **읽지 못한 첨부가 있음**
+2. 불충족은 없지만 알 수 없음이 있거나 `extra_conditions`(자격을 좁히는 조건)가 있거나
+   **읽지 못한 첨부가 있음**
    → 확인 필요(`CONDITIONAL`). 못 읽은 첨부에 조건이 있을 수 있어
    "지원 가능"이라 단정하지 않습니다(D8).
 3. 전부 충족 → 지원 가능(`ELIGIBLE`)
 
 공지 조건이 null이면 비교하지 않습니다.
 `ambiguous_fields`에 든 조건은 값과 관계없이 알 수 없음입니다(5.2).
+`basic_conditions`(국적·중복 수혜 등 대부분 충족)와 `notes`(자격이 아닌 안내)는 판정을 바꾸지 않고
+화면에 보여 주기만 합니다(extract_v5).
 """
 
 from collections.abc import Callable
@@ -27,6 +30,8 @@ class Evaluation:
     result: MatchResult
     checks: list[ConditionCheck]  # 화면 체크리스트 순서(5.3 표 순서)
     extra_conditions: list[str]
+    basic_conditions: list[str]
+    notes: list[str]
 
 
 def _no_date(rule: Callable[[Profile, ScholarshipCriteria], rules.Outcome]) -> Rule:
@@ -113,5 +118,9 @@ def evaluate(
     else:
         result = "ELIGIBLE"
     return Evaluation(
-        result=result, checks=checks, extra_conditions=list(criteria.extra_conditions)
+        result=result,
+        checks=checks,
+        extra_conditions=list(criteria.extra_conditions),
+        basic_conditions=list(criteria.basic_conditions),
+        notes=list(criteria.notes),
     )

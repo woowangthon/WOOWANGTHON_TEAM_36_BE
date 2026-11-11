@@ -10,6 +10,9 @@
 - 정답 장학금과 예측 장학금은 이름이 가장 비슷한 것끼리 짝짓습니다(계획서에 짝짓기 방법이 없어
   T16에서 정함). 짝이 없는 정답 장학금의 필드는 모두 틀린 것으로 셉니다.
 - 추출이 실패한 공지(`ExtractionError`)는 그 공지의 모든 필드를 틀린 것으로 셉니다.
+- 보조 지표 `needs_check`(extract_v5): 장학금마다 `extra_conditions`(자격을 좁히는 조건)가
+  있는지 없는지가 정답과 같은지 봅니다. 판정의 "확인 필요"를 정하는 값이라 따로 세고,
+  버전끼리 비교할 수 있게 전체 정답률(`correct`·`total`)에는 넣지 않습니다.
 """
 
 from dataclasses import dataclass, field
@@ -27,6 +30,7 @@ SCHOLARSHIP_FIELDS = (
     "target_department",
 )
 FIELDS = NOTICE_FIELDS + SCHOLARSHIP_FIELDS
+AUX_FIELDS = ("needs_check",)  # 전체 정답률에 넣지 않는 보조 지표
 TARGET_ACCURACY = 0.90
 
 
@@ -86,7 +90,7 @@ def score_notice(
         notice_id=notice_id,
         count_expected=len(expected.scholarships),
         count_predicted=None if predicted is None else len(predicted.scholarships),
-        fields={name: FieldScore() for name in FIELDS},
+        fields={name: FieldScore() for name in FIELDS + AUX_FIELDS},
     )
 
     got_kind = None if predicted is None else predicted.notice_kind
@@ -109,17 +113,25 @@ def score_notice(
                 )
                 continue
             _check(score, name, expected_one.scholarship_name, want, got)
+        got_check = None if predicted_one is None else bool(predicted_one.extra_conditions)
+        _check(
+            score,
+            "needs_check",
+            expected_one.scholarship_name,
+            bool(expected_one.extra_conditions),
+            got_check,
+        )
     return score
 
 
 def summarize(scores: list[NoticeScore]) -> dict[str, Any]:
-    totals = {name: FieldScore() for name in FIELDS}
+    totals = {name: FieldScore() for name in FIELDS + AUX_FIELDS}
     for notice in scores:
         for name, value in notice.fields.items():
             totals[name].correct += value.correct
             totals[name].total += value.total
-    correct = sum(v.correct for v in totals.values())
-    total = sum(v.total for v in totals.values())
+    correct = sum(totals[name].correct for name in FIELDS)
+    total = sum(totals[name].total for name in FIELDS)
     accuracy = correct / total if total else 0.0
     return {
         "notices": len(scores),

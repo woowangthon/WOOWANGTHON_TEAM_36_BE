@@ -217,6 +217,8 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
             "apply_start": _kst(s.apply_start),
             "conditions": evaluation.checks,
             "extra_conditions": evaluation.extra_conditions,
+            "basic_conditions": evaluation.basic_conditions,
+            "notes": evaluation.notes,
             "required_documents": criteria.required_documents,
             "notice": NoticeRef(
                 id=notice.id,
