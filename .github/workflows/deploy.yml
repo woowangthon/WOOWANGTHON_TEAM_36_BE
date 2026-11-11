@@ -68,7 +68,7 @@ jobs:
             --memory 512Mi \
             --cpu-boost \
             --set-env-vars "^|^GEMINI_MODEL=gemini-3.8-flash|GOOGLE_REDIRECT_URI=https://cbnu-scholarship.vercel.app/api/auth/google/callback|GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}|ADMIN_EMAILS=${ADMIN_EMAILS}" \
-            --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,FIELD_ENCRYPTION_KEY=FIELD_ENCRYPTION_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,CRON_TOKEN=CRON_TOKEN:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest" \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,FIELD_ENCRYPTION_KEY=FIELD_ENCRYPTION_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,CRON_TOKEN=CRON_TOKEN:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASSWORD=SMTP_PASSWORD:latest" \
             --quiet
 
       - name: 상태 확인 (GET /health)
