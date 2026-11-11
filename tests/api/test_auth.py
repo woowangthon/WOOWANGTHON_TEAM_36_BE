@@ -80,6 +80,7 @@ def add_profile(factory, user_id: int) -> None:
                 birth_year=2004,
                 gpa=3.8,
                 credits=18,
+                completed_semesters=5,
                 grade=3,
                 extra_semester=False,
                 enrollment_status="재학",
@@ -113,6 +114,9 @@ def test_signup_creates_user_and_sets_cookie(api, factory):
         "is_admin": False,
         "google_linked": False,
         "has_password": True,
+        "nickname": None,  # 프로필 전
+        "completed_semesters": None,
+        "gpa": None,
     }
     header = cookie_header(response)
     assert header.startswith(f"{AUTH_COOKIE}=")
@@ -243,6 +247,9 @@ def test_me_reports_profile_and_admin(api, factory):
     assert body["google_linked"] is True
     assert body["has_password"] is False
     assert body["privacy_agreed"] is True
+    # '내 정보' 요약 3칸. 민감 필드(소득분위 등)는 응답에 없음
+    assert (body["nickname"], body["completed_semesters"], body["gpa"]) == ("홍길동", 5, 3.8)
+    assert not {"income_bracket", "self_region", "parent_region", "special_flags"} & body.keys()
 
 
 def test_me_rejects_old_token_version(api, factory):

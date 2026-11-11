@@ -40,3 +40,8 @@ class MeResponse(BaseModel):
     is_admin: bool  # ADMIN_EMAILS에 있고 google_sub가 있는 계정 (7.3)
     google_linked: bool
     has_password: bool  # false면 Google 전용 계정
+    # '내 정보' 요약 카드용 (FE T52, 2026-11-11 결정). 프로필이 없으면 null.
+    # 모든 화면이 부르는 응답이라 암호화하는 민감 필드(소득분위·주소·특수자격)는 넣지 않습니다(4.2).
+    nickname: str | None = None
+    completed_semesters: int | None = None
+    gpa: float | None = None  # 직전학기 평점. 이수학기 0이면 null

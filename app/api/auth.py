@@ -8,7 +8,7 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -51,16 +51,19 @@ def normalize_email(email: str) -> str:
 
 
 def _me(db: Session, user: User) -> MeResponse:
-    has_profile = db.scalar(select(func.count()).where(UserProfile.user_id == user.id)) > 0
+    profile = db.get(UserProfile, user.id)  # 조회 1번 (예전 count 쿼리 대신)
     return MeResponse(
         id=user.id,
         email=user.email,
         privacy_agreed=user.privacy_agreed_at is not None,
         sensitive_agreed=user.sensitive_agreed_at is not None,
-        profile_completed=has_profile,
+        profile_completed=profile is not None,
         is_admin=is_admin(user),
         google_linked=user.google_sub is not None,
         has_password=user.password_hash is not None,
+        nickname=profile.name if profile else None,
+        completed_semesters=profile.completed_semesters if profile else None,
+        gpa=profile.gpa if profile else None,
     )
 
 
