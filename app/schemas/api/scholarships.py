@@ -112,7 +112,9 @@ class SiblingScholarship(BaseModel):
 class ScholarshipDetail(ScholarshipSummary):
     apply_start: AwareDatetime | None
     conditions: list[ConditionCheck]
-    extra_conditions: list[str]  # 정리하지 못한 조건 (있으면 확인 필요)
+    extra_conditions: list[str]  # 자격을 좁히는 조건 (있으면 확인 필요)
+    basic_conditions: list[str]  # 대부분 충족하는 기본 조건 (판정에 영향 없음, 지원 전 확인)
+    notes: list[str]  # 자격이 아닌 안내 (선발 방식·의무·예외 등, 판정에 영향 없음)
     required_documents: list[str]
     notice: NoticeRef
     siblings: list[SiblingScholarship]

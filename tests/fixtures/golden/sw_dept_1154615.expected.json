@@ -13,7 +13,7 @@
       "excludes_extra_semester": null,
       "enrollment_status": null,
       "min_gpa": null,
-      "min_score_100": 85,
+      "min_score_100": 85.0,
       "grade_basis": "전체",
       "min_credits": 12,
       "gender": null,
@@ -35,9 +35,12 @@
         "가산점부여 항목 증빙서류"
       ],
       "extra_conditions": [
-        "징계사실이 없는 자",
         "2027학년도 1학기 휴학 예정자 제외"
       ],
+      "basic_conditions": [
+        "징계사실이 없는 자"
+      ],
+      "notes": [],
       "ambiguous_fields": [
         "benefit_type"
       ],

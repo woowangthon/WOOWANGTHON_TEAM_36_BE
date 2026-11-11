@@ -26,7 +26,10 @@
       "required_documents": [],
       "extra_conditions": [
         "중급 이상의 자격이 되는 사업단 참여 학생",
-        "사업단 자격증 리스트의 자격증 응시",
+        "사업단 자격증 리스트의 자격증 응시"
+      ],
+      "basic_conditions": [],
+      "notes": [
         "신청 시 사업단에 신청서 제출"
       ],
       "ambiguous_fields": [],

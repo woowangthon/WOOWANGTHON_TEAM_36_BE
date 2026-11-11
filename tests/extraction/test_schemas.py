@@ -123,7 +123,14 @@ def test_income_bracket_allowed_values(bracket):
 def test_criteria_fields_cover_scholarship_fields():
     """ambiguous_fields·evidence 키 목록이 조건 필드와 어긋나지 않게 합니다."""
     model_fields = set(ScholarshipCriteria.model_fields)
-    meta = {"extra_conditions", "ambiguous_fields", "evidence", "evidence_source"}
+    meta = {
+        "extra_conditions",
+        "basic_conditions",
+        "notes",
+        "ambiguous_fields",
+        "evidence",
+        "evidence_source",
+    }
     assert set(CRITERIA_FIELDS) == model_fields - meta
 
 
@@ -214,7 +221,7 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     result = extract(_request())
     assert isinstance(result, ExtractionResult)
-    assert result.model_version == "mock+extract_v4"
+    assert result.model_version == "mock+extract_v5"
     # 목 응답도 스키마 검증을 다시 통과해야 합니다.
     again = ExtractionResult.model_validate_json(result.model_dump_json())
     assert again.criteria.notice_kind == "모집"

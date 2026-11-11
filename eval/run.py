@@ -23,7 +23,7 @@ from app.core.config import get_settings
 from app.extraction import ExtractionError, ExtractRequest, extract
 from app.extraction.schemas import ExtractedCriteria
 from app.parsers.dates import now_kst
-from eval.scoring import FIELDS, NoticeScore, score_notice, summarize
+from eval.scoring import AUX_FIELDS, FIELDS, NoticeScore, score_notice, summarize
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 GOLDEN_DIR = BACKEND_DIR / "tests" / "fixtures" / "golden"
@@ -150,6 +150,12 @@ def print_table(report: dict[str, Any]) -> None:
         f"| {'전체':<20} | {summary['correct']:>5} | {summary['total']:>5} | "
         f"{summary['accuracy']:>7.1%} |"
     )
+    for name in AUX_FIELDS:  # 보조 지표: 전체 정답률에 넣지 않음
+        value = summary["fields"][name]
+        print(
+            f"| {name + ' (보조)':<20} | {value['correct']:>5} | {value['total']:>5} | "
+            f"{value['accuracy']:>7.1%} |"
+        )
     print()
     print(f"목표 {summary['target']:.0%} 대비 {summary['gap']:+.1%}p")
 

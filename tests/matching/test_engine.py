@@ -474,6 +474,29 @@ def test_extra_conditions_make_conditional():
     assert result.extra_conditions == ["직전학기 봉사활동 20시간 이상"]
 
 
+def test_basic_conditions_and_notes_do_not_change_result():
+    """국적·중복 수혜 같은 기본 조건과 선발 방식 안내는 판정을 바꾸지 않습니다(extract_v5)."""
+    c = criteria(
+        min_gpa=3.0,
+        basic_conditions=["대한민국 국적", "타 장학금과 중복 수혜 불가"],
+        notes=["환산성적 석차순 선발", "「등록금재원 장학금 관리지침」을 따름"],
+    )
+    result = evaluate(profile(), c, TODAY)
+    assert result.result == "ELIGIBLE"
+    assert result.basic_conditions == ["대한민국 국적", "타 장학금과 중복 수혜 불가"]
+    assert result.notes == ["환산성적 석차순 선발", "「등록금재원 장학금 관리지침」을 따름"]
+
+
+def test_extra_condition_still_conditional_with_basic_and_notes():
+    c = criteria(
+        min_gpa=3.0,
+        extra_conditions=["고립·은둔 지원 프로그램을 수료한 자"],
+        basic_conditions=["대한민국 국적"],
+        notes=["예산 범위 내 선발"],
+    )
+    assert evaluate(profile(), c, TODAY).result == "CONDITIONAL"
+
+
 def test_any_unmet_is_ineligible_even_with_unknown():
     c = criteria(min_gpa=4.0, max_income_bracket=8, extra_conditions=["면접"])
     assert evaluate(profile(income_bracket=None), c, TODAY).result == "INELIGIBLE"

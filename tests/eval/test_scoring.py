@@ -91,7 +91,7 @@ def test_extra_predicted_scholarship_does_not_grow_denominator():
     extra = scholarship("없는 장학금")
     score = score_notice("n1", criteria(scholarships=[BASE]), criteria(scholarships=[BASE, extra]))
     assert not score.count_match
-    assert sum(v.total for v in score.fields.values()) == len(FIELDS)
+    assert sum(score.fields[name].total for name in FIELDS) == len(FIELDS)
     assert all(v.correct == v.total for v in score.fields.values())
 
 
@@ -111,7 +111,7 @@ def test_extraction_failure_counts_everything_wrong():
     score = score_notice("n1", criteria(scholarships=[BASE]), None)
     assert score.count_predicted is None
     assert sum(v.correct for v in score.fields.values()) == 0
-    assert sum(v.total for v in score.fields.values()) == len(FIELDS)
+    assert sum(score.fields[name].total for name in FIELDS) == len(FIELDS)
 
 
 def test_pair_scholarships_uses_each_prediction_once():
@@ -133,6 +133,16 @@ def test_summarize_accuracy_and_gap():
     assert summary["gap"] == pytest.approx(-0.4)
     assert summary["failed"] == 1
     assert summary["count_match"] == 1
+
+
+def test_needs_check_is_aux_and_not_in_total():
+    """자격을 좁히는 조건 유무만 보고, 전체 정답률 분모에는 넣지 않습니다(extract_v5)."""
+    want = {**BASE, "extra_conditions": ["고립·은둔 지원 프로그램 수료자"]}
+    got = {**BASE, "notes": ["석차순 선발"]}  # 좁히는 조건을 안내로 잘못 분류
+    score = score_notice("n1", criteria(scholarships=[want]), criteria(scholarships=[got]))
+    summary = summarize([score])
+    assert summary["fields"]["needs_check"] == {"correct": 0, "total": 1, "accuracy": 0.0}
+    assert summary["correct"] == 6 and summary["total"] == 6
 
 
 def test_golden_set_expected_answers_score_perfectly():

@@ -318,6 +318,8 @@ def test_detail(student, factory):  # noqa: F811
             "max_income_bracket": 8,
             "required_documents": ["재학증명서", "성적증명서"],
             "extra_conditions": ["봉사활동 20시간 이상"],
+            "basic_conditions": ["대한민국 국적"],
+            "notes": ["석차순 선발"],
             "evidence": {"min_gpa": "직전학기 평점 3.5 이상"},
             "evidence_source": {"min_gpa": "붙임1.zip / 선발 공고문.pdf"},
         },
@@ -346,6 +348,8 @@ def test_detail(student, factory):  # noqa: F811
         },
     ]
     assert body["extra_conditions"] == ["봉사활동 20시간 이상"]
+    assert body["basic_conditions"] == ["대한민국 국적"]
+    assert body["notes"] == ["석차순 선발"]
     assert body["required_documents"] == ["재학증명서", "성적증명서"]
     assert body["apply_start"] == "2026-11-01T00:00:00+09:00"
     assert body["notice"]["title"] == "교외장학금 3종 모집"
