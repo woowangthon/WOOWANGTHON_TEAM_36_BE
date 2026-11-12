@@ -92,6 +92,69 @@ def test_excludes_extra_semester_ambiguous_is_unknown():
     assert outcome("excludes_extra_semester", profile(), c) == "UNKNOWN"
 
 
+# --- 신·편입생 제외, 남은 정규학기 (extract_v6) ---------------------------------------
+
+
+@pytest.mark.parametrize(("semesters", "expected"), [(0, "UNMET"), (1, "MET"), (8, "MET")])
+def test_excludes_new_students(semesters, expected):
+    c = criteria(excludes_new_students=True)
+    assert outcome("excludes_new_students", profile(completed_semesters=semesters), c) == expected
+
+
+def test_excludes_new_students_false_is_not_compared():
+    c = criteria(excludes_new_students=False)
+    assert outcome("excludes_new_students", profile(completed_semesters=0), c) is None
+
+
+@pytest.mark.parametrize(
+    ("minimum", "semesters", "expected"),
+    [
+        (1, 0, "MET"),  # 신입생: 남은 학기 8
+        (1, 7, "MET"),  # 마지막 정규학기 재학 중
+        (1, 8, "UNMET"),  # 초과학기
+        (1, 16, "UNMET"),  # 음수여도 예외 없이 불충족
+        (2, 6, "MET"),
+        (2, 7, "UNMET"),
+        (8, 0, "MET"),
+    ],
+)
+def test_min_remaining_semesters(minimum, semesters, expected):
+    c = criteria(min_remaining_semesters=minimum)
+    p = profile(completed_semesters=semesters)
+    assert outcome("min_remaining_semesters", p, c) == expected
+
+
+@pytest.mark.parametrize("field", ["excludes_new_students", "min_remaining_semesters"])
+def test_new_conditions_ambiguous_is_unknown(field):
+    assert outcome(field, profile(), criteria(ambiguous_fields=[field])) == "UNKNOWN"
+
+
+def test_new_conditions_absent_are_not_compared():
+    conditions = {check.condition for check in evaluate(profile(), criteria(), TODAY).checks}
+    assert not conditions & {"excludes_new_students", "min_remaining_semesters"}
+
+
+def test_new_condition_unmet_is_ineligible():
+    c = criteria(excludes_new_students=True)
+    assert evaluate(profile(completed_semesters=0), c, TODAY).result == "INELIGIBLE"
+
+
+def test_new_conditions_follow_extra_semester_in_checklist():
+    c = criteria(
+        excludes_extra_semester=True,
+        excludes_new_students=True,
+        min_remaining_semesters=1,
+        enrollment_status=["재학"],
+    )
+    order = [check.condition for check in evaluate(profile(), c, TODAY).checks]
+    assert order[:4] == [
+        "excludes_extra_semester",
+        "excludes_new_students",
+        "min_remaining_semesters",
+        "enrollment_status",
+    ]
+
+
 # --- 재학상태 ------------------------------------------------------------------------
 
 

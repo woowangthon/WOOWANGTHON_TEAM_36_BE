@@ -55,6 +55,8 @@ def _min_score_100(p: Profile, c: ScholarshipCriteria) -> rules.Outcome:
 RULES: tuple[tuple[ConditionName, Rule], ...] = (
     ("target_grades", _no_date(rules.target_grades)),
     ("excludes_extra_semester", _no_date(rules.excludes_extra_semester)),
+    ("excludes_new_students", _no_date(rules.excludes_new_students)),
+    ("min_remaining_semesters", _no_date(rules.min_remaining_semesters)),
     ("enrollment_status", _no_date(rules.enrollment_status)),
     ("min_gpa", _no_date(_min_gpa)),
     ("min_score_100", _no_date(_min_score_100)),

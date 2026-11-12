@@ -29,13 +29,11 @@
       "target_program": "제한없음",
       "required_documents": [],
       "extra_conditions": [
-        "2026년에 입학한 신입생",
         "고등학교 졸업 학력 취득 후 5년이 경과되지 않은 자",
-        "공고일 기준 논산시에 계속하여 1년 이상 주민등록"
-      ],
-      "basic_conditions": [
+        "공고일 기준 논산시에 계속하여 1년 이상 주민등록",
         "2026년 상반기 (재)논산시장학회 장학생 제외"
       ],
+      "basic_conditions": [],
       "notes": [],
       "ambiguous_fields": [],
       "evidence": {
