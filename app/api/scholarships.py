@@ -7,9 +7,14 @@
 - 공지에 읽지 못한 첨부가 있으면 판정을 "지원 가능"이 아니라 "확인 필요"로 낮춥니다(D8).
   목록은 같은 쿼리의 EXISTS 열로 확인해 쿼리 수를 늘리지 않습니다.
   `state`를 주면 내 장학금 화면용으로 마감(`CLOSED`)된 것도 포함합니다.
-- 프로필 값은 로그에 남기지 않습니다(4.2).
+- 자격을 좁히는 조건(`extra_conditions`)에 사용자가 답한 값(✓/✗)을 판정에 반영합니다(5.3).
+  답은 암호화해 저장하고 목록·상세 모두 쿼리 한 번으로 읽습니다.
+- 프로필 값과 조건 답은 로그에 남기지 않습니다(4.2). 사용자는 `user_id`로만 기록합니다.
 """
 
+import logging
+from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Annotated, Any
 
@@ -19,16 +24,20 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.api.profile import profile_from_row
+from app.core.crypto import decrypt, encrypt, field_aad
 from app.core.db import get_db
+from app.core.logging import log_event
 from app.core.security import ConsentedUser
 from app.extraction.schemas import BenefitType, ScholarshipCriteria
-from app.matching.engine import evaluate
+from app.matching.engine import Evaluation, evaluate
+from app.matching.engine import condition_key as key_of
 from app.models import (
     Notice,
     NoticeAttachment,
     Scholarship,
     Source,
     User,
+    UserConditionAnswer,
     UserProfile,
     UserScholarshipState,
 )
@@ -36,9 +45,13 @@ from app.models.notice import UNREAD_ATTACHMENT_STATUSES
 from app.parsers.dates import now_kst, to_kst
 from app.schemas.api.profile import Profile
 from app.schemas.api.scholarships import (
+    ConditionAnswer,
+    ConditionAnswerRequest,
+    ConditionAnswerResponse,
     MatchResult,
     NoticeAttachmentText,
     NoticeRef,
+    OpenCondition,
     ResultFilter,
     ScholarshipDetail,
     ScholarshipListResponse,
@@ -51,6 +64,8 @@ from app.schemas.api.scholarships import (
     StateResponse,
     UnreadAttachment,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/scholarships", tags=["scholarships"])
 
@@ -91,8 +106,47 @@ def _load_profile(db: Session, user: User) -> Profile:
     return profile_from_row(row)
 
 
+def _answer_aad(user_id: int, scholarship_id: int, key: str) -> bytes:
+    """답 암호문을 사용자·장학금·조건에 묶습니다. 다른 행으로 옮기면 복호화가 실패합니다."""
+    return field_aad(user_id, f"cond:{scholarship_id}:{key}")
+
+
+def load_condition_answers(
+    db: Session, user_ids: Iterable[int] | None, scholarship_ids: Iterable[int] | None
+) -> dict[int, dict[int, dict[str, ConditionAnswer]]]:
+    """{user_id: {scholarship_id: {condition_key: 답}}}. 쿼리 한 번입니다.
+
+    `None`이면 그 기준으로 거르지 않습니다. 복호화에 실패한 답은 답하지 않은 것('?')으로 둡니다.
+    """
+    query = select(UserConditionAnswer)
+    if user_ids is not None:
+        query = query.where(UserConditionAnswer.user_id.in_(list(user_ids)))
+    if scholarship_ids is not None:
+        query = query.where(UserConditionAnswer.scholarship_id.in_(list(scholarship_ids)))
+    answers: dict[int, dict[int, dict[str, ConditionAnswer]]] = defaultdict(
+        lambda: defaultdict(dict)
+    )
+    for row in db.scalars(query):
+        try:
+            value = decrypt(
+                row.enc_answer, aad=_answer_aad(row.user_id, row.scholarship_id, row.condition_key)
+            )
+        except Exception as error:
+            log_event(
+                logger,
+                "조건 답을 읽지 못해 건너뜀",
+                logging.ERROR,
+                user_id=row.user_id,
+                error=type(error).__name__,
+            )
+            continue
+        if value in ("YES", "NO"):
+            answers[row.user_id][row.scholarship_id][row.condition_key] = value
+    return answers
+
+
 def _summary(
-    s: Scholarship, notice: Notice, source: Source, state: str | None, result: MatchResult
+    s: Scholarship, notice: Notice, source: Source, state: str | None, evaluation: Evaluation
 ) -> dict[str, Any]:
     return {
         "id": s.id,
@@ -106,8 +160,14 @@ def _summary(
         "status": s.status,
         "deadline_conflict": s.deadline_conflict,
         "posted_at": _kst(notice.posted_at),
-        "result": result,
+        "result": evaluation.result,
         "my_state": state,
+        "open_conditions": [
+            OpenCondition(key=c.key, text=c.text)
+            for c in evaluation.extra_checks
+            if c.answer is None
+        ],
+        "other_unknown": evaluation.other_unknown,
     }
 
 
@@ -173,13 +233,16 @@ def list_scholarships(
 
     today = now_kst().date()
     wanted = RESULT_FILTERS[result]
+    answers = load_condition_answers(db, [user.id], None).get(user.id, {})
     items = []
     for s, notice, src, my_state, has_unread in db.execute(query):
         criteria = ScholarshipCriteria.model_validate(s.criteria)
-        outcome = evaluate(profile, criteria, today, has_unread_attachments=has_unread).result
-        if outcome in wanted:
+        evaluation = evaluate(
+            profile, criteria, today, has_unread_attachments=has_unread, answers=answers.get(s.id)
+        )
+        if evaluation.result in wanted:
             items.append(
-                ScholarshipSummary.model_validate(_summary(s, notice, src, my_state, outcome))
+                ScholarshipSummary.model_validate(_summary(s, notice, src, my_state, evaluation))
             )
     return ScholarshipListResponse(items=items)
 
@@ -205,7 +268,14 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
     unread = [a for a in attachments if a.status in UNREAD_ATTACHMENT_STATUSES]
     read = [a for a in attachments if a.status == "OK"]
     criteria = ScholarshipCriteria.model_validate(s.criteria)
-    evaluation = evaluate(profile, criteria, now_kst().date(), has_unread_attachments=bool(unread))
+    answers = load_condition_answers(db, [user.id], [s.id]).get(user.id, {}).get(s.id)
+    evaluation = evaluate(
+        profile,
+        criteria,
+        now_kst().date(),
+        has_unread_attachments=bool(unread),
+        answers=answers,
+    )
     siblings = db.execute(
         select(Scholarship.id, Scholarship.name, Scholarship.status)
         .where(Scholarship.notice_id == notice.id, Scholarship.id != s.id)
@@ -213,10 +283,11 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
     ).all()
     return ScholarshipDetail.model_validate(
         {
-            **_summary(s, notice, src, my_state, evaluation.result),
+            **_summary(s, notice, src, my_state, evaluation),
             "apply_start": _kst(s.apply_start),
             "conditions": evaluation.checks,
             "extra_conditions": evaluation.extra_conditions,
+            "extra_checks": evaluation.extra_checks,
             "basic_conditions": evaluation.basic_conditions,
             "notes": evaluation.notes,
             "required_documents": criteria.required_documents,
@@ -272,3 +343,93 @@ def delete_state(scholarship_id: int, user: ConsentedUser, db: DB) -> Response:
         db.delete(state)
         db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+CONDITION_ERRORS = {**AUTH_ERRORS, 404: {"description": "장학금·조건 없음 또는 프로필 미입력"}}
+
+
+def _condition_target(db: Session, scholarship_id: int, key: str) -> Scholarship:
+    """장학금의 지금 `extra_conditions`에 그 key가 있어야 합니다(재추출로 바뀐 문장은 404)."""
+    s = db.get(Scholarship, scholarship_id)
+    if s is None:
+        raise _not_found()
+    criteria = ScholarshipCriteria.model_validate(s.criteria)
+    if key not in {key_of(text) for text in criteria.extra_conditions}:
+        raise _not_found("조건을 찾을 수 없습니다")
+    return s
+
+
+def _answer_response(
+    db: Session, user: User, s: Scholarship, key: str, answer: ConditionAnswer | None
+) -> ConditionAnswerResponse:
+    """답을 반영한 판정을 다시 계산해 돌려줍니다. 화면은 이 값으로 배지를 바로 바꿉니다."""
+    profile = _load_profile(db, user)
+    has_unread = db.scalar(
+        select(
+            exists().where(
+                NoticeAttachment.notice_id == s.notice_id,
+                NoticeAttachment.status.in_(UNREAD_ATTACHMENT_STATUSES),
+            )
+        )
+    )
+    answers = load_condition_answers(db, [user.id], [s.id]).get(user.id, {}).get(s.id)
+    evaluation = evaluate(
+        profile,
+        ScholarshipCriteria.model_validate(s.criteria),
+        now_kst().date(),
+        has_unread_attachments=bool(has_unread),
+        answers=answers,
+    )
+    return ConditionAnswerResponse(
+        scholarship_id=s.id, key=key, answer=answer, result=evaluation.result
+    )
+
+
+@router.put(
+    "/{scholarship_id}/conditions/{condition_key}",
+    response_model=ConditionAnswerResponse,
+    responses=CONDITION_ERRORS,
+)
+def put_condition_answer(
+    scholarship_id: int,
+    condition_key: str,
+    body: ConditionAnswerRequest,
+    user: ConsentedUser,
+    db: DB,
+) -> ConditionAnswerResponse:
+    """자격을 좁히는 조건 1줄에 답합니다: YES(해당돼요) / NO(아니에요). 새 값으로 바꿉니다."""
+    s = _condition_target(db, scholarship_id, condition_key)
+    enc_answer = encrypt(body.answer, aad=_answer_aad(user.id, s.id, condition_key))
+    answered_at = now_kst()
+    upsert = insert(UserConditionAnswer).values(
+        user_id=user.id,
+        scholarship_id=s.id,
+        condition_key=condition_key,
+        enc_answer=enc_answer,
+        answered_at=answered_at,
+    )
+    db.execute(
+        upsert.on_conflict_do_update(
+            index_elements=["user_id", "scholarship_id", "condition_key"],
+            set_={"enc_answer": enc_answer, "answered_at": answered_at},
+        )
+    )
+    db.commit()
+    return _answer_response(db, user, s, condition_key, body.answer)
+
+
+@router.delete(
+    "/{scholarship_id}/conditions/{condition_key}",
+    response_model=ConditionAnswerResponse,
+    responses=CONDITION_ERRORS,
+)
+def delete_condition_answer(
+    scholarship_id: int, condition_key: str, user: ConsentedUser, db: DB
+) -> ConditionAnswerResponse:
+    """답을 지워 다시 '?'(확인 필요)로 돌립니다. 답이 없어도 같은 응답입니다."""
+    s = _condition_target(db, scholarship_id, condition_key)
+    row = db.get(UserConditionAnswer, (user.id, s.id, condition_key))
+    if row is not None:
+        db.delete(row)
+        db.commit()
+    return _answer_response(db, user, s, condition_key, None)

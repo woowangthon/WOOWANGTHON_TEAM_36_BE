@@ -17,6 +17,7 @@ TABLES = {
     "notice_attachments",
     "scholarships",
     "user_scholarship_states",
+    "user_condition_answers",
     "crawl_runs",
     "notification_logs",
     "notification_runs",

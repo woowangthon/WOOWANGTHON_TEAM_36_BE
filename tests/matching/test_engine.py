@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 
 from app.extraction.schemas import ScholarshipCriteria
-from app.matching.engine import evaluate
+from app.matching.engine import condition_key, evaluate
 from app.parsers.dates import kst
 from app.schemas.api.profile import Profile
 
@@ -583,6 +583,92 @@ def test_v3_result_has_no_evidence_source():
     c = criteria(min_gpa=3.5, evidence={"min_gpa": "평점 3.5 이상"})
     [check] = [ch for ch in evaluate(profile(), c, TODAY).checks if ch.condition == "min_gpa"]
     assert (check.evidence, check.evidence_source) == ("평점 3.5 이상", None)
+
+
+# --- 자격을 좁히는 조건에 사용자가 답하기 (5.3, 2026-11-12) ----------------------------
+
+VOLUNTEER = "봉사활동 20시간 이상"
+TOEIC = "TOEIC 500점 이상"
+
+
+def answers(**by_text: str) -> dict[str, str]:
+    return {condition_key(text): value for text, value in by_text.items()}
+
+
+def test_condition_key_normalizes_spaces_and_unicode():
+    assert condition_key(" 신·편입생  제외\n") == condition_key("신·편입생 제외")
+    assert condition_key("신·편입생 제외") == "85441f0a051386d8"
+    # NFD(자모 분리)로 들어와도 같은 키
+    import unicodedata
+
+    assert condition_key(unicodedata.normalize("NFD", VOLUNTEER)) == condition_key(VOLUNTEER)
+    assert condition_key(VOLUNTEER) != condition_key(TOEIC)
+    assert len(condition_key(VOLUNTEER)) == 16
+
+
+def test_no_answers_keeps_previous_result():
+    c = criteria(min_gpa=3.0, extra_conditions=[VOLUNTEER])
+    plain = evaluate(profile(), c, TODAY)
+    assert plain.result == "CONDITIONAL"
+    assert evaluate(profile(), c, TODAY, answers={}).result == "CONDITIONAL"
+    assert [(x.text, x.answer) for x in plain.extra_checks] == [(VOLUNTEER, None)]
+    assert plain.other_unknown is False
+
+
+def test_all_yes_makes_eligible():
+    c = criteria(min_gpa=3.0, extra_conditions=[VOLUNTEER, TOEIC])
+    result = evaluate(profile(), c, TODAY, answers=answers(**{VOLUNTEER: "YES", TOEIC: "YES"}))
+    assert result.result == "ELIGIBLE"
+    assert [x.answer for x in result.extra_checks] == ["YES", "YES"]
+
+
+def test_some_unanswered_stays_conditional():
+    c = criteria(min_gpa=3.0, extra_conditions=[VOLUNTEER, TOEIC])
+    result = evaluate(profile(), c, TODAY, answers=answers(**{VOLUNTEER: "YES"}))
+    assert result.result == "CONDITIONAL"
+    assert [x.answer for x in result.extra_checks] == ["YES", None]
+
+
+def test_any_no_makes_ineligible():
+    c = criteria(min_gpa=3.0, max_income_bracket=8, extra_conditions=[VOLUNTEER, TOEIC])
+    # 다른 조건을 몰라도(소득분위) ✗ 하나면 지원 불가
+    result = evaluate(profile(income_bracket=None), c, TODAY, answers=answers(**{VOLUNTEER: "NO"}))
+    assert result.result == "INELIGIBLE"
+
+
+@pytest.mark.parametrize(
+    ("fields", "unread"),
+    [
+        ({"max_income_bracket": 8}, False),  # 프로필로 모르는 조건이 남음
+        ({}, True),  # 못 읽은 첨부
+    ],
+)
+def test_yes_with_other_unknown_stays_conditional(fields, unread):
+    c = criteria(min_gpa=3.0, extra_conditions=[VOLUNTEER], **fields)
+    result = evaluate(
+        profile(income_bracket=None),
+        c,
+        TODAY,
+        has_unread_attachments=unread,
+        answers=answers(**{VOLUNTEER: "YES"}),
+    )
+    assert result.result == "CONDITIONAL"
+    assert result.other_unknown is True
+
+
+def test_yes_does_not_override_unmet():
+    c = criteria(min_gpa=4.0, extra_conditions=[VOLUNTEER])
+    assert evaluate(profile(), c, TODAY, answers=answers(**{VOLUNTEER: "YES"})).result == (
+        "INELIGIBLE"
+    )
+
+
+def test_answer_for_changed_sentence_is_ignored():
+    """재추출로 문장이 바뀌면 옛 답은 맞지 않아 다시 '?'가 됩니다."""
+    c = criteria(min_gpa=3.0, extra_conditions=["봉사활동 30시간 이상"])
+    result = evaluate(profile(), c, TODAY, answers=answers(**{VOLUNTEER: "YES"}))
+    assert result.result == "CONDITIONAL"
+    assert [x.answer for x in result.extra_checks] == [None]
 
 
 def test_engine_is_pure():

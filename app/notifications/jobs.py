@@ -35,7 +35,7 @@ from sqlalchemy import and_, or_, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.profile import profile_from_row
-from app.api.scholarships import unread_attachments_exist
+from app.api.scholarships import load_condition_answers, unread_attachments_exist
 from app.core.config import get_settings
 from app.core.db import get_sessionmaker
 from app.core.logging import configure_logging, log_event
@@ -211,7 +211,7 @@ def load_candidates(session: Session, now: datetime) -> list[Candidate]:
 
 
 def load_recipients(session: Session, candidates: list[Candidate]) -> list[tuple[str, Recipient]]:
-    """(이메일, 수신자) 목록. 사용자 수와 관계없이 쿼리 3번입니다."""
+    """(이메일, 수신자) 목록. 사용자 수와 관계없이 쿼리 4번입니다(상태·기록·조건 답·수신자)."""
     ids = [c.scholarship_id for c in candidates]
     states: dict[int, dict[int, str]] = defaultdict(dict)
     for row in session.execute(
@@ -233,6 +233,8 @@ def load_recipients(session: Session, candidates: list[Candidate]) -> list[tuple
         ).where(NotificationLog.scholarship_id.in_(ids))
     ):
         sent[row.user_id].add((row.scholarship_id, row.kind, row.apply_end))
+
+    answers = load_condition_answers(session, None, ids)
 
     recipients = []
     users = (
@@ -261,6 +263,7 @@ def load_recipients(session: Session, candidates: list[Candidate]) -> list[tuple
                     profile=profile,
                     states=states.get(user_id, {}),
                     sent=frozenset(sent.get(user_id, ())),
+                    answers=answers.get(user_id, {}),
                 ),
             )
         )
