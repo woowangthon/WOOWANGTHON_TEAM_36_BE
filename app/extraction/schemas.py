@@ -45,6 +45,7 @@ CriteriaField = Literal[
     "grade_basis",
     "min_credits",
     "target_nationality",
+    "school_excluded",
     "gender",
     "max_age",
     "max_income_bracket",
@@ -109,6 +110,10 @@ class ScholarshipCriteria(BaseModel):
     # 국적 조건 (extract_v7). domestic = 대한민국 국적자 대상, foreign = 외국인 대상, null = 없음
     target_nationality: Nationality | None = None
     max_age: int | None = Field(default=None, ge=0, le=100)  # 만 나이
+    # 학교 조건을 충북대학교가 충족하지 못함 (extract_v8). 예: "비수도권 사립대학", "전문대학".
+    # true면 지원 불가. 조건이 없거나 충북대학교가 충족하면 null(false도 쓰지 않음).
+    # 기본값이 None이라 DB에 저장된 v7 결과도 그대로 읽힙니다.
+    school_excluded: bool | None = None
 
     max_income_bracket: float | None = None
 
@@ -125,7 +130,9 @@ class ScholarshipCriteria(BaseModel):
     # 필드로 옮기지 못한 문장은 판정 영향에 따라 세 갈래로 나눕니다(extract_v5, v6에서 기준 수정).
     # - extra_conditions: 프로필로 판정할 수 없는 자격 → 확인 필요.
     #   프로그램 수료, 외부 기준 참조, 수혜·선발 이력, 필드와 섞인 문장 등.
-    #   v6부터 중복 수혜·기존 장학생 제외·관리지침 참조도 여기입니다.
+    #   v6부터 중복 수혜·기존 장학생 제외도 여기입니다. 학생이 답할 수 있는 문장만 넣습니다(v8).
+    #   v8부터 세부 자격이 같은 공지에 있는 규정 출처("관리지침을 따름")는 basic_conditions,
+    #   충북대학교가 충족하지 못하는 학교 조건은 school_excluded입니다.
     # - basic_conditions: 학교 정보로 알 수 있거나 재학생 거의 모두가 충족하는 조건
     #   (4년제·지방 대학 재학, 징계 없음 등) → 판정은 그대로, 상세에 "지원 전 확인".
     #   국적은 v7부터 target_nationality로 판정합니다.

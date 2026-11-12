@@ -16,6 +16,7 @@
       "min_score_100": 85.0,
       "grade_basis": "전체",
       "min_credits": 12,
+      "target_nationality": "domestic",
       "gender": null,
       "max_age": null,
       "max_income_bracket": null,
@@ -47,6 +48,7 @@
       "evidence": {
         "apply_end": "제출기한: 2026년 10월 26일 12시까지 ( 기간 연장 ~10.27 18:00)",
         "target_grades": "2027 학년도 1 학기 기준 3 학년 1 학기에 재학 예정인 자",
+        "target_nationality": "대한민국 국적보유자",
         "min_credits": "매 정규학기 12 학점 이상 이수하고 전체학기 백분율 성적 85 점 이상인자",
         "min_score_100": "전체학기 백분율 성적 85 점 이상인자",
         "grade_basis": "전체학기 백분율 성적 85 점 이상인자"

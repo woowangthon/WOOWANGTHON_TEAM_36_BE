@@ -84,6 +84,7 @@ RULES: tuple[tuple[ConditionName, Rule], ...] = (
     ("excludes_transfer_students", _no_date(rules.excludes_transfer_students)),
     ("min_remaining_semesters", _no_date(rules.min_remaining_semesters)),
     ("enrollment_status", _no_date(rules.enrollment_status)),
+    ("school_excluded", _no_date(rules.school_excluded)),
     ("min_gpa", _no_date(_min_gpa)),
     ("min_score_100", _no_date(_min_score_100)),
     ("min_credits", _no_date(rules.min_credits)),

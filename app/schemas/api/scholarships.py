@@ -22,6 +22,7 @@ ConditionName = Literal[
     "excludes_transfer_students",  # 편입생 제외 (extract_v7)
     "min_remaining_semesters",  # 남은 정규학기 N학기 이상 (extract_v6)
     "enrollment_status",
+    "school_excluded",  # 학교 조건 (extract_v8)
     "min_gpa",
     "min_score_100",
     "min_credits",

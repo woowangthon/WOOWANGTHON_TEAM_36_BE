@@ -263,7 +263,7 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     result = extract(_request())
     assert isinstance(result, ExtractionResult)
-    assert result.model_version == "mock+extract_v7"
+    assert result.model_version == "mock+extract_v8"
     # 목 응답도 스키마 검증을 다시 통과해야 합니다.
     again = ExtractionResult.model_validate_json(result.model_dump_json())
     assert again.criteria.notice_kind == "모집"
@@ -276,3 +276,10 @@ def test_extract_without_model_name_fails(monkeypatch):
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     with pytest.raises(ExtractionError):
         extract(_request())
+
+
+def test_v7_criteria_without_school_excluded_load():
+    """extract_v8 이전에 저장된 조건(school_excluded 없음)도 읽혀야 합니다."""
+    s = ScholarshipCriteria.model_validate({"scholarship_name": "v7 장학금"})
+    assert s.school_excluded is None
+    assert "school_excluded" in CRITERIA_FIELDS
