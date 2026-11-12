@@ -438,6 +438,16 @@ def test_display_name_has_no_evidence():
     assert "`evidence`" in line and "`evidence_source`" in line
 
 
+def test_summary_keeps_widening_exceptions():
+    """단서·예외를 빼면 자격이 뒤집히므로 요약에 담거나 비웁니다(extract_v10, eval 검토)."""
+    line = _prompt_line("- **단서·예외**")
+    assert "반드시 담는다" in line
+    assert "`summary`를 비워 둔다(`null`)" in line
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert '| "국가·교내장학금 외 장학금을 받지 않는 학생" |' in prompt
+    assert "| (비움, `null`) |" in prompt
+
+
 def test_prompt_v10_drops_source_line_rule():
     """규정 출처 문장은 조건이 아니므로 basic_conditions 예시에서 뺐습니다(extract_v10)."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")

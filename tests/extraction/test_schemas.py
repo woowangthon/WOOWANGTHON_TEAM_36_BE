@@ -381,3 +381,14 @@ def test_condition_summary_cleaned_or_dropped():
 def test_condition_text_in_gemini_schema():
     schema = json.dumps(ExtractedCriteria.model_json_schema())
     assert "ConditionText" in schema and '"summary"' in schema
+
+
+def test_condition_summary_explicit_null_from_gemini():
+    """단서·예외를 25자에 담지 못하면 Gemini가 summary를 null로 보냅니다(extract_v10)."""
+    item = ExtractedCriteria.model_json_schema()["$defs"]["ConditionText"]
+    assert {"type": "null"} in item["properties"]["summary"]["anyOf"]
+    assert "summary" not in item["required"]
+    c = ScholarshipCriteria.model_validate(
+        {**MINIMAL, "extra_conditions": [{"text": "고등학교를 졸업한 자(단, …)", "summary": None}]}
+    )
+    assert c.extra_conditions[0].summary is None
