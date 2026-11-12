@@ -123,7 +123,7 @@ def server_error(code: int) -> errors.APIError:
 def test_success(gemini, clock):
     models = gemini([json.dumps(VALID_RESPONSE)])
     result = extract(request())
-    assert result.model_version == "gemini-test-flash+extract_v9"
+    assert result.model_version == "gemini-test-flash+extract_v10"
     scholarship = result.criteria.scholarships[0]
     assert scholarship.apply_end == datetime(2026, 11, 12, 18, 0, tzinfo=SEOUL)
     assert scholarship.ambiguous_fields == ["max_income_bracket"]
@@ -185,6 +185,10 @@ def test_prompt_contains_required_rules():
         "세 목록 어디에도 다시 넣지 않는다",  # 필드로 옮긴 문장
         "문장 전체",  # 섞인 문장
         "수혜·선발 이력",  # 이력 조건 → extra_conditions
+        "`summary`",  # 조건 요약(extract_v10)
+        "맞아요",  # 긍정형: "맞아요" = 충족
+        "어느 목록에도 넣지 않는다",  # 같은 공지에 세부 자격이 있는 규정 출처
+        "직접 답할 부분만",  # 섞인 문장 요약
     ):
         assert rule in prompt, rule
 
@@ -338,7 +342,7 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert extract(request()).model_version == "mock+extract_v9"
+    assert extract(request()).model_version == "mock+extract_v10"
 
 
 # --- import 경계 (8.1) ---
@@ -412,7 +416,14 @@ def test_regulation_title_with_details_is_not_external_reference():
     """세부 자격이 같은 공지에 있으면 "관리지침을 따름"은 외부 기준 참조가 아닙니다(extract_v8)."""
     line = _prompt_line("- **외부 기준 참조**")
     assert "같은 공지에 이어서 적혀 있으면" in line
-    assert "`basic_conditions`에 넣는다" in line
+    assert "어느 목록에도 넣지 않는다" in line  # extract_v10: basic_conditions에도 넣지 않음
+    assert "`basic_conditions`에 넣는다" not in line
+
+
+def test_prompt_v10_drops_source_line_rule():
+    """규정 출처 문장은 조건이 아니므로 basic_conditions 예시에서 뺐습니다(extract_v10)."""
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert "세부 자격이 같은 공지에 적힌 규정의 출처 문장: " not in prompt
 
 
 def test_extra_conditions_must_be_answerable():

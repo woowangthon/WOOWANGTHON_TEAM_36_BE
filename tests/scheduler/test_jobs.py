@@ -213,7 +213,7 @@ def test_fixture_site_with_mock_ai(session_factory):
     assert {r.external_id for r in rows} == {"pVAfFxOycuAihHhbGS0LAc", "aq74eFJIirVMESsaQS7qtM"}
     for row in rows:
         assert row.extract_status == "DONE"
-        assert row.model_version == "mock+extract_v9"
+        assert row.model_version == "mock+extract_v10"
         assert row.notice_kind == "모집"
         assert len(row.content_hash) == 64
         [scholarship] = row.scholarships
