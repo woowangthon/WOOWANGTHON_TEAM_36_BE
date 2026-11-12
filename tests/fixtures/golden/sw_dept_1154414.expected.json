@@ -32,10 +32,11 @@
         "한국장학재단 학자금 지원구간 통지서",
         "통장 사본"
       ],
-      "extra_conditions": [],
-      "basic_conditions": [
-        "사이버대학교 재학생 불가",
+      "extra_conditions": [
         "기존 선발 학생 지원 불가"
+      ],
+      "basic_conditions": [
+        "사이버대학교 재학생 불가"
       ],
       "notes": [],
       "ambiguous_fields": [],

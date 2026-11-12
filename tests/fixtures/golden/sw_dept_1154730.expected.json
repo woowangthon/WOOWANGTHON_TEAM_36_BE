@@ -9,6 +9,8 @@
       "apply_end": "2026-11-12T18:00:00+09:00",
       "target_grades": null,
       "excludes_extra_semester": null,
+      "excludes_new_students": true,
+      "min_remaining_semesters": 1,
       "enrollment_status": [
         "재학"
       ],
@@ -30,15 +32,16 @@
       ],
       "extra_conditions": [
         "2023년 이후 고립·은둔 지원 프로그램을 수료한 자",
-        "신·편입생 제외",
-        "신청시작일 기준 잔여 정규학기 1개학기 이상"
+        "푸른등대 기부장학금은 동일 학기에 1개 기부자 유형만 신청 가능"
       ],
       "basic_conditions": [],
       "notes": [],
       "ambiguous_fields": [],
       "evidence": {
         "apply_end": "2026. 10. 22.( 목 ) 09:00 ∼ 11. 12.( 목 ) 18:00",
-        "enrollment_status": "대한민국 국적의 대학교 재학생"
+        "enrollment_status": "대한민국 국적의 대학교 재학생",
+        "excludes_new_students": "※ 신·편입생제외, 푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자",
+        "min_remaining_semesters": "※ 신·편입생제외, 푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자"
       }
     },
     {
@@ -49,6 +52,8 @@
       "apply_end": "2026-11-12T18:00:00+09:00",
       "target_grades": null,
       "excludes_extra_semester": null,
+      "excludes_new_students": true,
+      "min_remaining_semesters": 1,
       "enrollment_status": [
         "재학"
       ],
@@ -67,8 +72,7 @@
       "target_program": "제한없음",
       "required_documents": [],
       "extra_conditions": [
-        "신·편입생 제외",
-        "신청시작일 기준 잔여 정규학기 1개학기 이상"
+        "푸른등대 기부장학금은 동일 학기에 1개 기부자 유형만 신청 가능"
       ],
       "basic_conditions": [
         "지방 소재(서울·인천·경기 외) 대학교 재학생"
@@ -77,7 +81,9 @@
       "ambiguous_fields": [],
       "evidence": {
         "apply_end": "2026. 10. 22.( 목 ) 09:00 ∼ 11. 12.( 목 ) 18:00",
-        "target_department": "농업, 수산업, 축산업, 산림업 관련 학과 전공자"
+        "target_department": "농업, 수산업, 축산업, 산림업 관련 학과 전공자",
+        "excludes_new_students": "※ 신·편입생제외, 푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자",
+        "min_remaining_semesters": "※ 신·편입생제외, 푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자"
       }
     }
   ]

@@ -33,11 +33,10 @@
       "target_program": "제한없음",
       "required_documents": [],
       "extra_conditions": [
-        "공고일 기준 1년 전부터 계속해서 대전광역시에 주소"
-      ],
-      "basic_conditions": [
+        "공고일 기준 1년 전부터 계속해서 대전광역시에 주소",
         "2026년 상반기 인재육성 장학금 수혜자 제외"
       ],
+      "basic_conditions": [],
       "notes": [],
       "ambiguous_fields": [
         "apply_start"

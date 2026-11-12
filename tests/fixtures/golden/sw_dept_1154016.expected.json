@@ -26,7 +26,9 @@
       "target_department": "소프트웨어학부 포함",
       "target_program": "제한없음",
       "required_documents": [],
-      "extra_conditions": [],
+      "extra_conditions": [
+        "기본 자격요건: 「충북대학교 등록금재원 장학금 관리지침」을 따름"
+      ],
       "basic_conditions": [],
       "notes": [
         "직전학기 학업성적 80% + 활동점수 20% 환산성적 석차순 선발"
@@ -69,7 +71,9 @@
       "target_department": "소프트웨어학부 포함",
       "target_program": "제한없음",
       "required_documents": [],
-      "extra_conditions": [],
+      "extra_conditions": [
+        "기본 자격요건: 「충북대학교 등록금재원 장학금 관리지침」을 따름"
+      ],
       "basic_conditions": [],
       "notes": [],
       "ambiguous_fields": [],
