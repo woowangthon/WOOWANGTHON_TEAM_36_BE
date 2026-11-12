@@ -183,6 +183,25 @@ def test_prompt_contains_required_rules():
         assert rule in prompt, rule
 
 
+def _prompt_line(prefix: str) -> str:
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    return next(line for line in prompt.splitlines() if line.lstrip().startswith(prefix))
+
+
+def test_transfer_only_exclusion_is_not_new_student_field():
+    """편입생만 제외하면 신입생을 떨어뜨리지 않게 새 필드에 넣지 않습니다(편입생 아님 간주)."""
+    line = _prompt_line("- `excludes_new_students`")
+    assert "**신입생을 제외하면** `true`" in line
+    assert "**편입생만** 제외하면 이 필드에 넣지 않고 `basic_conditions`" in line
+
+
+def test_basic_conditions_only_when_school_satisfies():
+    """학교 정보로 판정되더라도 충북대가 충족하지 못하는 조건은 basic이 아니라 extra입니다."""
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert "충북대학교가 충족하는" in prompt
+    assert "충족하지 못하는" in prompt
+
+
 def test_input_limit_is_100k_chars():
     """D5: 3만 자면 공고문 첨부 하나(KOSAF 업무처리기준 2.8만 자)로도 넘치는 공지가 있습니다."""
     assert MAX_INPUT_CHARS == 100_000
