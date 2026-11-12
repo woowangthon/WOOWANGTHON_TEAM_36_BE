@@ -706,6 +706,53 @@ def test_recruit_without_deadline_closes_after_60_days(crawl, site, extractor, s
     assert len(extractor.requests) == 1
 
 
+def test_recruit_without_deadline_and_unread_attachment_closes_after_14_days(
+    crawl, site, extractor, session_factory
+):
+    """마감일이 읽지 못한 첨부에만 있을 수 있어 상시 기간을 14일로 줄임(T45)."""
+    scan = Attachment(name="공고문.hwp", url="https://example.test/f/scan")  # 받지 못함 → FAILED
+    site.post("100", posted_at=kst(2026, 10, 1, 9, 0), attachments=(scan,))
+    extractor.set("2026 장학생 모집", result("모집", ("A 장학금", None)))
+    crawl(at=kst(2026, 10, 2, 9, 0))
+    assert [f.status for f in notices(session_factory)[0].files] == ["FAILED"]
+    assert scholarships(session_factory)["A 장학금"].status == "ALWAYS"
+
+    crawl(at=kst(2026, 10, 15, 8, 59))  # 게시 후 14일 직전
+    assert scholarships(session_factory)["A 장학금"].status == "ALWAYS"
+
+    crawl(at=kst(2026, 10, 15, 9, 0))  # 게시 후 14일
+    assert scholarships(session_factory)["A 장학금"].status == "CLOSED"
+
+
+def test_unread_attachment_closes_on_save_after_14_days(crawl, site, extractor, session_factory):
+    scan = Attachment(name="공고문.hwp", url="https://example.test/f/scan")
+    site.post("100", posted_at=kst(2026, 10, 1, 9, 0), attachments=(scan,))
+    extractor.set("2026 장학생 모집", result("모집", ("A 장학금", None)))
+
+    crawl(at=kst(2026, 10, 20, 9, 0))
+
+    assert scholarships(session_factory)["A 장학금"].status == "CLOSED"
+
+
+@pytest.mark.parametrize(
+    ("kind", "deadline", "has_unread", "at", "expected"),
+    [
+        ("모집", None, True, timedelta(days=13), "ALWAYS"),
+        ("모집", None, True, timedelta(days=14), "CLOSED"),
+        ("모집", None, False, timedelta(days=14), "ALWAYS"),  # 첨부를 다 읽었으면 60일
+        ("모집", timedelta(days=30), True, timedelta(days=20), "OPEN"),  # 마감일이 있으면 그대로
+        ("기준안내", None, True, timedelta(days=100), "ALWAYS"),  # 기준안내는 1년 그대로
+    ],
+)
+def test_scholarship_status_with_unread_attachments(kind, deadline, has_unread, at, expected):
+    posted = kst(2026, 10, 1, 9, 0)
+    apply_end = posted + deadline if deadline else None
+    status = jobs.scholarship_status(
+        kind, apply_end, posted, posted + at, has_unread_attachments=has_unread
+    )
+    assert status == expected
+
+
 def test_criteria_notice_closes_after_one_year(crawl, site, extractor, session_factory):
     title = "2026학년도 성적우수장학금 선발 기준"
     site.post("100", title=title, posted_at=kst(2026, 3, 2, 9, 0))

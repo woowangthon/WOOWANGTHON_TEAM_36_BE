@@ -103,6 +103,18 @@ def test_only_matching_new_scholarships_are_listed(session_factory, outbox):
     assert "불가장학금" not in mail.text
 
 
+def test_new_scholarship_past_deadline_is_not_sent(session_factory, outbox):
+    """수집 사이에 마감이 지나 상태가 아직 OPEN인 새 장학금은 알리지 않음(T45)."""
+    add_user(session_factory)
+    add_scholarship(session_factory, "지난장학금", created_at=FRESH, apply_end=NOW)
+    add_scholarship(session_factory, "남은장학금", created_at=FRESH, apply_end=kst(2026, 11, 30))
+
+    run(session_factory, outbox)
+
+    [mail] = outbox.mails
+    assert "남은장학금" in mail.text and "지난장학금" not in mail.text
+
+
 def test_user_with_nothing_to_send_gets_no_mail(session_factory, outbox):
     add_user(session_factory)
     add_scholarship(session_factory, "불가장학금", created_at=FRESH, criteria=INELIGIBLE)

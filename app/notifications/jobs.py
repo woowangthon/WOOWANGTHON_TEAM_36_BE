@@ -176,10 +176,12 @@ def load_candidates(session: Session, now: datetime) -> list[Candidate]:
                 and_(
                     Scholarship.created_at > now - NEW_WINDOW,
                     Scholarship.status.in_(NEW_STATUSES),
+                    # 수집 사이에 마감이 지난 것은 상태가 아직 OPEN이어도 뺍니다(T45).
+                    or_(Scholarship.apply_end.is_(None), Scholarship.apply_end > now),
                 ),
                 and_(
                     Scholarship.status == "OPEN",
-                    Scholarship.apply_end >= now,
+                    Scholarship.apply_end > now,  # 마감 시각이 되면 마감(5.2)
                     Scholarship.apply_end < now + DEADLINE_LOOKAHEAD,
                 ),
             )

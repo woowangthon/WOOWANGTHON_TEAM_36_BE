@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import event
 
 from app.matching.engine import condition_key
-from app.models import Notice, NoticeAttachment, Scholarship, UserConditionAnswer
+from app.models import Notice, NoticeAttachment, Scholarship, Source, UserConditionAnswer
 from app.parsers.dates import kst, now_kst
 from tests.api.test_auth import api, factory, signup  # noqa: F401
 from tests.models.conftest import alembic_config, db_url, migrated_engine  # noqa: F401
@@ -36,6 +36,17 @@ CONDITIONAL = {**NO_LIMIT, "max_income_bracket": 8}  # 프로필 소득분위 �
 INELIGIBLE = {**NO_LIMIT, "min_gpa": 4.0}
 
 _counter = iter(range(1, 1_000_000))
+
+# 목록은 조회 시각에 마감이 지난 장학금을 뺍니다(T45). 시드의 마감일(2026-11 중순)이
+# 실제 날짜에 따라 지나지 않도록 API의 '지금'을 고정합니다.
+NOW = kst(2026, 11, 5, 10)
+
+
+@pytest.fixture(autouse=True)
+def fixed_now(monkeypatch):
+    import app.api.scholarships as module
+
+    monkeypatch.setattr(module, "now_kst", lambda: NOW)
 
 
 def add_notice(factory, *, source="SW_DEPT", kind="모집", posted_at=None, title="공지") -> int:  # noqa: F811
@@ -164,6 +175,7 @@ def test_list_item_shape(student, factory):  # noqa: F811
         "my_state": None,
         "open_conditions": [],
         "other_unknown": False,
+        "also_posted_in": [],
     }
 
 
@@ -727,3 +739,94 @@ def test_detail_reads_legacy_string_conditions(student, factory):  # noqa: F811
 def test_answer_finds_key_of_object_item(student, factory):  # noqa: F811
     sid = seed(factory, "객체", criteria=SUMMARIZED)
     assert answer(student, sid, VOLUNTEER, "YES").status_code == 200
+
+
+# --- 조회 시각 기준 마감 (T45) ------------------------------------------------------
+
+
+def test_list_hides_deadline_passed_before_next_crawl(student, factory):  # noqa: F811
+    """수집 사이에 마감이 지나 DB 상태가 아직 OPEN이어도 목록(모든 탭)에서 빠짐."""
+    seed(factory, "지남", criteria=CONDITIONAL, apply_end=NOW - timedelta(minutes=1))
+    seed(factory, "딱 지금", criteria=CONDITIONAL, apply_end=NOW)
+    seed(factory, "남음", criteria=CONDITIONAL, apply_end=NOW + timedelta(minutes=1))
+    seed(factory, "상시", criteria=CONDITIONAL, status="ALWAYS", apply_end=None)
+
+    for result in ("conditional", "all"):
+        response = student.get("/scholarships", params={"result": result})
+        assert names(response) == ["남음", "상시"]
+
+
+def test_deadline_passed_shows_closed_in_my_list_and_detail(student, factory):  # noqa: F811
+    sid = seed(factory, "지남", apply_end=NOW - timedelta(hours=1))
+    student.put(f"/scholarships/{sid}/state", json={"state": "BOOKMARKED"})
+
+    [item] = student.get("/scholarships", params={"state": "bookmarked"}).json()["items"]
+    assert item["status"] == "CLOSED"
+    assert student.get(f"/scholarships/{sid}").json()["status"] == "CLOSED"
+
+
+# --- 같은 장학금 묶기 (T45) ---------------------------------------------------------
+
+END = kst(2026, 11, 20, 18)
+
+
+def _source_name(factory, code: str) -> str:  # noqa: F811
+    with factory() as session:
+        return session.get(Source, code).name
+
+
+def test_same_scholarship_on_two_boards_is_listed_once(student, factory):  # noqa: F811
+    """이름 표기(공백·법인 표기·괄호)가 달라도 마감 시각이 같으면 하나로 묶고, 교내 글을 보여 줌."""
+    kosaf = seed(factory, "(재)두산연강재단 장학생", source="KOSAF", apply_end=END)
+    internal = seed(factory, "재단법인 두산연강재단  장학생", source="SW_DEPT", apply_end=END)
+
+    [item] = student.get("/scholarships").json()["items"]
+    assert item["id"] == internal != kosaf
+    assert item["also_posted_in"] == [_source_name(factory, "KOSAF")]
+
+
+def test_bookmarked_one_is_shown_even_if_external(student, factory):  # noqa: F811
+    kosaf = seed(factory, "두산연강 장학생", source="KOSAF", apply_end=END)
+    seed(factory, "두산연강 장학생", source="SW_DEPT", apply_end=END)
+    student.put(f"/scholarships/{kosaf}/state", json={"state": "BOOKMARKED"})
+
+    [item] = student.get("/scholarships").json()["items"]
+    assert item["id"] == kosaf
+    assert item["also_posted_in"] == [_source_name(factory, "SW_DEPT")]
+
+
+def test_different_deadline_or_always_is_not_grouped(student, factory):  # noqa: F811
+    seed(factory, "두산연강 장학생", source="KOSAF", apply_end=END)
+    seed(factory, "두산연강 장학생", source="SW_DEPT", apply_end=END + timedelta(days=1))
+    seed(factory, "기준안내", source="KOSAF", status="ALWAYS", kind="기준안내")
+    seed(factory, "기준안내", source="SW_DEPT", status="ALWAYS", kind="기준안내")
+
+    items = student.get("/scholarships").json()["items"]
+    assert len(items) == 4
+    assert all(item["also_posted_in"] == [] for item in items)
+
+
+def test_grouped_scholarship_appears_in_one_tab_only(student, factory):  # noqa: F811
+    """두 글의 추출 결과가 달라도 대표 글의 판정 탭에만 나옴."""
+    internal = seed(factory, "두산연강 장학생", source="SW_DEPT", apply_end=END, criteria=ELIGIBLE)
+    seed(factory, "두산연강 장학생", source="KOSAF", apply_end=END, criteria=CONDITIONAL)
+
+    eligible = student.get("/scholarships", params={"result": "eligible"}).json()["items"]
+    assert [item["id"] for item in eligible] == [internal]
+    assert names(student.get("/scholarships", params={"result": "conditional"})) == []
+
+
+def test_source_filter_groups_within_that_board_only(student, factory):  # noqa: F811
+    kosaf = seed(factory, "두산연강 장학생", source="KOSAF", apply_end=END)
+    seed(factory, "두산연강 장학생", source="SW_DEPT", apply_end=END)
+
+    [item] = student.get("/scholarships", params={"source": "external"}).json()["items"]
+    assert (item["id"], item["also_posted_in"]) == (kosaf, [])
+
+
+def test_my_list_is_not_grouped(student, factory):  # noqa: F811
+    for source in ("KOSAF", "SW_DEPT"):
+        sid = seed(factory, "두산연강 장학생", source=source, apply_end=END)
+        student.put(f"/scholarships/{sid}/state", json={"state": "BOOKMARKED"})
+
+    assert len(student.get("/scholarships", params={"state": "bookmarked"}).json()["items"]) == 2
