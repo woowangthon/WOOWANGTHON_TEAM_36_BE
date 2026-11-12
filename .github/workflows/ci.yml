@@ -1,0 +1,30 @@
+# PR 검사: 머지 전에 린트와 테스트를 돌립니다.
+# - 테스트는 DB 없이 돕니다(DB 테스트는 TEST_DATABASE_URL이 없으면 건너뜁니다).
+# - tests/migrations/test_heads.py가 alembic head가 하나인지 확인합니다.
+#   head가 갈라진 채 머지되면 deploy의 `alembic upgrade head`가 실패합니다(2026-11-12).
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # setup-uv는 v8부터 메이저 태그(v10)를 만들지 않아 정확한 버전을 적습니다.
+      - uses: astral-sh/setup-uv@v10.3.3
+
+      - run: uv sync --frozen
+
+      - name: 린트
+        run: uv run --no-sync ruff check . && uv run --no-sync ruff format --check .
+
+      - name: 테스트
+        run: uv run --no-sync pytest -q
