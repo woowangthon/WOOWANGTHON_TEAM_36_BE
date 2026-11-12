@@ -199,7 +199,17 @@ class ScholarshipCriteria(BaseModel):
         # DB에 저장된 v9 이전 결과는 문자열 목록입니다.
         if not isinstance(value, list):
             return value
-        return [{"text": item} if isinstance(item, str) else item for item in value]
+        # 빈 줄·공백뿐인 항목, text가 비었거나 없는 항목은 버립니다(1건이 전체를 실패시키지 않게).
+        wrapped: list[object] = []
+        for item in value:
+            if isinstance(item, str):
+                item = {"text": item}
+            if isinstance(item, dict):
+                text = item.get("text")
+                if not isinstance(text, str) or not text.strip():
+                    continue
+            wrapped.append(item)
+        return wrapped
 
     @model_validator(mode="after")
     def _check_values(self) -> Self:

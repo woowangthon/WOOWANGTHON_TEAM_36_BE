@@ -358,6 +358,25 @@ def test_condition_text_reads_legacy_strings():
     assert c.basic_conditions[0].text == "징계사실이 없는 자"
 
 
+def test_blank_condition_items_are_dropped():
+    c = ScholarshipCriteria.model_validate(
+        {**MINIMAL, "extra_conditions": ["", "  ", "TOEIC 500점 이상"]}
+    )
+    assert c.extra_conditions == [ConditionText(text="TOEIC 500점 이상", summary=None)]
+
+
+def test_blank_condition_dicts_are_dropped():
+    c = ScholarshipCriteria.model_validate(
+        {
+            **MINIMAL,
+            "extra_conditions": [{"text": "  ", "summary": "x"}],
+            "basic_conditions": [{"summary": "y"}],
+        }
+    )
+    assert c.extra_conditions == []
+    assert c.basic_conditions == []
+
+
 def test_condition_summary_cleaned_or_dropped():
     c = ScholarshipCriteria.model_validate(
         {
