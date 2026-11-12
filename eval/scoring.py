@@ -179,3 +179,31 @@ def _similarity(a: str, b: str) -> float:
 
 def _json(value: Any) -> Any:
     return value.isoformat() if hasattr(value, "isoformat") else value
+
+
+def condition_summaries(
+    notice_id: str, predicted: ExtractedCriteria | None
+) -> list[dict[str, str | None]]:
+    """공지 1건의 "원문 문장 → 요약" 목록 (사람이 요약 극성을 확인하는 용도).
+
+    장학금 순서 → extra_conditions → basic_conditions 순입니다. 추출 실패(None)면 빈 목록입니다.
+    """
+    if predicted is None:
+        return []
+    items: list[dict[str, str | None]] = []
+    for sch in predicted.scholarships:
+        for kind, conditions in (
+            ("extra", sch.extra_conditions),
+            ("basic", sch.basic_conditions),
+        ):
+            for cond in conditions:
+                items.append(
+                    {
+                        "notice": notice_id,
+                        "scholarship": sch.scholarship_name,
+                        "list": kind,
+                        "text": cond.text,
+                        "summary": cond.summary,
+                    }
+                )
+    return items
