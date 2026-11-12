@@ -420,6 +420,18 @@ def test_regulation_title_with_details_is_not_external_reference():
     assert "`basic_conditions`에 넣는다" not in line
 
 
+def test_headings_go_to_no_list():
+    """제목·소제목은 어느 목록에도 넣지 않으므로 다른 규칙과 어긋나지 않아야 합니다(extract_v10)."""
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert "제목처럼" not in prompt  # v9: "설명·안내·제목처럼 … notes나 basic_conditions다"
+    lead = _prompt_line("7. **필드로 옮길 수 없는 문장은")
+    assert "어느 목록에도 넣지 않는다" in lead  # 규칙 7 머리의 예외
+    answerable = _prompt_line("- **`extra_conditions`에는 학생이")
+    assert "(제목·소제목은 어느 목록에도 넣지 않는다)" in answerable
+    assert '"맞아요/안 맞아요"' in answerable  # 요약 극성("맞아요" = 충족)과 같은 말
+    assert "해당돼요" not in prompt
+
+
 def test_prompt_v10_drops_source_line_rule():
     """규정 출처 문장은 조건이 아니므로 basic_conditions 예시에서 뺐습니다(extract_v10)."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
