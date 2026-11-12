@@ -22,6 +22,7 @@ from app.core.security import (
     ExpiredTokenError,
     InvalidTokenError,
     check_login_rate,
+    check_password_change_rate,
     check_signup_code_rate,
     check_signup_verify_rate,
     clear_auth_cookie,
@@ -43,6 +44,7 @@ from app.schemas.api.auth import (
     LoginRequest,
     MeResponse,
     NotificationSettingRequest,
+    PasswordChangeRequest,
     SignupCodeRequest,
     SignupCodeResponse,
     SignupRequest,
@@ -63,6 +65,9 @@ CODE_MISMATCH = "인증번호가 맞지 않아요"
 CODE_EXPIRED = "인증번호가 만료됐어요. 다시 받아 주세요"
 SIGNUP_EXPIRED = "인증 시간이 지났어요. 이메일 인증을 다시 해 주세요"
 VERIFY_AGAIN = "이메일 인증을 처음부터 다시 해 주세요"
+NO_PASSWORD = "Google 계정으로 로그인하는 계정이에요"
+WRONG_CURRENT_PASSWORD = "현재 비밀번호가 맞지 않아요"
+SAME_PASSWORD = "지금과 다른 비밀번호를 입력하세요"
 MAIL_FAILED = "메일을 보내지 못했어요. 잠시 후 다시 시도하세요"
 RESEND_AFTER_SECONDS = 60
 
@@ -280,6 +285,36 @@ def set_notifications(body: NotificationSettingRequest, user: CurrentUser, db: D
     user.email_notifications = body.email_notifications
     db.commit()
     return _me(db, user)
+
+
+@router.put(
+    "/me/password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        **UNAUTHORIZED,
+        400: {"description": "비밀번호 없는 계정, 현재 비밀번호 불일치, 같은 비밀번호"},
+        429: {"description": "변경 시도 제한 초과"},
+    },
+)
+def change_password(body: PasswordChangeRequest, user: CurrentUser, db: DB) -> Response:
+    """비밀번호를 바꿉니다(T37). `token_version`을 올려 다른 기기의 로그인을 끊고,
+    이 기기에는 새 쿠키를 줘서 로그인을 유지합니다(7.3).
+    """
+    check_password_change_rate(user.id)
+    if user.password_hash is None:
+        raise _bad_request(NO_PASSWORD)
+    if not verify_password(body.current_password, user.password_hash):
+        log_event(logger, "비밀번호 변경 실패", logging.WARNING, user_id=user.id)
+        raise _bad_request(WRONG_CURRENT_PASSWORD)
+    if body.new_password == body.current_password:
+        raise _bad_request(SAME_PASSWORD)
+    user.password_hash = hash_password(body.new_password)
+    user.token_version += 1
+    db.commit()
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    issue_session(response, user)
+    log_event(logger, "비밀번호 변경", user_id=user.id)
+    return response
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, responses=UNAUTHORIZED)

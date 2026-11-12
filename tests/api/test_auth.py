@@ -14,7 +14,7 @@ from app.models import Notice, Scholarship, User, UserProfile, UserScholarshipSt
 from app.parsers.dates import kst
 from tests.models.conftest import alembic_config, db_url, migrated_engine  # noqa: F401
 
-PASSWORD = "password123"
+PASSWORD = "password12!"  # 새 규칙: 8~16자, 영문·숫자·특수문자 (T37)
 TABLES = "user_scholarship_states, user_profiles, users, scholarships, notices"
 
 
@@ -55,6 +55,7 @@ def reset_limiters() -> None:
         security.login_limiter,
         security.signup_code_limiter,
         security.signup_verify_limiter,
+        security.password_change_limiter,
     ):
         limiter.reset()
 
@@ -480,3 +481,117 @@ def test_signup_422_does_not_echo_password(client):
     assert response.status_code == 422
     assert "secret-pass-123" not in response.text
     assert [e["msg"] for e in response.json()["detail"]] == ["글자로 입력하세요"]
+
+
+# --- 비밀번호 규칙 (T37) ------------------------------------------------------------
+
+LENGTH = "비밀번호는 8~16자로 입력하세요"
+LETTER = "영문을 1자 이상 넣어 주세요"
+DIGIT = "숫자를 1자 이상 넣어 주세요"
+SPECIAL = "특수문자를 1자 이상 넣어 주세요"
+CHARSET = "영문·숫자·특수문자만 쓸 수 있어요"
+
+
+@pytest.mark.parametrize(
+    ("password", "message"),
+    [
+        ("abc12!", LENGTH),
+        ("abcdefgh12345678!", LENGTH),
+        ("abcdefgh", DIGIT),
+        ("12345678!", LETTER),
+        ("abcd1234", SPECIAL),
+        ("abcd 12!", CHARSET),
+        ("비밀번호12!a", CHARSET),
+    ],
+)
+def test_signup_password_rules(api, password, message):
+    response = api.post(
+        "/auth/signup", json={"signup_token": signup_token(api), "password": password}
+    )
+
+    assert response.status_code == 422
+    assert message in response.text
+
+
+@pytest.mark.parametrize("password", ["abcd123!", "Abcdefgh1234567!"])
+def test_signup_password_rules_accept(api, password):
+    assert signup(api, password=password).status_code == 201
+
+
+def test_login_still_accepts_old_style_password(api, factory):
+    add_user(factory, email="old@example.com", password_hash=hash_password("password123"))
+
+    assert login(api, email="old@example.com", password="password123").status_code == 200
+
+
+# --- 비밀번호 변경 (T37) ------------------------------------------------------------
+
+NEW_PASSWORD = "newpass34#"
+
+
+def change_password(api, current: str = PASSWORD, new: str = NEW_PASSWORD):
+    return api.put("/auth/me/password", json={"current_password": current, "new_password": new})
+
+
+def test_change_password_success(api, factory):
+    user_id = signup(api).json()["id"]
+    old_token = api.cookies.get(AUTH_COOKIE)
+
+    response = change_password(api)
+
+    assert response.status_code == 204
+    assert cookie_header(response).startswith(f"{AUTH_COOKIE}=")
+    assert api.get("/auth/me").status_code == 200  # 새 쿠키로 이 기기는 로그인 유지
+    assert get_user(factory, user_id).token_version == 1
+    api.cookies.set(AUTH_COOKIE, old_token)
+    assert api.get("/auth/me").status_code == 401  # 다른 기기(옛 쿠키)는 끊김
+    api.cookies.clear()
+    assert login(api, password=PASSWORD).status_code == 401
+    assert login(api, password=NEW_PASSWORD).status_code == 200
+
+
+def test_change_password_wrong_current(api, factory):
+    user_id = signup(api).json()["id"]
+
+    response = change_password(api, current="wrong-pass1!")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "현재 비밀번호가 맞지 않아요"
+    assert get_user(factory, user_id).token_version == 0
+
+
+def test_change_password_google_only(api, factory):
+    user_id = add_user(factory, password_hash=None, google_sub="g-1")
+    api.cookies.set(AUTH_COOKIE, security.create_access_token(user_id, 0))
+
+    response = change_password(api)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Google 계정으로 로그인하는 계정이에요"
+
+
+def test_change_password_same_as_current(api):
+    signup(api)
+
+    response = change_password(api, new=PASSWORD)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "지금과 다른 비밀번호를 입력하세요"
+
+
+def test_change_password_rule_violation(api):
+    signup(api)
+
+    assert change_password(api, new="short").status_code == 422
+
+
+def test_change_password_rate_limit(api):
+    signup(api)
+
+    codes = [change_password(api, current="wrong-pass1!").status_code for _ in range(6)]
+
+    assert codes == [400] * 5 + [429]
+
+
+def test_change_password_requires_login(api):
+    assert change_password(api).status_code == 401
