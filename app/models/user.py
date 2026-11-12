@@ -1,8 +1,9 @@
-"""USERS, USER_PROFILES, USER_SCHOLARSHIP_STATES (계획서 6장, 4장, 7.3).
+"""USERS, USER_PROFILES, USER_SCHOLARSHIP_STATES, USER_CONDITION_ANSWERS (계획서 6장, 4장, 7.3).
 
 - 민감 필드(소득분위, 본인·부모 주소, 특수자격)는 core/crypto.py로
   AES-256-GCM 암호화한 바이트로 저장합니다(4.1).
-- 탈퇴(DELETE /auth/me) 시 프로필·관심/신청완료 기록이 함께 지워지도록
+- 자격을 좁히는 조건에 사용자가 답한 값도 같은 방식으로 암호화합니다(4.2, 5.3).
+- 탈퇴(DELETE /auth/me) 시 프로필·관심/신청완료 기록·조건 답이 함께 지워지도록
   ON DELETE CASCADE를 겁니다(4.2).
 - 추출 모듈(app/extraction)은 이 파일을 import하지 않습니다(8.1 개인정보 경계).
 """
@@ -80,3 +81,23 @@ class UserScholarshipState(Base):
         ForeignKey("scholarships.id", ondelete="CASCADE"), primary_key=True
     )
     state: Mapped[str] = mapped_column(String(12))
+
+
+class UserConditionAnswer(Base):
+    """자격을 좁히는 조건(`extra_conditions`) 1줄에 대한 사용자 답 (5.3, 2026-11-12).
+
+    `condition_key`는 문장 정규화 후 SHA-256 앞 16자(`matching.engine.condition_key`)입니다.
+    답(YES/NO)은 조건 문장에 민감한 내용이 있을 수 있어 암호화합니다(4.2).
+    """
+
+    __tablename__ = "user_condition_answers"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    scholarship_id: Mapped[int] = mapped_column(
+        ForeignKey("scholarships.id", ondelete="CASCADE"), primary_key=True
+    )
+    condition_key: Mapped[str] = mapped_column(String(16), primary_key=True)
+    enc_answer: Mapped[bytes] = mapped_column(LargeBinary)
+    answered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

@@ -6,7 +6,8 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy import event
 
-from app.models import Notice, NoticeAttachment, Scholarship
+from app.matching.engine import condition_key
+from app.models import Notice, NoticeAttachment, Scholarship, UserConditionAnswer
 from app.parsers.dates import kst, now_kst
 from tests.api.test_auth import api, factory, signup  # noqa: F401
 from tests.models.conftest import alembic_config, db_url, migrated_engine  # noqa: F401
@@ -158,6 +159,8 @@ def test_list_item_shape(student, factory):  # noqa: F811
         "posted_at": "2026-10-30T09:00:00+09:00",
         "result": "ELIGIBLE",
         "my_state": None,
+        "open_conditions": [],
+        "other_unknown": False,
     }
 
 
@@ -362,6 +365,115 @@ def test_detail(student, factory):  # noqa: F811
     ]
     assert body["unread_attachments"] == []
     assert body["input_truncated"] is False
+
+
+# --- 자격을 좁히는 조건에 답하기 (5.3, 2026-11-12) -------------------------------------
+
+VOLUNTEER = "봉사활동 20시간 이상"
+TOEIC = "TOEIC 500점 이상"
+TWO_EXTRAS = {**ELIGIBLE, "extra_conditions": [VOLUNTEER, TOEIC]}
+
+
+def answer(api, sid: int, text: str, value: str | None):  # noqa: F811
+    path = f"/scholarships/{sid}/conditions/{condition_key(text)}"
+    return api.delete(path) if value is None else api.put(path, json={"answer": value})
+
+
+def test_answers_change_result(student, factory):  # noqa: F811
+    sid = seed(factory, "추가조건", criteria=TWO_EXTRAS)
+    detail = student.get(f"/scholarships/{sid}").json()
+    assert detail["result"] == "CONDITIONAL"
+    assert detail["extra_checks"] == [
+        {"key": condition_key(VOLUNTEER), "text": VOLUNTEER, "answer": None},
+        {"key": condition_key(TOEIC), "text": TOEIC, "answer": None},
+    ]
+
+    first = answer(student, sid, VOLUNTEER, "YES")
+    assert first.status_code == 200, first.text
+    assert first.json() == {
+        "scholarship_id": sid,
+        "key": condition_key(VOLUNTEER),
+        "answer": "YES",
+        "result": "CONDITIONAL",  # 하나 남음
+    }
+    assert answer(student, sid, TOEIC, "YES").json()["result"] == "ELIGIBLE"
+    assert names(student.get("/scholarships?result=eligible")) == ["추가조건"]
+
+    assert answer(student, sid, TOEIC, "NO").json()["result"] == "INELIGIBLE"  # 덮어쓰기
+    detail = student.get(f"/scholarships/{sid}").json()
+    assert [c["answer"] for c in detail["extra_checks"]] == ["YES", "NO"]
+
+    cleared = answer(student, sid, TOEIC, None)
+    assert cleared.status_code == 200
+    assert cleared.json()["answer"] is None
+    assert cleared.json()["result"] == "CONDITIONAL"
+    assert answer(student, sid, TOEIC, None).status_code == 200  # 답이 없어도 같은 응답
+
+
+def test_list_has_open_conditions(student, factory):  # noqa: F811
+    sid = seed(factory, "추가조건", criteria=TWO_EXTRAS)
+    seed(factory, "모름", criteria={**CONDITIONAL, "extra_conditions": [VOLUNTEER]})
+    answer(student, sid, VOLUNTEER, "YES")
+    items = {i["name"]: i for i in student.get("/scholarships").json()["items"]}
+    assert items["추가조건"]["open_conditions"] == [{"key": condition_key(TOEIC), "text": TOEIC}]
+    assert items["추가조건"]["other_unknown"] is False
+    assert items["모름"]["open_conditions"] == [
+        {"key": condition_key(VOLUNTEER), "text": VOLUNTEER}
+    ]  # 같은 문장이라도 답은 장학금마다 따로
+    assert items["모름"]["other_unknown"] is True
+
+
+def test_answer_unknown_condition_is_404(student, factory):  # noqa: F811
+    sid = seed(factory, "추가조건", criteria=TWO_EXTRAS)
+    assert answer(student, sid, "없는 조건", "YES").status_code == 404
+    assert answer(student, 999_999, VOLUNTEER, "YES").status_code == 404
+    other = seed(factory, "다른 장학금", criteria={**ELIGIBLE, "extra_conditions": ["다른 조건"]})
+    assert answer(student, other, VOLUNTEER, "YES").status_code == 404  # 남의 장학금 문장
+
+
+@pytest.mark.parametrize("body", [{"answer": "MAYBE"}, {"answer": "YES", "extra": 1}, {}])
+def test_invalid_answer_is_422(student, factory, body):  # noqa: F811
+    sid = seed(factory, "추가조건", criteria=TWO_EXTRAS)
+    path = f"/scholarships/{sid}/conditions/{condition_key(VOLUNTEER)}"
+    assert student.put(path, json=body).status_code == 422
+
+
+def test_answers_are_per_user_and_encrypted(student, factory):  # noqa: F811
+    sid = seed(factory, "추가조건", criteria=TWO_EXTRAS)
+    answer(student, sid, VOLUNTEER, "YES")
+    with factory() as session:
+        [row] = session.query(UserConditionAnswer).all()
+        assert b"YES" not in row.enc_answer
+        assert row.answered_at.utcoffset() is not None
+
+    student.cookies.clear()
+    signup(student, email="other@example.com")
+    student.post("/auth/consent", json={"privacy": True, "sensitive": False})
+    student.put("/profile", json=PROFILE)
+    detail = student.get(f"/scholarships/{sid}").json()
+    assert [c["answer"] for c in detail["extra_checks"]] == [None, None]
+
+
+def test_answers_deleted_with_account(student, factory):  # noqa: F811
+    sid = seed(factory, "추가조건", criteria=TWO_EXTRAS)
+    answer(student, sid, VOLUNTEER, "YES")
+    assert student.delete("/auth/me").status_code in (200, 204)
+    with factory() as session:
+        assert session.query(UserConditionAnswer).count() == 0
+
+
+def test_answer_ignored_after_sentence_changes(student, factory):  # noqa: F811
+    """재추출로 문장이 바뀌면 옛 답은 맞지 않아 다시 '?'(확인 필요)가 됩니다."""
+    sid = seed(factory, "추가조건", criteria={**ELIGIBLE, "extra_conditions": [VOLUNTEER]})
+    assert answer(student, sid, VOLUNTEER, "YES").json()["result"] == "ELIGIBLE"
+    with factory() as session:
+        s = session.get(Scholarship, sid)
+        s.criteria = {**s.criteria, "extra_conditions": ["봉사활동 30시간 이상"]}
+        session.commit()
+    detail = student.get(f"/scholarships/{sid}").json()
+    assert detail["result"] == "CONDITIONAL"
+    assert [c["answer"] for c in detail["extra_checks"]] == [None]
+    assert answer(student, sid, VOLUNTEER, "NO").status_code == 404
 
 
 # --- 읽지 못한 첨부 (D8) -------------------------------------------------------------

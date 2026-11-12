@@ -4,7 +4,7 @@ from app.models.base import Base
 from app.models.notice import Notice, NoticeAttachment, Scholarship
 from app.models.notification import NotificationLog, NotificationRun
 from app.models.source import CrawlRun, Source
-from app.models.user import User, UserProfile, UserScholarshipState
+from app.models.user import User, UserConditionAnswer, UserProfile, UserScholarshipState
 
 __all__ = [
     "Base",
@@ -17,5 +17,6 @@ __all__ = [
     "Source",
     "User",
     "UserProfile",
+    "UserConditionAnswer",
     "UserScholarshipState",
 ]

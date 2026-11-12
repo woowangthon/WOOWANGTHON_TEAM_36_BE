@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.extraction.schemas import ScholarshipCriteria
+from app.matching.engine import condition_key
 from app.notifications.select import Candidate, Recipient, select_items
 from app.parsers.dates import kst
 from app.schemas.api.profile import Profile
@@ -82,6 +83,28 @@ def test_unread_attachment_lowers_eligible_to_conditional():
     items = select_items(recipient(), [cand(1, ELIGIBLE, has_unread=True)], NOW)
 
     assert [i.result for i in items] == ["CONDITIONAL"]
+
+
+def test_new_match_uses_condition_answers():
+    """대시보드와 같은 판정: 조건에 ✗로 답했으면 알리지 않고, 모두 ✓면 지원 가능으로 알립니다."""
+    extra = {**ELIGIBLE, "extra_conditions": ["봉사활동 20시간 이상"]}
+    key = condition_key("봉사활동 20시간 이상")
+    base = recipient()
+    answered = Recipient(
+        user_id=base.user_id,
+        profile=base.profile,
+        states={},
+        sent=frozenset(),
+        answers={1: {key: "YES"}, 2: {key: "NO"}},
+    )
+    cands = [cand(1, extra), cand(2, extra), cand(3, extra)]
+
+    items = select_items(answered, cands, NOW)
+
+    assert [(i.scholarship_id, i.result) for i in items] == [
+        (1, "ELIGIBLE"),
+        (3, "CONDITIONAL"),  # 답하지 않음
+    ]
 
 
 @pytest.mark.parametrize(

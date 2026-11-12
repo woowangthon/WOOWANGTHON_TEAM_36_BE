@@ -41,6 +41,24 @@ SourceFilter = Literal["internal", "external"]  # 교내 / 교외
 StateFilter = Literal["bookmarked", "applied"]  # 내 장학금 화면 (마감된 장학금 포함)
 
 
+ConditionAnswer = Literal["YES", "NO"]  # 해당돼요 / 아니에요 (5.3 자격을 좁히는 조건 직접 답하기)
+
+
+class OpenCondition(BaseModel):
+    """아직 답하지 않은 자격을 좁히는 조건 1줄. "이것만 확인하면 N개" 안내에 씁니다(7.1)."""
+
+    key: str  # condition_key: 문장 정규화 후 SHA-256 앞 16자 (5.3)
+    text: str
+
+
+class ExtraCheck(BaseModel):
+    """자격을 좁히는 조건 1줄과 사용자 답. 화면에서 ?(null) ✓(YES) ✗(NO)로 표시합니다(5.3)."""
+
+    key: str
+    text: str
+    answer: ConditionAnswer | None
+
+
 class ScholarshipSummary(BaseModel):
     """대시보드 카드 1장 (장학금 단위, 7.1)."""
 
@@ -59,6 +77,10 @@ class ScholarshipSummary(BaseModel):
     posted_at: AwareDatetime
     result: MatchResult
     my_state: UserState | None
+    # 답하지 않은 자격을 좁히는 조건과, 그 밖에 판정을 막는 것(알 수 없는 조건·못 읽은 첨부)이
+    # 있는지. "이것만 확인하면 N개가 풀려요" 안내를 화면이 계산합니다(7.1).
+    open_conditions: list[OpenCondition] = []
+    other_unknown: bool = False
 
 
 class ScholarshipListResponse(BaseModel):
@@ -114,7 +136,8 @@ class SiblingScholarship(BaseModel):
 class ScholarshipDetail(ScholarshipSummary):
     apply_start: AwareDatetime | None
     conditions: list[ConditionCheck]
-    extra_conditions: list[str]  # 자격을 좁히는 조건 (있으면 확인 필요)
+    extra_conditions: list[str]  # 자격을 좁히는 조건 (답하지 않은 것이 있으면 확인 필요)
+    extra_checks: list[ExtraCheck]  # 위 조건마다 사용자 답 (5.3)
     basic_conditions: list[str]  # 대부분 충족하는 기본 조건 (판정에 영향 없음, 지원 전 확인)
     notes: list[str]  # 자격이 아닌 안내 (선발 방식·의무·예외 등, 판정에 영향 없음)
     required_documents: list[str]
@@ -135,3 +158,16 @@ class StateRequest(BaseModel):
 class StateResponse(BaseModel):
     scholarship_id: int
     state: UserState | None  # DELETE 뒤에는 null
+
+
+class ConditionAnswerRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    answer: ConditionAnswer
+
+
+class ConditionAnswerResponse(BaseModel):
+    scholarship_id: int
+    key: str
+    answer: ConditionAnswer | None  # DELETE 뒤에는 null
+    result: MatchResult  # 답을 반영한 판정
