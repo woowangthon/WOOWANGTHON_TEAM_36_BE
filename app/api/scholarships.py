@@ -405,7 +405,7 @@ def put_condition_answer(
     user: ConsentedUser,
     db: DB,
 ) -> ConditionAnswerResponse:
-    """자격을 좁히는 조건 1줄에 답합니다: YES(해당돼요) / NO(아니에요). 새 값으로 바꿉니다."""
+    """자격을 좁히는 조건 1줄에 답합니다: YES(맞아요, 충족) / NO(안 맞아요, 불충족). 새 값 교체."""
     s = _condition_target(db, scholarship_id, condition_key)
     enc_answer = encrypt(body.answer, aad=_answer_aad(user.id, s.id, condition_key))
     answered_at = now_kst()

@@ -1,12 +1,12 @@
 """3단계 판정 (계획서 5.3). DB·HTTP·LLM에 의존하지 않는 순수 함수입니다.
 
 1. 하나라도 불충족이거나, 사용자가 `extra_conditions`(자격을 좁히는 조건) 중 하나에
-   "아니에요"로 답함 → 지원 불가(`INELIGIBLE`)
+   "안 맞아요(불충족)"로 답함 → 지원 불가(`INELIGIBLE`)
 2. 그 밖에 알 수 없음이 있거나, 답하지 않은 `extra_conditions`가 있거나,
    **읽지 못한 첨부가 있음**
    → 확인 필요(`CONDITIONAL`). 못 읽은 첨부에 조건이 있을 수 있어
    "지원 가능"이라 단정하지 않습니다(D8).
-3. 전부 충족이고 `extra_conditions`에 모두 "해당돼요"로 답함 → 지원 가능(`ELIGIBLE`)
+3. 전부 충족이고 `extra_conditions`에 모두 "맞아요(충족)"로 답함 → 지원 가능(`ELIGIBLE`)
 
 `extra_conditions` 답은 문장마다 `condition_key()`로 찾습니다. 재추출로 문장이 바뀌면
 이전 답은 맞는 문장이 없어 쓰이지 않습니다(5.3, 2026-11-12).
@@ -145,7 +145,7 @@ def evaluate(
                     outcome=outcome,
                     evidence=evidence,
                     evidence_source=source,
-                    requirement=None if amb else describe(name, criteria),
+                    requirement=describe(name, criteria),
                     ambiguous=amb,
                 )
             )

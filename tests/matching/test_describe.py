@@ -99,4 +99,18 @@ def test_unknown_department_is_ambiguous():
 def test_grade_basis_only_ambiguous_keeps_value():
     c = criteria(min_gpa=3.5, ambiguous_fields=["grade_basis"])
     assert describe("min_gpa", c) == "3.5 이상"
-    assert not is_ambiguous("min_gpa", c)
+    assert is_ambiguous("min_gpa", c)
+
+
+def test_grade_basis_only_ambiguous_keeps_score_100():
+    c = criteria(min_score_100=80, ambiguous_fields=["grade_basis"])
+    assert describe("min_score_100", c) == "80점 이상"
+    assert is_ambiguous("min_score_100", c)
+
+
+def test_region_basis_only_ambiguous_keeps_bare_regions():
+    c = criteria(
+        regions=["충청남도 논산시"], region_basis="부모", ambiguous_fields=["region_basis"]
+    )
+    assert describe("regions", c) == "충청남도 논산시"
+    assert is_ambiguous("regions", c)

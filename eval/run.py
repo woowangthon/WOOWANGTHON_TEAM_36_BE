@@ -168,7 +168,7 @@ def print_table(report: dict[str, Any]) -> None:
         )
     print()
     print(f"목표 {summary['target']:.0%} 대비 {summary['gap']:+.1%}p")
-    items = report["condition_summaries"]
+    items = report.get("condition_summaries", [])
     missing = sum(1 for i in items if not i["summary"])
     print(
         f"요약 {len(items)}개 (summary 없음 {missing}개) — "

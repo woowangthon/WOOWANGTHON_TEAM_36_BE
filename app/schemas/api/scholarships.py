@@ -44,7 +44,9 @@ SourceFilter = Literal["internal", "external"]  # 교내 / 교외
 StateFilter = Literal["bookmarked", "applied"]  # 내 장학금 화면 (마감된 장학금 포함)
 
 
-ConditionAnswer = Literal["YES", "NO"]  # 해당돼요 / 아니에요 (5.3 자격을 좁히는 조건 직접 답하기)
+ConditionAnswer = Literal[
+    "YES", "NO"
+]  # 맞아요(충족) / 안 맞아요(불충족) (5.3 자격을 좁히는 조건 직접 답하기)
 
 
 class OpenCondition(BaseModel):
@@ -103,7 +105,9 @@ class ConditionCheck(BaseModel):
     evidence_source: str | None = None
     # 코드가 값으로 만든 조건 요약("직전학기 3.5 이상"). 모호하거나 이름만으로 충분한 조건은 null
     requirement: str | None = None
-    ambiguous: bool = False  # ambiguous_fields에 든 조건. 화면이 "공지가 모호해요"로 보입니다
+    ambiguous: bool = (
+        False  # ambiguous_fields에 든 조건. 화면이 "공지 기준이 명확하지 않아요"로 보입니다
+    )
 
 
 class NoticeAttachmentText(BaseModel):

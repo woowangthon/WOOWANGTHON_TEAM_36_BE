@@ -873,6 +873,22 @@ def test_checks_carry_requirement_and_ambiguous():
     assert checks["excludes_new_students"].ambiguous is False
 
 
+def test_basis_only_ambiguous_keeps_requirement_and_flags_ambiguous():
+    c = criteria(
+        min_gpa=3.5,
+        regions=["충청남도 논산시"],
+        region_basis="부모",
+        ambiguous_fields=["grade_basis", "region_basis"],
+    )
+    checks = {x.condition: x for x in evaluate(profile(), c, TODAY).checks}
+    assert checks["min_gpa"].outcome == "UNKNOWN"
+    assert checks["min_gpa"].requirement == "3.5 이상"
+    assert checks["min_gpa"].ambiguous is True
+    assert checks["regions"].outcome == "UNKNOWN"
+    assert checks["regions"].requirement == "충청남도 논산시"
+    assert checks["regions"].ambiguous is True
+
+
 def test_extra_check_carries_summary_and_text_key():
     text = "타 장학금과 중복 수혜 불가"
     c = criteria(extra_conditions=[{"text": text, "summary": "다른 장학금을 받지 않는 학생"}])

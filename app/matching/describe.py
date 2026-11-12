@@ -137,15 +137,33 @@ NAME_ONLY: frozenset[ConditionName] = frozenset(
 )
 
 
-def is_ambiguous(condition: ConditionName, c: ScholarshipCriteria) -> bool:
-    """조건이 모호하다고 표시됐는지. 소속 학과 "불명"도 모호로 봅니다."""
+_BASIS_FIELD: dict[ConditionName, str] = {
+    "min_gpa": "grade_basis",
+    "min_score_100": "grade_basis",
+    "regions": "region_basis",
+}
+
+
+def _own_field_ambiguous(condition: ConditionName, c: ScholarshipCriteria) -> bool:
+    """조건 자기 필드가 모호하다고 표시됐는지. 소속 학과 "불명"도 모호로 봅니다."""
     if condition in c.ambiguous_fields:
         return True
     return condition == "target_department" and c.target_department == "불명"
 
 
+def is_ambiguous(condition: ConditionName, c: ScholarshipCriteria) -> bool:
+    """조건이 모호하다고 표시됐는지. 평점·100점 성적·지역은 기준 필드만 모호해도 모호입니다.
+
+    기준 필드만 모호하면 규칙은 알 수 없음이지만 값 문구(`describe`)는 남습니다.
+    """
+    if _own_field_ambiguous(condition, c):
+        return True
+    basis = _BASIS_FIELD.get(condition)
+    return basis is not None and basis in c.ambiguous_fields
+
+
 def describe(condition: ConditionName, c: ScholarshipCriteria) -> str | None:
-    """조건의 기준값 문구. 이름만 쓰는 조건·모호한 조건·값이 없는 조건은 None."""
-    if condition in NAME_ONLY or is_ambiguous(condition, c):
+    """조건의 기준값 문구. 이름만 쓰는 조건·자기 필드가 모호한 조건·값이 없는 조건은 None."""
+    if condition in NAME_ONLY or _own_field_ambiguous(condition, c):
         return None
     return _DESCRIBERS[condition](c)
