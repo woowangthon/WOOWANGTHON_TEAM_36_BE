@@ -144,9 +144,9 @@ def evaluate(
 
     answers = answers or {}
     extra_checks = [
-        ExtraCheck(key=key, text=text, answer=answers.get(key))
-        for text in criteria.extra_conditions
-        for key in (condition_key(text),)
+        ExtraCheck(key=key, text=item.text, answer=answers.get(key))
+        for item in criteria.extra_conditions
+        for key in (condition_key(item.text),)
     ]
     extra_answers = {check.answer for check in extra_checks}
 
@@ -161,9 +161,9 @@ def evaluate(
     return Evaluation(
         result=result,
         checks=checks,
-        extra_conditions=list(criteria.extra_conditions),
+        extra_conditions=[item.text for item in criteria.extra_conditions],
         extra_checks=extra_checks,
         other_unknown=other_unknown,
-        basic_conditions=list(criteria.basic_conditions),
+        basic_conditions=[item.text for item in criteria.basic_conditions],
         notes=list(criteria.notes),
     )

@@ -1,4 +1,5 @@
 import copy
+import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -13,7 +14,7 @@ from app.extraction import (
     ScholarshipCriteria,
     extract,
 )
-from app.extraction.schemas import CRITERIA_FIELDS, DISPLAY_NAME_MAX
+from app.extraction.schemas import CRITERIA_FIELDS, DISPLAY_NAME_MAX, ConditionText
 
 SEOUL = ZoneInfo("Asia/Seoul")
 
@@ -318,3 +319,43 @@ def test_display_name_in_json_schema():
     """Gemini Structured Output 스키마에 display_name이 들어가야 합니다."""
     props = ScholarshipCriteria.model_json_schema()["properties"]
     assert "display_name" in props
+
+
+MINIMAL = {"scholarship_name": "테스트 장학금"}
+
+
+def test_condition_text_reads_legacy_strings():
+    c = ScholarshipCriteria.model_validate(
+        {
+            **MINIMAL,
+            "extra_conditions": ["TOEIC 500점 이상"],
+            "basic_conditions": ["징계사실이 없는 자"],
+        }
+    )
+    assert c.extra_conditions == [ConditionText(text="TOEIC 500점 이상", summary=None)]
+    assert c.basic_conditions[0].text == "징계사실이 없는 자"
+
+
+def test_condition_summary_cleaned_or_dropped():
+    c = ScholarshipCriteria.model_validate(
+        {
+            **MINIMAL,
+            "extra_conditions": [
+                {"text": "a", "summary": "  다른  장학금을 받지 않는 학생 "},
+                {"text": "b", "summary": "   "},
+                {"text": "c", "summary": "가" * 41},
+                {"text": "d"},
+            ],
+        }
+    )
+    assert [x.summary for x in c.extra_conditions] == [
+        "다른 장학금을 받지 않는 학생",
+        None,
+        None,
+        None,
+    ]
+
+
+def test_condition_text_in_gemini_schema():
+    schema = json.dumps(ExtractedCriteria.model_json_schema())
+    assert "ConditionText" in schema and '"summary"' in schema

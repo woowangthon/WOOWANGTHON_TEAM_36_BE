@@ -358,7 +358,7 @@ def _condition_target(db: Session, scholarship_id: int, key: str) -> Scholarship
     if s is None:
         raise _not_found()
     criteria = ScholarshipCriteria.model_validate(s.criteria)
-    if key not in {key_of(text) for text in criteria.extra_conditions}:
+    if key not in {key_of(item.text) for item in criteria.extra_conditions}:
         raise _not_found("조건을 찾을 수 없습니다")
     return s
 

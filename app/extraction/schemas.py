@@ -75,6 +75,30 @@ class ExtractRequest(BaseModel):
     text: str
 
 
+def _clean_short_text(value: object) -> object:
+    """공백을 합치고, 비었거나 DISPLAY_NAME_MAX자를 넘으면 None (display_name·summary 공용)."""
+    if not isinstance(value, str):
+        return value
+    cleaned = " ".join(value.split())
+    if not cleaned or len(cleaned) > DISPLAY_NAME_MAX:
+        return None
+    return cleaned
+
+
+class ConditionText(BaseModel):
+    """자격 조건 1줄: 공지 원문(text)과 학생용 한 줄 요약(summary, extract_v10)."""
+
+    model_config = _STRICT
+
+    text: str = Field(min_length=1)
+    summary: str | None = None
+
+    @field_validator("summary", mode="before")
+    @classmethod
+    def _clean_summary(cls, value: object) -> object:
+        return _clean_short_text(value)
+
+
 class ScholarshipCriteria(BaseModel):
     """장학금 1개의 조건 (5.2 표). 판정·카드·관심 표시는 이 단위로 합니다."""
 
@@ -145,8 +169,9 @@ class ScholarshipCriteria(BaseModel):
     #   국적은 v7부터 target_nationality로 판정합니다.
     # - notes: 자격이 아닌 안내(선발 방식, 선발 뒤 의무, 그 장학금의 신청 절차, 예외 규정 등)
     # 기본값이 빈 목록이라 DB에 저장된 v4 결과도 그대로 읽힙니다(v4는 셋 모두 extra_conditions).
-    extra_conditions: list[str] = Field(default_factory=list)
-    basic_conditions: list[str] = Field(default_factory=list)
+    # 항목은 {text, summary}입니다(extract_v10). 예전 문자열 항목도 text로 읽습니다.
+    extra_conditions: list[ConditionText] = Field(default_factory=list)
+    basic_conditions: list[ConditionText] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
     ambiguous_fields: list[CriteriaField] = Field(default_factory=list)
     evidence: dict[CriteriaField, str] = Field(default_factory=dict)  # 필드별 근거 원문 문장
@@ -157,12 +182,15 @@ class ScholarshipCriteria(BaseModel):
     @field_validator("display_name", mode="before")
     @classmethod
     def _clean_display_name(cls, value: object) -> object:
-        if not isinstance(value, str):
+        return _clean_short_text(value)
+
+    @field_validator("extra_conditions", "basic_conditions", mode="before")
+    @classmethod
+    def _wrap_legacy_conditions(cls, value: object) -> object:
+        # DB에 저장된 v9 이전 결과는 문자열 목록입니다.
+        if not isinstance(value, list):
             return value
-        cleaned = " ".join(value.split())
-        if not cleaned or len(cleaned) > DISPLAY_NAME_MAX:
-            return None
-        return cleaned
+        return [{"text": item} if isinstance(item, str) else item for item in value]
 
     @model_validator(mode="after")
     def _check_values(self) -> Self:
