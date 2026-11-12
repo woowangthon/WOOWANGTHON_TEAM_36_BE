@@ -13,7 +13,7 @@ from app.extraction import (
     ScholarshipCriteria,
     extract,
 )
-from app.extraction.schemas import CRITERIA_FIELDS
+from app.extraction.schemas import CRITERIA_FIELDS, DISPLAY_NAME_MAX
 
 SEOUL = ZoneInfo("Asia/Seoul")
 
@@ -172,6 +172,7 @@ def test_criteria_fields_cover_scholarship_fields():
         "ambiguous_fields",
         "evidence",
         "evidence_source",
+        "display_name",  # 표시용 이름(extract_v9). 조건이 아니라 근거·모호 표시가 없음
     }
     assert set(CRITERIA_FIELDS) == model_fields - meta
 
@@ -263,11 +264,11 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     result = extract(_request())
     assert isinstance(result, ExtractionResult)
-    assert result.model_version == "mock+extract_v8"
+    assert result.model_version == "mock+extract_v9"
     # 목 응답도 스키마 검증을 다시 통과해야 합니다.
     again = ExtractionResult.model_validate_json(result.model_dump_json())
     assert again.criteria.notice_kind == "모집"
-    assert again.criteria.scholarships[0].scholarship_name == "두산연강재단 장학금"
+    assert again.criteria.scholarships[0].display_name == "두산연강재단 장학금"
 
 
 def test_extract_without_model_name_fails(monkeypatch):
@@ -283,3 +284,37 @@ def test_v7_criteria_without_school_excluded_load():
     s = ScholarshipCriteria.model_validate({"scholarship_name": "v7 장학금"})
     assert s.school_excluded is None
     assert "school_excluded" in CRITERIA_FIELDS
+
+
+# --- 쉬운 이름 display_name (T41, extract_v9) -----------------------------------------
+
+
+def test_v8_criteria_without_display_name_load():
+    """extract_v9 이전에 저장된 조건(display_name 없음)도 읽혀야 합니다."""
+    s = ScholarshipCriteria.model_validate({"scholarship_name": "v8 장학금"})
+    assert s.display_name is None
+
+
+def test_display_name_whitespace_is_collapsed():
+    raw = "  두산연강재단 \n 장학금 "
+    s = ScholarshipCriteria(scholarship_name="원래 이름", display_name=raw)
+    assert s.display_name == "두산연강재단 장학금"
+
+
+@pytest.mark.parametrize("value", ["", "   ", "가" * (DISPLAY_NAME_MAX + 1)])
+def test_bad_display_name_becomes_none_instead_of_failing(value):
+    """표시용 값 때문에 공지 전체가 추출 실패가 되지 않습니다."""
+    s = ScholarshipCriteria(scholarship_name="원래 이름", display_name=value)
+    assert s.display_name is None
+    assert s.scholarship_name == "원래 이름"
+
+
+def test_display_name_at_max_length_is_kept():
+    s = ScholarshipCriteria(scholarship_name="원래 이름", display_name="가" * DISPLAY_NAME_MAX)
+    assert s.display_name == "가" * DISPLAY_NAME_MAX
+
+
+def test_display_name_in_json_schema():
+    """Gemini Structured Output 스키마에 display_name이 들어가야 합니다."""
+    props = ScholarshipCriteria.model_json_schema()["properties"]
+    assert "display_name" in props

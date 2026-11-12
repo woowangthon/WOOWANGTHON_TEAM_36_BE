@@ -17,6 +17,7 @@
   봅니다. 같은 이유로 전체 정답률에는 넣지 않습니다.
 - 보조 지표 `excludes_transfer_students`·`target_nationality`(extract_v7): 위와 같습니다.
 - 보조 지표 `school_excluded`(extract_v8): 위와 같습니다.
+- `display_name`(extract_v9)은 표시용 자유 문장이라 채점하지 않습니다(정답 라벨 없음).
 """
 
 from dataclasses import dataclass, field

@@ -67,11 +67,13 @@ def add_scholarship(
     apply_end: datetime | None = None,
     benefit_type: str | None = "등록금성",
     deadline_conflict: bool = False,
+    display_name: str | None = None,
 ) -> int:
     with factory() as session:
         scholarship = Scholarship(
             notice_id=notice_id,
             name=name,
+            display_name=display_name,
             benefit_type=benefit_type,
             benefit_amount_text="100만원",
             apply_start=kst(2026, 11, 1),
@@ -148,6 +150,7 @@ def test_list_item_shape(student, factory):  # noqa: F811
     assert item == {
         "id": sid,
         "name": "두산연강",
+        "display_name": "두산연강",  # 쉬운 이름이 없으면 원래 이름
         "source_code": "KOSAF",
         "source_name": item["source_name"],
         "is_internal": False,
@@ -306,6 +309,28 @@ def test_state_is_per_user(student, factory):  # noqa: F811
     assert [(i["name"], i["my_state"]) for i in items] == [("공용", None)]
 
 
+def test_list_and_detail_use_display_name(student, factory):  # noqa: F811
+    """쉬운 이름(extract_v9)이 있으면 display_name으로 내려 주고, 원래 이름도 유지합니다."""
+    notice_id = add_notice(factory)
+    sid = add_scholarship(
+        factory,
+        notice_id,
+        "2026학년도 2학기 (재)두산연강재단 장학생 선발",
+        display_name="두산연강재단 장학금",
+    )
+    add_scholarship(factory, notice_id, "B재단 장학생 모집", display_name="B재단 장학금")
+    [item, _] = sorted(student.get("/scholarships").json()["items"], key=lambda i: i["id"])
+    assert (item["name"], item["display_name"]) == (
+        "2026학년도 2학기 (재)두산연강재단 장학생 선발",
+        "두산연강재단 장학금",
+    )
+    detail = student.get(f"/scholarships/{sid}").json()
+    assert detail["display_name"] == "두산연강재단 장학금"
+    assert [(s["name"], s["display_name"]) for s in detail["siblings"]] == [
+        ("B재단 장학생 모집", "B재단 장학금")
+    ]
+
+
 # --- 상세 ---------------------------------------------------------------------------
 
 
@@ -360,8 +385,8 @@ def test_detail(student, factory):  # noqa: F811
     assert body["notice"]["body_text"] == "본문"
     assert body["notice"]["attachments"] == []
     assert body["siblings"] == [
-        {"id": sibling_open, "name": "B재단", "status": "OPEN"},
-        {"id": sibling_closed, "name": "C재단", "status": "CLOSED"},
+        {"id": sibling_open, "name": "B재단", "display_name": "B재단", "status": "OPEN"},
+        {"id": sibling_closed, "name": "C재단", "display_name": "C재단", "status": "CLOSED"},
     ]
     assert body["unread_attachments"] == []
     assert body["input_truncated"] is False

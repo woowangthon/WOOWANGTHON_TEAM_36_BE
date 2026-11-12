@@ -198,7 +198,7 @@ def load_candidates(session: Session, now: datetime) -> list[Candidate]:
         candidates.append(
             Candidate(
                 scholarship_id=s.id,
-                name=s.name,
+                name=s.display_name or s.name,  # 메일에는 쉬운 이름(5.2)
                 status=s.status,
                 notice_kind=notice_kind,
                 apply_end=s.apply_end,

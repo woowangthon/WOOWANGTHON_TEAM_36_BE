@@ -29,7 +29,7 @@ from app.core.config import get_settings
 from app.core.logging import log_event
 from app.extraction.schemas import ExtractedCriteria, ExtractionResult, ExtractRequest
 
-PROMPT_VERSION = "extract_v8"
+PROMPT_VERSION = "extract_v9"
 MOCK_MODEL_NAME = "mock"
 PROMPT_PATH = Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.md"
 
@@ -179,7 +179,8 @@ def _mock_result() -> ExtractionResult:
             "notice_kind": "모집",
             "scholarships": [
                 {
-                    "scholarship_name": "두산연강재단 장학금",
+                    "scholarship_name": "2026학년도 2학기 (재)두산연강재단 장학생 선발",
+                    "display_name": "두산연강재단 장학금",
                     "benefit_amount_text": "연 600만원",
                     "benefit_type": "등록금성",
                     "apply_start": datetime(2026, 10, 30, 9, 0, tzinfo=_SEOUL),

@@ -123,7 +123,7 @@ def server_error(code: int) -> errors.APIError:
 def test_success(gemini, clock):
     models = gemini([json.dumps(VALID_RESPONSE)])
     result = extract(request())
-    assert result.model_version == "gemini-test-flash+extract_v8"
+    assert result.model_version == "gemini-test-flash+extract_v9"
     scholarship = result.criteria.scholarships[0]
     assert scholarship.apply_end == datetime(2026, 11, 12, 18, 0, tzinfo=SEOUL)
     assert scholarship.ambiguous_fields == ["max_income_bracket"]
@@ -178,6 +178,9 @@ def test_prompt_contains_required_rules():
         "`excludes_transfer_students`",  # 새 필드(extract_v7)
         "`target_nationality`",
         "`school_excluded`",  # 새 필드(extract_v8)
+        "`display_name`",  # 쉬운 이름(extract_v9)
+        "다듬지 않는다",  # scholarship_name은 원래 이름 그대로(재추출 매칭 키)
+        "지어내지 않는다",
         "충북대학교",  # 학교 정보로 알 수 있는 조건 → basic_conditions
         "세 목록 어디에도 다시 넣지 않는다",  # 필드로 옮긴 문장
         "문장 전체",  # 섞인 문장
@@ -335,7 +338,7 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert extract(request()).model_version == "mock+extract_v8"
+    assert extract(request()).model_version == "mock+extract_v9"
 
 
 # --- import 경계 (8.1) ---

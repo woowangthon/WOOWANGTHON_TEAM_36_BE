@@ -503,6 +503,7 @@ def apply_extraction(
             row = Scholarship(name=item.scholarship_name)
             notice.scholarships.append(row)
         apply_end, source, conflict = resolve_deadline(item.apply_end, title_end, compare_title)
+        row.display_name = item.display_name
         row.benefit_type = item.benefit_type
         row.benefit_amount_text = item.benefit_amount_text
         row.apply_start = item.apply_start

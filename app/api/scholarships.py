@@ -151,6 +151,7 @@ def _summary(
     return {
         "id": s.id,
         "name": s.name,
+        "display_name": s.display_name or s.name,
         "source_code": source.code,
         "source_name": source.name,
         "is_internal": source.is_internal,
@@ -277,7 +278,7 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
         answers=answers,
     )
     siblings = db.execute(
-        select(Scholarship.id, Scholarship.name, Scholarship.status)
+        select(Scholarship.id, Scholarship.name, Scholarship.display_name, Scholarship.status)
         .where(Scholarship.notice_id == notice.id, Scholarship.id != s.id)
         .order_by(Scholarship.id)
     ).all()
@@ -301,7 +302,10 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
                     NoticeAttachmentText(name=a.name, url=a.url, text=a.text) for a in read
                 ],
             ),
-            "siblings": [SiblingScholarship(id=i, name=n, status=st) for i, n, st in siblings],
+            "siblings": [
+                SiblingScholarship(id=i, name=n, display_name=dn or n, status=st)
+                for i, n, dn, st in siblings
+            ],
             "unread_attachments": [
                 UnreadAttachment(name=a.name, url=a.url, reason=a.status) for a in unread
             ],
