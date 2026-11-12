@@ -2,8 +2,10 @@
 
 - 형식은 확장자가 아니라 **파일 앞부분 시그니처**로 고릅니다. 학부 게시판은 세션이 없으면
   200 응답으로 HTML 오류 페이지를 주고, 확장자와 실제 형식이 다른 파일도 있습니다.
-- 지원: PDF(`parsers/pdf.py`), HWP 5.0(`parsers/hwp.py`), HWPX·DOCX(ZIP 안의 XML),
-  ZIP(안의 파일을 한 단계만 다시 판별). 이미지·스캔본은 읽지 않습니다(D3).
+- 지원: PDF(`parsers/pdf.py`), HWP 5.0(`parsers/hwp.py`), HWPX·DOCX·XLSX(ZIP 안의 XML),
+  ZIP(안의 파일을 한 단계만 다시 판별). 이미지·스캔본·옛 XLS는 읽지 않습니다(D3).
+- XLSX는 시트마다 `[시트: 이름]` 줄 뒤에 행마다 칸을 ` | `로 이어 붙여 표 모양을 남깁니다
+  (참여 대학 목록처럼 조건이 엑셀에만 있는 공지가 있음).
 - ZIP은 **안의 파일마다 결과를 하나씩** 돌려줍니다. "ZIP 안의 HWP를 못 읽음"이 상태에 남아야
   판정에서 "확인 필요"로 낮출 수 있기 때문입니다(D8).
 - 압축 폭탄을 막으려고 안의 파일 수·파일 크기·전체 크기에 상한을 두고, ZIP 안의 ZIP은 풀지 않습니다.
@@ -13,9 +15,12 @@
 
 import io
 import logging
+import math
+import posixpath
 import re
 import zipfile
 from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import Literal
 
 from app.core.logging import log_event
@@ -24,7 +29,7 @@ from app.parsers.pdf import is_pdf, read_pdf
 
 logger = logging.getLogger(__name__)
 
-FileKind = Literal["PDF", "HWP", "HWPX", "DOCX", "IMAGE", "ZIP", "OTHER"]
+FileKind = Literal["PDF", "HWP", "HWPX", "DOCX", "XLSX", "IMAGE", "ZIP", "OTHER"]
 ReadStatus = Literal["OK", "NO_TEXT", "UNSUPPORTED", "FAILED", "TOO_LARGE"]
 
 MAX_FILE_BYTES = 20 * 1024 * 1024  # 첨부 1개, ZIP 안의 파일 1개
@@ -35,6 +40,15 @@ _OLE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"  # HWP 5.0, 옛 DOC·XLS
 _ZIP = b"PK\x03\x04"
 _IMAGES = (b"\x89PNG", b"\xff\xd8\xff", b"GIF8", b"BM")
 _SECTION = re.compile(r"^Contents/section(\d+)\.xml$")
+
+# XLSX
+MAX_XLSX_COLUMNS = 64  # 행의 칸 자리를 맞추는 최대 열 수. 넘으면 값이 있는 칸만 잇습니다.
+_CELL_COLUMN = re.compile(r"^([A-Z]{1,3})")
+# 엑셀 내장 날짜·시각 서식 번호(ECMA-376 18.8.30). 사용자 서식은 서식 문자열로 판단합니다.
+_BUILTIN_DATE_FORMATS = frozenset({14, 15, 16, 17, 18, 19, 20, 21, 22, 45, 46, 47})
+_FORMAT_LITERAL = re.compile(r'"[^"]*"|\[[^\]]*\]|\\.')  # 따옴표 글자·[색]·[$-412]·\x
+_EPOCH_1900 = date(1899, 12, 30)  # 1900 날짜 체계(윤년 버그 반영)의 0
+_EPOCH_1904 = date(1904, 1, 1)
 # 한글 문서의 체크 표시 등은 글꼴 전용 사용자 영역 문자(U+E000–U+F8FF)라 텍스트로는 의미가 없습니다.
 _PRIVATE_USE = re.compile(r"[-]")
 
@@ -86,6 +100,8 @@ def _read_zip_family(data: bytes, *, name: str, inside_zip: bool) -> list[Attach
             return [_document(name, "HWPX", lambda: _hwpx_text(archive))]
         if "word/document.xml" in names:
             return [_document(name, "DOCX", lambda: _docx_text(archive))]
+        if "xl/workbook.xml" in names:
+            return [_document(name, "XLSX", lambda: _xlsx_text(archive))]
         if inside_zip:
             return [_part(name, "ZIP", "UNSUPPORTED", reason="ZIP 안의 ZIP은 풀지 않음")]
         return _read_zip(archive, name=name)
@@ -145,6 +161,178 @@ def _hwpx_text(archive: zipfile.ZipFile) -> str:
 def _docx_text(archive: zipfile.ZipFile) -> str:
     """DOCX: `word/document.xml`의 문단(`w:p`)의 글자(`w:t`)."""
     return _paragraphs(archive.read("word/document.xml"), paragraph="p", run="t")
+
+
+def _xlsx_text(archive: zipfile.ZipFile) -> str:
+    """XLSX: 통합 문서의 시트 순서대로 `[시트: 이름]` + 행마다 `칸 | 칸 | …`. 빈 시트는 뺍니다.
+
+    공유 문자열(`xl/sharedStrings.xml`)과 셀 서식(`xl/styles.xml`)은 없을 수도 있습니다.
+    날짜 서식 칸은 일련번호 대신 `2026-12-01`(시각이 있으면 `2026-12-01 18:00`)로 적습니다.
+    """
+    workbook = _read_xml(archive, "xl/workbook.xml")
+    names = set(archive.namelist())
+    shared = _shared_strings(archive) if "xl/sharedStrings.xml" in names else []
+    date_styles = _date_styles(archive) if "xl/styles.xml" in names else frozenset()
+    properties = workbook.find("{*}workbookPr")
+    date1904 = properties is not None and properties.get("date1904") in ("1", "true")
+    epoch = _EPOCH_1904 if date1904 else _EPOCH_1900
+
+    blocks = []
+    for sheet_name, path in _sheet_paths(archive, workbook):
+        rows = _sheet_rows(_read_xml(archive, path), shared, date_styles, epoch)
+        if rows:
+            blocks.append("\n".join([f"[시트: {sheet_name}]", *rows]))
+    return "\n".join(blocks)
+
+
+def _read_xml(archive: zipfile.ZipFile, path: str):  # noqa: ANN202
+    """ZIP 안의 XML을 첨부 1개 상한까지만 풀어 읽습니다(압축 폭탄 대비)."""
+    from lxml import etree
+
+    with archive.open(path) as stream:
+        data = stream.read(MAX_FILE_BYTES + 1)
+    if len(data) > MAX_FILE_BYTES:
+        raise ValueError("XML 크기 상한 초과")
+    return etree.fromstring(data, parser=etree.XMLParser(resolve_entities=False, no_network=True))
+
+
+def _sheet_paths(archive: zipfile.ZipFile, workbook) -> list[tuple[str, str]]:  # noqa: ANN001
+    """`workbook.xml`의 시트 이름과, 관계 파일로 찾은 시트 XML 경로. 경로가 없는 시트는 뺍니다."""
+    rels = _read_xml(archive, "xl/_rels/workbook.xml.rels")
+    targets = {r.get("Id"): r.get("Target", "") for r in rels.iter("{*}Relationship")}
+    names = set(archive.namelist())
+    sheets = []
+    for sheet in workbook.iter("{*}sheet"):
+        rel_id = next((v for k, v in sheet.attrib.items() if k.endswith("}id")), None)
+        target = targets.get(rel_id, "")
+        path = target.lstrip("/") if target.startswith("/") else f"xl/{target}"
+        path = posixpath.normpath(path)
+        if path in names:
+            sheets.append((sheet.get("name", ""), path))
+    return sheets
+
+
+def _shared_strings(archive: zipfile.ZipFile) -> list[str]:
+    """공유 문자열마다 글자(`t`)를 잇습니다. 일본어 후리가나(`rPh`) 글자는 뺍니다."""
+    root = _read_xml(archive, "xl/sharedStrings.xml")
+    return [_inline_text(item) for item in root.iter("{*}si")]
+
+
+def _inline_text(element) -> str:  # noqa: ANN001
+    return "".join(t.text or "" for t in element.iter("{*}t") if _nearest(t, "rPh") is None)
+
+
+def _date_styles(archive: zipfile.ZipFile) -> frozenset[int]:
+    """날짜·시각 서식을 쓰는 셀 서식 번호(`c`의 `s` 값) 모음."""
+    root = _read_xml(archive, "xl/styles.xml")
+    custom = {int(f.get("numFmtId", "-1")): f.get("formatCode", "") for f in root.iter("{*}numFmt")}
+    cell_formats = root.find("{*}cellXfs")
+    if cell_formats is None:
+        return frozenset()
+    dates = set()
+    for index, xf in enumerate(cell_formats.iter("{*}xf")):
+        format_id = int(xf.get("numFmtId", "0"))
+        if format_id in _BUILTIN_DATE_FORMATS or _is_date_format(custom.get(format_id, "")):
+            dates.add(index)
+    return frozenset(dates)
+
+
+def _is_date_format(code: str) -> bool:
+    """사용자 서식에 연(y)·일(d)이 있으면 날짜로 봅니다. `m`만 있으면 분일 수 있어 보지 않습니다."""
+    bare = _FORMAT_LITERAL.sub("", code).lower()
+    return "y" in bare or "d" in bare
+
+
+def _sheet_rows(
+    root,  # noqa: ANN001
+    shared: list[str],
+    date_styles: frozenset[int],
+    epoch: date,
+) -> list[str]:
+    """시트의 행마다 한 줄. 시트에서 가장 왼쪽에 쓴 열부터 칸 자리를 맞춰 빈 칸도 남깁니다."""
+    table: list[dict[int, str]] = []
+    for row in root.iter("{*}row"):
+        cells: dict[int, str] = {}
+        column = 0
+        for cell in row.iterfind("{*}c"):
+            column = _column_index(cell.get("r", "")) or column + 1
+            value = " ".join(_cell_text(cell, shared, date_styles, epoch).split())
+            if value:
+                cells[column] = value
+        if cells:
+            table.append(cells)
+    if not table:
+        return []
+    first = min(min(cells) for cells in table)
+    lines = []
+    for cells in table:
+        last = max(cells)
+        if last - first + 1 > MAX_XLSX_COLUMNS:
+            values = [cells[c] for c in sorted(cells)]  # 열이 너무 넓으면 값만 잇습니다
+        else:
+            values = [cells.get(c, "") for c in range(first, last + 1)]
+        lines.append(" | ".join(values))
+    return lines
+
+
+def _column_index(reference: str) -> int:
+    """`C12` → 3. 참조가 없거나 형식이 다르면 0."""
+    match = _CELL_COLUMN.match(reference)
+    if not match:
+        return 0
+    index = 0
+    for letter in match.group(1):
+        index = index * 26 + ord(letter) - ord("A") + 1
+    return index
+
+
+def _cell_text(cell, shared: list[str], date_styles: frozenset[int], epoch: date) -> str:  # noqa: ANN001
+    kind = cell.get("t", "n")
+    if kind == "inlineStr":
+        inline = cell.find("{*}is")
+        return _inline_text(inline) if inline is not None else ""
+    value = cell.find("{*}v")
+    raw = (value.text or "") if value is not None else ""
+    if not raw:
+        return ""
+    if kind == "s":
+        index = int(raw)
+        return shared[index] if 0 <= index < len(shared) else ""
+    if kind == "b":
+        return "TRUE" if raw == "1" else "FALSE"
+    if kind != "n":  # str(수식 결과 글자)·e(오류)·d(ISO 날짜)는 적힌 그대로
+        return raw
+    if int(cell.get("s", "0")) in date_styles:
+        return _excel_date(raw, epoch)
+    return _number(raw)
+
+
+def _excel_date(raw: str, epoch: date) -> str:
+    """엑셀 일련번호 → `YYYY-MM-DD`(시각이 있으면 ` HH:MM`).
+
+    시간대를 붙이지 않는 글자 변환이라 `datetime`을 쓰지 않습니다(날짜 해석은 `parsers/dates.py`).
+    시각은 분 단위로 반올림합니다(부동소수점 오차로 17:59:59.99가 되는 것을 막음).
+    """
+    try:
+        serial = float(raw)
+        days = math.floor(serial)
+        minutes = round((serial - days) * 24 * 60)
+        if minutes == 24 * 60:
+            days, minutes = days + 1, 0
+        day = epoch + timedelta(days=days)
+    except (ValueError, OverflowError):
+        return raw
+    if minutes == 0:
+        return day.isoformat()
+    return f"{day.isoformat()} {minutes // 60:02d}:{minutes % 60:02d}"
+
+
+def _number(raw: str) -> str:
+    """`4.4999999999999996` 같은 저장 오차를 엑셀 화면처럼 15자리로 정리합니다."""
+    try:
+        return f"{float(raw):.15g}"
+    except ValueError:
+        return raw
 
 
 def _paragraphs(xml: bytes, *, paragraph: str, run: str) -> str:

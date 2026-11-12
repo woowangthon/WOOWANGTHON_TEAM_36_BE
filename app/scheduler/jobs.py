@@ -3,7 +3,7 @@
     uv run python -m app.scheduler.jobs                     # 정기 수집과 같은 1회 실행
     uv run python -m app.scheduler.jobs --backfill          # 게시일 기준 최근 1년 백필
     uv run python -m app.scheduler.jobs --source SW_DEPT    # 사이트 하나만
-    uv run python -m app.scheduler.jobs --reread-attachments  # 모집 중 공지의 첨부를 다시 읽기(D9)
+    uv run python -m app.scheduler.jobs --reread-attachments  # 모집 중 공지의 첨부 다시 읽기(D9)
 
 실행 흐름(`run_crawl`)
 1. 시작 잠금: 한 트랜잭션에서 `pg_advisory_xact_lock` → 1시간 안에 시작된 `RUNNING`이 있으면 건너뜀
@@ -19,10 +19,12 @@
 5. 상태 일괄 갱신: `OPEN`·`ALWAYS` → `CLOSED` 방향만(마감 경과, 상시 만료 60일·1년).
 6. `CRAWL_RUNS`를 `DONE`/`FAILED`로 마감합니다.
 
-`--reread-attachments`: 첨부 표가 생기기 전에 수집해 첨부 행이 없는 공지 중
-모집 중(`OPEN`·`ALWAYS`)인 것만 첨부를 다시 읽고 `PENDING`으로 둡니다(D9).
+`--reread-attachments`: 모집 중(`OPEN`·`ALWAYS`)인 공지 중 아래 둘만 첨부를 다시 읽고
+`PENDING`으로 둡니다(D9).
+- 첨부 표가 생기기 전에 수집해 첨부 행이 없는 공지
+- 엑셀(xlsx)을 읽기 전에 수집해 `.xlsx` 첨부(ZIP 안 포함)가 `UNSUPPORTED`로 남은 공지
 추출은 대기열로 넘겨 한 번에 최대 20건씩 처리하므로 Gemini 비용이 한꺼번에 늘지 않습니다.
-이미 첨부 행이 있으면 건너뛰어 여러 번 실행해도 됩니다.
+다시 읽은 공지는 대상에서 빠지므로 여러 번 실행해도 됩니다.
 
 요청 안에서 끝까지 동기로 실행합니다(`BackgroundTasks` 쓰지 않음, 9.3).
 추출 함수에는 공지 텍스트(`ExtractRequest`)만 넘깁니다(8.1).
@@ -258,13 +260,25 @@ def _recheck_targets(
 
 
 def _reread_targets(session: Session, source_code: str) -> list[str]:
-    """첨부가 있는데 첨부 행이 없는(첨부 표 이전에 수집한) 모집 중 공지(D9)."""
+    """첨부를 다시 읽을 모집 중 공지(D9).
+
+    첨부가 있는데 첨부 행이 없거나(첨부 표 이전에 수집), 엑셀을 못 읽던 때의 `UNSUPPORTED` 행이
+    남은 공지입니다. 엑셀 행 이름은 `목록.xlsx`, `붙임.zip / 목록.xlsx`, 예전에 xlsx를 ZIP으로 풀어
+    생긴 `목록.xlsx / xl/workbook.xml` 꼴이라 `.xlsx`가 들어 있는지로 찾습니다. 다시 읽으면
+    `OK`(또는 `FAILED`·`NO_TEXT`)가 되어 대상에서 빠집니다.
+    """
+    unread_xlsx = Notice.files.any(
+        and_(
+            NoticeAttachment.status == "UNSUPPORTED",
+            NoticeAttachment.name.ilike("%.xlsx%"),
+        )
+    )
     query = (
         select(Notice.external_id)
         .where(
             Notice.source_code == source_code,
             func.jsonb_array_length(Notice.attachments) > 0,
-            ~Notice.files.any(),
+            or_(~Notice.files.any(), unread_xlsx),
             Notice.scholarships.any(Scholarship.status.in_(("OPEN", "ALWAYS"))),
         )
         .order_by(Notice.id)
@@ -603,7 +617,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--reread-attachments",
         action="store_true",
-        help="첨부 행이 없는 모집 중 공지의 첨부를 다시 읽고 추출 대기열에 넣기(D9)",
+        help="첨부 행이 없거나 못 읽은 엑셀이 있는 모집 중 공지의 첨부를 다시 읽고 "
+        "추출 대기열에 넣기(D9)",
     )
     args = parser.parse_args(argv)
 

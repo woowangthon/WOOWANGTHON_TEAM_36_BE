@@ -30,6 +30,7 @@ FIXTURES = Path(__file__).parents[1] / "fixtures"
 NOW = kst(2026, 11, 5, 10, 0)
 POSTED = kst(2026, 11, 1, 9, 0)
 PDF_BYTES = (FIXTURES / "sw_dept" / "pdf" / "1154905_0.pdf").read_bytes()
+XLSX_BYTES = (FIXTURES / "xlsx" / "participating_universities.xlsx").read_bytes()
 
 
 # --- 가짜 사이트·크롤러 -------------------------------------------------------
@@ -447,6 +448,54 @@ def test_reread_attachments_is_idempotent(crawl, site, extractor, session_factor
     crawl(at=NOW + timedelta(hours=1), reread_attachments=True)
 
     assert site.downloads == []  # 이미 첨부 행이 있으면 건너뜀
+
+
+def _mark_as_read_before_xlsx_support(session_factory, external_id: str, status="OPEN") -> None:
+    """엑셀을 못 읽던 때 수집한 공지처럼 만듭니다: 엑셀 행은 UNSUPPORTED, 추출 완료."""
+    with session_factory() as session:
+        notice = session.scalar(select(Notice).where(Notice.external_id == external_id))
+        for row in notice.files:
+            if ".xlsx" in row.name:
+                row.file_kind, row.status, row.text = "ZIP", "UNSUPPORTED", ""
+        notice.extract_status = "DONE"
+        for scholarship in notice.scholarships:
+            scholarship.status = status
+        session.commit()
+
+
+def test_reread_attachments_of_open_notices_with_unread_xlsx(
+    crawl, site, extractor, session_factory
+):
+    xlsx = Attachment(name="붙임3. 참여 대학.xlsx", url="https://example.test/f/1")
+    image = Attachment(name="포스터.png", url="https://example.test/f/2")
+    site.files = {xlsx.url: XLSX_BYTES, image.url: b"\x89PNG\r\n\x1a\n" + b"\0" * 100}
+    site.post("xlsx", attachments=(xlsx,), title="집중근로")
+    site.post("closed", attachments=(xlsx,), title="마감됨")
+    site.post("image", attachments=(image,), title="포스터만")
+    crawl()
+    _mark_as_read_before_xlsx_support(session_factory, "xlsx")
+    _mark_as_read_before_xlsx_support(session_factory, "closed", status="CLOSED")
+    _mark_as_read_before_xlsx_support(session_factory, "image")
+    site.downloads.clear()
+    extractor.requests.clear()
+
+    crawl(at=NOW + timedelta(hours=1), reread_attachments=True)
+
+    # 모집 중 + 못 읽은 엑셀만. 이미지처럼 지금도 못 읽는 형식은 다시 받지 않습니다.
+    assert site.downloads == ["붙임3. 참여 대학.xlsx"]
+    rows = {
+        n.external_id: [(f.file_kind, f.status) for f in n.files] for n in notices(session_factory)
+    }
+    assert rows["xlsx"] == [("XLSX", "OK")]
+    assert rows["closed"] == [("ZIP", "UNSUPPORTED")]
+    [request] = extractor.requests
+    assert request.title == "집중근로"
+    assert "[첨부 XLSX: 붙임3. 참여 대학.xlsx]\n[시트: 참여 대학]\n" in request.text
+    assert "2 | 충북 | 충북대학교" in request.text
+
+    site.downloads.clear()
+    crawl(at=NOW + timedelta(hours=2), reread_attachments=True)
+    assert site.downloads == []  # 다시 읽은 뒤에는 대상이 아님
 
 
 def test_notice_saved_before_attachment_table_uses_body_text(session_factory, extractor):
