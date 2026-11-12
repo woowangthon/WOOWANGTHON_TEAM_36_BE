@@ -149,6 +149,7 @@ def test_signup_creates_user_and_sets_cookie(api, factory):
         "has_password": True,
         "nickname": None,  # 프로필 전
         "completed_semesters": None,
+        "is_transfer": None,
         "gpa": None,
         "email_notifications": True,  # 알림 메일은 기본 켬 (7.4)
     }

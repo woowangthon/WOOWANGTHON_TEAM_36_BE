@@ -63,6 +63,9 @@ class UserProfile(Base):
     enrollment_status: Mapped[str] = mapped_column(String(10))  # 재학 / 휴학
     department: Mapped[str] = mapped_column(String(20))  # 옛 칸. 배포 ④에서 지움
     aibc_member: Mapped[bool | None] = mapped_column(Boolean)  # null = 모름
+    # 편입생이면 completed_semesters는 편입 후 마친 학기 수 (T39)
+    is_transfer: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    is_foreign: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     enc_income_bracket: Mapped[bytes | None] = mapped_column(LargeBinary)
     enc_self_region: Mapped[bytes | None] = mapped_column(LargeBinary)
     enc_parent_region: Mapped[bytes | None] = mapped_column(LargeBinary)
