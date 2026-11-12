@@ -1,7 +1,7 @@
 # 조건 요약 설계 (추출 프롬프트 v10)
 
 - 작성일: 2026-11-12
-- 상태: 사용자 검토 대기
+- 상태: 승인 (2026-11-12)
 - 브랜치: `feat/T43-condition-summary` (`feat/T41-display-name` b491dc8에서 분기, T41 머지 뒤 `main`으로 rebase)
 - 카드: T43(backend), T44(frontend)
 
