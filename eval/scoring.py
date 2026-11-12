@@ -15,6 +15,7 @@
   버전끼리 비교할 수 있게 전체 정답률(`correct`·`total`)에는 넣지 않습니다.
 - 보조 지표 `excludes_new_students`·`min_remaining_semesters`(extract_v6): 값이 정답과 같은지
   봅니다. 같은 이유로 전체 정답률에는 넣지 않습니다.
+- 보조 지표 `excludes_transfer_students`·`target_nationality`(extract_v7): 위와 같습니다.
 """
 
 from dataclasses import dataclass, field
@@ -33,7 +34,12 @@ SCHOLARSHIP_FIELDS = (
 )
 FIELDS = NOTICE_FIELDS + SCHOLARSHIP_FIELDS
 # 전체 정답률에 넣지 않는 보조 지표. needs_check는 아래에서 따로 계산합니다.
-AUX_VALUE_FIELDS = ("excludes_new_students", "min_remaining_semesters")
+AUX_VALUE_FIELDS = (
+    "excludes_new_students",
+    "min_remaining_semesters",
+    "excludes_transfer_students",
+    "target_nationality",
+)
 AUX_FIELDS = ("needs_check", *AUX_VALUE_FIELDS)
 TARGET_ACCURACY = 0.90
 

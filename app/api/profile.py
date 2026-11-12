@@ -21,6 +21,7 @@ from app.core.db import get_db
 from app.core.security import ConsentedUser
 from app.models import UserProfile
 from app.schemas.api.profile import (
+    TRANSFER_CREDIT_SEMESTERS,
     Profile,
     ProfileUpdate,
     Region,
@@ -41,6 +42,8 @@ PLAIN_FIELDS = (
     "completed_semesters",
     "enrollment_status",
     "aibc_member",
+    "is_transfer",
+    "is_foreign",
     "gpa",
     "score_100",
     "credits",
@@ -117,8 +120,10 @@ def put_profile(body: ProfileUpdate, user: ConsentedUser, db: DB) -> Profile:
     semesters = body.completed_semesters
     assert semesters is not None  # ProfileUpdate가 채움
     # 옛 칸 (배포 ③에서 지움): 옛 서버로 되돌려도 읽을 수 있게 함께 씁니다.
-    row.grade = grade_of(semesters)
-    row.extra_semester = is_extra_semester(semesters)
+    # 편입생은 판정용 이수학기(+4) 기준입니다(T39).
+    effective = semesters + (TRANSFER_CREDIT_SEMESTERS if body.is_transfer else 0)
+    row.grade = grade_of(effective)
+    row.extra_semester = is_extra_semester(effective)
     row.department = "소프트웨어학부"
     for field, column, aad_name in ENCRYPTED_FIELDS:
         setattr(row, column, _seal(user.id, aad_name, getattr(body, field)))

@@ -13,7 +13,7 @@
 
 공지 조건이 null이면 비교하지 않습니다.
 `ambiguous_fields`에 든 조건은 값과 관계없이 알 수 없음입니다(5.2).
-`basic_conditions`(국적·중복 수혜 등 대부분 충족)와 `notes`(자격이 아닌 안내)는 판정을 바꾸지 않고
+`basic_conditions`(학교 조건·품행 등 대부분 충족)와 `notes`(자격이 아닌 안내)는 판정을 바꾸지 않고
 화면에 보여 주기만 합니다(extract_v5).
 """
 
@@ -81,11 +81,13 @@ RULES: tuple[tuple[ConditionName, Rule], ...] = (
     ("target_grades", _no_date(rules.target_grades)),
     ("excludes_extra_semester", _no_date(rules.excludes_extra_semester)),
     ("excludes_new_students", _no_date(rules.excludes_new_students)),
+    ("excludes_transfer_students", _no_date(rules.excludes_transfer_students)),
     ("min_remaining_semesters", _no_date(rules.min_remaining_semesters)),
     ("enrollment_status", _no_date(rules.enrollment_status)),
     ("min_gpa", _no_date(_min_gpa)),
     ("min_score_100", _no_date(_min_score_100)),
     ("min_credits", _no_date(rules.min_credits)),
+    ("target_nationality", _no_date(rules.target_nationality)),
     ("gender", _no_date(rules.gender)),
     ("max_age", rules.max_age),
     ("max_income_bracket", _no_date(rules.max_income_bracket)),

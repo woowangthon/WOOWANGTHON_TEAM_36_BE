@@ -10,7 +10,13 @@ from datetime import date
 
 from app.extraction.schemas import ScholarshipCriteria
 from app.parsers.dates import to_kst
-from app.schemas.api.profile import Profile, Region, grade_of, is_extra_semester
+from app.schemas.api.profile import (
+    Profile,
+    Region,
+    effective_semesters,
+    grade_of,
+    is_extra_semester,
+)
 from app.schemas.api.scholarships import ConditionOutcome
 
 Outcome = ConditionOutcome | None
@@ -55,27 +61,27 @@ def _bool(value: bool) -> ConditionOutcome:
 
 
 def target_grades(p: Profile, c: ScholarshipCriteria) -> Outcome:
-    """학년은 이수학기에서 계산합니다(4.1). 초과학기 학생(8학기 이상)은 4학년입니다."""
+    """학년은 판정용 이수학기(편입생 +4)에서 계산합니다(4.1). 8학기 이상은 4학년입니다."""
     if c.target_grades is None:
         return None
-    return _bool(grade_of(p.completed_semesters) in c.target_grades)
+    return _bool(grade_of(effective_semesters(p)) in c.target_grades)
 
 
 def excludes_extra_semester(p: Profile, c: ScholarshipCriteria) -> Outcome:
     """`target_grades`가 null이어도 따로 비교합니다. false·null은 조건 없음."""
     if not c.excludes_extra_semester:
         return None
-    return _bool(not is_extra_semester(p.completed_semesters))
+    return _bool(not is_extra_semester(effective_semesters(p)))
 
 
-# 정규학기 수 (4년제 8학기). 남은 정규학기 = 8 − 이수학기
+# 정규학기 수 (4년제 8학기). 남은 정규학기 = 8 − 판정용 이수학기
 REGULAR_SEMESTERS = 8
 
 
 def excludes_new_students(p: Profile, c: ScholarshipCriteria) -> Outcome:
     """신·편입생 제외 (extract_v6). 이수학기 0이면 불충족, 1 이상이면 충족. false·null은 조건 없음.
 
-    프로필에 편입 여부가 없어 모든 사용자를 편입생이 아니라고 간주합니다(2026-11-12).
+    편입생의 이수학기는 편입 후 이 학교에서 마친 학기라서, 편입 첫 학기도 불충족입니다(T39).
     """
     if not c.excludes_new_students:
         return None
@@ -83,13 +89,20 @@ def excludes_new_students(p: Profile, c: ScholarshipCriteria) -> Outcome:
 
 
 def min_remaining_semesters(p: Profile, c: ScholarshipCriteria) -> Outcome:
-    """남은 정규학기 N학기 이상 (extract_v6). `8 − 이수학기 ≥ N`이면 충족.
+    """남은 정규학기 N학기 이상 (extract_v6). `8 − 판정용 이수학기 ≥ N`이면 충족.
 
     이수학기는 마친 학기 수라서 지금 다니는 학기도 남은 학기로 셉니다(2026-11-12).
     """
     if c.min_remaining_semesters is None:
         return None
-    return _bool(REGULAR_SEMESTERS - p.completed_semesters >= c.min_remaining_semesters)
+    return _bool(REGULAR_SEMESTERS - effective_semesters(p) >= c.min_remaining_semesters)
+
+
+def excludes_transfer_students(p: Profile, c: ScholarshipCriteria) -> Outcome:
+    """편입생 제외 (extract_v7). 편입 첫 학기(편입 후 마친 학기 0)인 편입생만 불충족."""
+    if not c.excludes_transfer_students:
+        return None
+    return _bool(not (p.is_transfer and p.completed_semesters == 0))
 
 
 def enrollment_status(p: Profile, c: ScholarshipCriteria) -> Outcome:
@@ -132,6 +145,13 @@ def min_credits(p: Profile, c: ScholarshipCriteria) -> Outcome:
 
 
 # --- 인적 사항 ----------------------------------------------------------------------
+
+
+def target_nationality(p: Profile, c: ScholarshipCriteria) -> Outcome:
+    """국적 (extract_v7). domestic이면 내국인, foreign이면 외국인만 충족."""
+    if c.target_nationality is None:
+        return None
+    return _bool(p.is_foreign == (c.target_nationality == "foreign"))
 
 
 def gender(p: Profile, c: ScholarshipCriteria) -> Outcome:

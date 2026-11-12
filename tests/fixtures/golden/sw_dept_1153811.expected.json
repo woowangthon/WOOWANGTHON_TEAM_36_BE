@@ -44,8 +44,10 @@
         "min_credits": "직전학기 12 학점 이상 을 이수하고",
         "benefit_type": "매 학기 등록금 전액 및 취 · 창업지원금 200 만 원",
         "min_score_100": "직전학기 성적이 백분위 70 점 이상",
-        "grade_basis": "직전학기 성적이 백분위 70 점 이상"
-      }
+        "grade_basis": "직전학기 성적이 백분위 70 점 이상",
+        "target_nationality": "대한민국 국적자로 3 학년 이상 재학생"
+      },
+      "target_nationality": "domestic"
     }
   ]
 }

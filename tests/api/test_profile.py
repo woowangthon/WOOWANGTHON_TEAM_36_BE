@@ -21,6 +21,8 @@ PROFILE = {
     "completed_semesters": 5,
     "enrollment_status": "재학",
     "aibc_member": False,
+    "is_transfer": False,
+    "is_foreign": False,
     "gpa": 3.8,
     "score_100": 90.5,  # 서버가 평점으로 계산하는 값과 같게 (3.8 × 10 + 52.5)
     "credits": 18,
@@ -161,6 +163,53 @@ def test_put_updates_existing_profile(api, factory):
     assert row.enc_parent_region is not None
 
 
+# --- 편입생·외국인 (T39) -----------------------------------------------------------
+
+
+def test_put_profile_transfer_foreign_roundtrip(api, factory):
+    body = {**PROFILE, "is_transfer": True, "is_foreign": True, "completed_semesters": 2}
+
+    assert api.put("/profile", json=body).json() == body
+    assert api.get("/profile").json() == body
+    row = stored(factory)
+    # 옛 칸은 판정용 이수학기(2 + 4 = 6) 기준
+    assert (row.grade, row.extra_semester) == (4, False)
+
+
+def test_put_profile_without_new_fields_defaults_false(api):
+    old_screen = {k: v for k, v in PROFILE.items() if k not in {"is_transfer", "is_foreign"}}
+
+    response = api.put("/profile", json=old_screen)
+
+    assert response.status_code == 200
+    assert (response.json()["is_transfer"], response.json()["is_foreign"]) == (False, False)
+
+
+def test_put_profile_transfer_semesters_over_12_rejected(api):
+    response = api.put("/profile", json={**PROFILE, "is_transfer": True, "completed_semesters": 13})
+
+    assert response.status_code == 422
+    assert "편입 후 마친 학기는 0~12" in response.text
+
+
+def test_put_profile_non_transfer_16_ok(api):
+    response = api.put("/profile", json={**PROFILE, "completed_semesters": 16})
+
+    assert response.status_code == 200
+
+
+def test_put_profile_rejects_string_bool(api):
+    assert api.put("/profile", json={**PROFILE, "is_foreign": "yes"}).status_code == 422
+
+
+def test_me_includes_is_transfer(api):
+    assert api.get("/auth/me").json()["is_transfer"] is None
+
+    api.put("/profile", json={**PROFILE, "is_transfer": True, "completed_semesters": 1})
+
+    assert api.get("/auth/me").json()["is_transfer"] is True
+
+
 @pytest.mark.parametrize("bracket", [0.0, 0.5, 1.0, 10.0])
 def test_income_bracket_values(api, bracket):
     assert api.put("/profile", json={**PROFILE, "income_bracket": bracket}).status_code == 200
@@ -297,7 +346,13 @@ def test_invalid_profile_is_422(api, factory, overrides):
 
 # 100점 환산은 서버가 평점으로 계산하므로 빠져도 됩니다 (#41)
 @pytest.mark.parametrize(
-    "missing", [k for k in REQUIRED_ONLY if k not in ("score_100", "score_100_total")]
+    "missing",
+    # 편입생·외국인은 옛 화면 대비로 빠지면 false (T39)
+    [
+        k
+        for k in REQUIRED_ONLY
+        if k not in ("score_100", "score_100_total", "is_transfer", "is_foreign")
+    ],
 )
 def test_missing_required_field_is_422(api, missing):
     body = {k: v for k, v in PROFILE.items() if k != missing}

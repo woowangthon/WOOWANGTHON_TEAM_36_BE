@@ -91,5 +91,6 @@ class MeResponse(BaseModel):
     # 모든 화면이 부르는 응답이라 암호화하는 민감 필드(소득분위·주소·특수자격)는 넣지 않습니다(4.2).
     nickname: str | None = None
     completed_semesters: int | None = None
+    is_transfer: bool | None = None  # 편입생이면 completed_semesters는 편입 후 학기 (T39)
     gpa: float | None = None  # 직전학기 평점. 이수학기 0이면 null
     email_notifications: bool = True  # 장학금 알림 메일 수신 (7.4)

@@ -19,11 +19,13 @@ ConditionName = Literal[
     "target_grades",
     "excludes_extra_semester",
     "excludes_new_students",  # 신·편입생 제외 (extract_v6)
+    "excludes_transfer_students",  # 편입생 제외 (extract_v7)
     "min_remaining_semesters",  # 남은 정규학기 N학기 이상 (extract_v6)
     "enrollment_status",
     "min_gpa",
     "min_score_100",
     "min_credits",
+    "target_nationality",  # 국적 (extract_v7)
     "gender",
     "max_age",
     "max_income_bracket",

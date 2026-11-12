@@ -97,6 +97,7 @@ def _me(db: Session, user: User) -> MeResponse:
         has_password=user.password_hash is not None,
         nickname=profile.name if profile else None,
         completed_semesters=profile.completed_semesters if profile else None,
+        is_transfer=profile.is_transfer if profile else None,
         gpa=profile.gpa if profile else None,
         email_notifications=user.email_notifications,
     )

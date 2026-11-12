@@ -31,6 +31,9 @@ LegacyFullTuitionWaiver = Literal["예", "아니오", "모름"]
 MIN_BIRTH_YEAR = 1950
 MIN_AGE = 15
 MAX_SEMESTERS = 16
+# 편입생은 3학년 편입으로 보고 4학기를 더해 판정합니다(4.1, 2026-11-12).
+TRANSFER_CREDIT_SEMESTERS = 4
+MAX_TRANSFER_SEMESTERS = MAX_SEMESTERS - TRANSFER_CREDIT_SEMESTERS
 NICKNAME = re.compile(r"[가-힣A-Za-z0-9]{2,10}")
 # 100점 환산 = 평점 × 10 + 52.5 (2026-11-10 결정, 시연용 추정값).
 # 충북대 등급표에서 원점수는 평점×10+50~55 사이라 그 가운데 값을 씁니다. 학생은 입력하지 않습니다.
@@ -96,9 +99,13 @@ class Profile(BaseModel):
     name: str | None  # 닉네임. 기존 실명을 지운 사용자는 null(다시 입력 요청)
     gender: Gender
     birth_year: int  # 나이는 서버가 계산(5.3)
-    completed_semesters: int  # 마친 정규학기 수. 학년·초과학기는 여기서 계산(4.1)
+    # 마친 정규학기 수. 편입생이면 편입 후 이 학교에서 마친 학기 수(4.1).
+    # 학년·초과학기·남은 학기는 effective_semesters()로 계산합니다.
+    completed_semesters: int
     enrollment_status: ProfileEnrollmentStatus
     aibc_member: bool | None = None  # null = 모름
+    is_transfer: bool = False  # 편입생 (T39)
+    is_foreign: bool = False  # 외국인(대한민국 국적이 아님) (T39)
 
     # 성적 (4.1, C안). 이수학기 0이면 모두 null
     gpa: float | None = None  # 직전학기 평점평균, 4.5 만점
@@ -120,6 +127,11 @@ class Profile(BaseModel):
         self.score_100 = score_100_from_gpa(self.gpa)
         self.score_100_total = score_100_from_gpa(self.gpa_total)
         return self
+
+
+def effective_semesters(p: Profile) -> int:
+    """판정용 이수학기: 편입생이면 편입 후 마친 학기 + 4 (4.1)."""
+    return p.completed_semesters + (TRANSFER_CREDIT_SEMESTERS if p.is_transfer else 0)
 
 
 def _two_decimals(value: float | None, label: str) -> float | None:
@@ -160,6 +172,9 @@ class ProfileUpdate(BaseModel):
     birth_year: int
     completed_semesters: int | None = None  # 필수. 전환 기간에만 옛 grade로 대신할 수 있음
     aibc_member: StrictBool | None  # "yes"·1 같은 값은 거부
+    # 편입생·외국인 (T39). 배포된 옛 화면이 보내지 않아도 저장되게 기본값 false
+    is_transfer: StrictBool = False
+    is_foreign: StrictBool = False
 
     # 서비스 대상이 재학생이라 화면에서 묻지 않습니다(2026-11-10 결정). 보내지 않으면 재학으로 저장.
     # 열려 있던 옛 화면이 보내는 값은 전환 기간에만 받습니다(배포 ③에서 칸을 지움).
@@ -246,6 +261,8 @@ class ProfileUpdate(BaseModel):
             if self.grade is None or self.extra_semester is None:
                 raise ValueError("이수학기를 입력하세요")
             self.completed_semesters = semesters_from_grade(self.grade, self.extra_semester)
+        if self.is_transfer and self.completed_semesters > MAX_TRANSFER_SEMESTERS:
+            raise ValueError(f"편입 후 마친 학기는 0~{MAX_TRANSFER_SEMESTERS} 사이로 입력하세요")
         if self.completed_semesters == 0:  # 신입생 첫 학기: 성적이 없음(4.1)
             self.gpa = self.credits = self.gpa_total = None
         else:
