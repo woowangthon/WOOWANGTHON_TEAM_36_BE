@@ -120,6 +120,26 @@ def test_income_bracket_allowed_values(bracket):
     assert s.max_income_bracket == bracket
 
 
+def test_new_student_and_remaining_semester_fields():
+    s = ExtractedCriteria.model_validate(
+        _example(excludes_new_students=True, min_remaining_semesters=1)
+    ).scholarships[0]
+    assert s.excludes_new_students is True
+    assert s.min_remaining_semesters == 1
+
+
+@pytest.mark.parametrize("value", [0, 9])
+def test_min_remaining_semesters_range(value):
+    with pytest.raises(ValidationError):
+        ExtractedCriteria.model_validate(_example(min_remaining_semesters=value))
+
+
+def test_v5_criteria_without_new_fields_still_load():
+    """extract_v6 이전에 저장된 조건(새 키 없음)도 읽혀야 합니다."""
+    s = ScholarshipCriteria.model_validate({"scholarship_name": "v5 장학금"})
+    assert s.excludes_new_students is None and s.min_remaining_semesters is None
+
+
 def test_criteria_fields_cover_scholarship_fields():
     """ambiguous_fields·evidence 키 목록이 조건 필드와 어긋나지 않게 합니다."""
     model_fields = set(ScholarshipCriteria.model_fields)

@@ -35,6 +35,8 @@ CriteriaField = Literal[
     "apply_end",
     "target_grades",
     "excludes_extra_semester",
+    "excludes_new_students",
+    "min_remaining_semesters",
     "enrollment_status",
     "min_gpa",
     "min_score_100",
@@ -82,6 +84,11 @@ class ScholarshipCriteria(BaseModel):
 
     target_grades: list[int] | None = None
     excludes_extra_semester: bool | None = None
+    # extract_v6에서 추가했습니다. 기본값이 None이라 DB에 저장된 v5 결과도 그대로 읽힙니다.
+    # 신입생·편입생 제외면 true. 공지에 조건이 없으면 null(false도 쓰지 않음)
+    excludes_new_students: bool | None = None
+    # 남은 정규학기가 N학기 이상이어야 함(예: "잔여정규학기 1개 학기 이상" → 1)
+    min_remaining_semesters: int | None = Field(default=None, ge=1, le=8)
     enrollment_status: list[EnrollmentStatus] | None = None
 
     # 성적 조건 (5.2): 4.5 만점 평점과 100점 만점 점수는 서로 환산하지 않고 따로 둡니다.
