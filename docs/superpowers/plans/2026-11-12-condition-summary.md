@@ -44,19 +44,36 @@
 
 ```python
 def test_condition_text_reads_legacy_strings():
-    c = ScholarshipCriteria.model_validate({**MINIMAL, "extra_conditions": ["TOEIC 500점 이상"],
-                                            "basic_conditions": ["징계사실이 없는 자"]})
+    c = ScholarshipCriteria.model_validate(
+        {
+            **MINIMAL,
+            "extra_conditions": ["TOEIC 500점 이상"],
+            "basic_conditions": ["징계사실이 없는 자"],
+        }
+    )
     assert c.extra_conditions == [ConditionText(text="TOEIC 500점 이상", summary=None)]
     assert c.basic_conditions[0].text == "징계사실이 없는 자"
 
+
 def test_condition_summary_cleaned_or_dropped():
-    c = ScholarshipCriteria.model_validate({**MINIMAL, "extra_conditions": [
-        {"text": "a", "summary": "  다른  장학금을 받지 않는 학생 "},
-        {"text": "b", "summary": "   "},
-        {"text": "c", "summary": "가" * 41},
-        {"text": "d"},
-    ]})
-    assert [x.summary for x in c.extra_conditions] == ["다른 장학금을 받지 않는 학생", None, None, None]
+    c = ScholarshipCriteria.model_validate(
+        {
+            **MINIMAL,
+            "extra_conditions": [
+                {"text": "a", "summary": "  다른  장학금을 받지 않는 학생 "},
+                {"text": "b", "summary": "   "},
+                {"text": "c", "summary": "가" * 41},
+                {"text": "d"},
+            ],
+        }
+    )
+    assert [x.summary for x in c.extra_conditions] == [
+        "다른 장학금을 받지 않는 학생",
+        None,
+        None,
+        None,
+    ]
+
 
 def test_condition_text_in_gemini_schema():
     schema = json.dumps(ExtractedCriteria.model_json_schema())
@@ -242,10 +259,12 @@ Expected: 전부 PASS. `tests/notifications/test_select.py` 등에서 문자열 
 
 `test_extractor.py`의 프롬프트 규칙 목록 테스트(현재 170~187행)에 아래를 추가하고, 버전 문자열 기대값을 `extract_v10`으로 바꿉니다.
 ```python
-"`summary`",                  # 조건 요약(extract_v10)
-"맞아요",                      # 긍정형: "맞아요" = 충족
-"어느 목록에도 넣지 않는다",     # 같은 공지에 세부 자격이 있는 규정 출처
-"직접 답할 부분만",             # 섞인 문장 요약
+new_rules = [
+    "`summary`",  # 조건 요약(extract_v10)
+    "맞아요",  # 긍정형: "맞아요" = 충족
+    "어느 목록에도 넣지 않는다",  # 같은 공지에 세부 자격이 있는 규정 출처
+    "직접 답할 부분만",  # 섞인 문장 요약
+]
 ```
 그리고 다음 테스트를 추가합니다: `test_prompt_v10_drops_source_line_rule` → `"세부 자격이 같은 공지에 적힌 규정의 출처 문장: "`(v9 `basic_conditions` 예시 줄)이 v10 프롬프트에 **없음**을 확인합니다.
 
@@ -286,15 +305,41 @@ Expected: 전부 PASS
 
 ```python
 def test_condition_summaries_lists_extra_then_basic():
-    predicted = ExtractedCriteria.model_validate({"notice_kind": "모집", "scholarships": [
-        {**MINIMAL, "scholarship_name": "A",
-         "extra_conditions": [{"text": "타 장학금과 중복 수혜 불가", "summary": "다른 장학금을 받지 않는 학생"}],
-         "basic_conditions": ["징계사실이 없는 자"]}]})
+    predicted = ExtractedCriteria.model_validate(
+        {
+            "notice_kind": "모집",
+            "scholarships": [
+                {
+                    **MINIMAL,
+                    "scholarship_name": "A",
+                    "extra_conditions": [
+                        {
+                            "text": "타 장학금과 중복 수혜 불가",
+                            "summary": "다른 장학금을 받지 않는 학생",
+                        }
+                    ],
+                    "basic_conditions": ["징계사실이 없는 자"],
+                }
+            ],
+        }
+    )
     assert condition_summaries("n1", predicted) == [
-        {"notice": "n1", "scholarship": "A", "list": "extra",
-         "text": "타 장학금과 중복 수혜 불가", "summary": "다른 장학금을 받지 않는 학생"},
-        {"notice": "n1", "scholarship": "A", "list": "basic", "text": "징계사실이 없는 자", "summary": None},
+        {
+            "notice": "n1",
+            "scholarship": "A",
+            "list": "extra",
+            "text": "타 장학금과 중복 수혜 불가",
+            "summary": "다른 장학금을 받지 않는 학생",
+        },
+        {
+            "notice": "n1",
+            "scholarship": "A",
+            "list": "basic",
+            "text": "징계사실이 없는 자",
+            "summary": None,
+        },
     ]
+
 
 def test_condition_summaries_failed_notice_is_empty():
     assert condition_summaries("n1", None) == []

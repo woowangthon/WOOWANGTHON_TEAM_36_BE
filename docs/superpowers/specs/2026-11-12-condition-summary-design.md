@@ -91,12 +91,13 @@
 
 ```python
 class ConditionText(BaseModel):
-    text: str        # 공지 원문 그대로 (근거, condition_key의 입력)
+    text: str  # 공지 원문 그대로 (근거, condition_key의 입력)
     summary: str | None = None  # 3.1 규칙. 비었거나 40자 초과면 None
+
 
 extra_conditions: list[ConditionText]
 basic_conditions: list[ConditionText]
-notes: list[str]     # 그대로
+notes: list[str]  # 그대로
 ```
 
 - `mode="before"` validator가 문자열 항목을 `{text, summary: None}`으로 읽습니다. DB `criteria`(jsonb)에 저장된 v9 이전 결과와 골든셋 정답 JSON이 그대로 읽히므로 Alembic 마이그레이션이 없습니다.
