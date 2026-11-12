@@ -14,7 +14,7 @@ from app.models import Notice, Scholarship, User, UserProfile, UserScholarshipSt
 from app.parsers.dates import kst
 from tests.models.conftest import alembic_config, db_url, migrated_engine  # noqa: F401
 
-PASSWORD = "password123"
+PASSWORD = "password12!"  # 새 규칙: 8~16자, 영문·숫자·특수문자 (T37)
 TABLES = "user_scholarship_states, user_profiles, users, scholarships, notices"
 
 
@@ -479,3 +479,44 @@ def test_signup_422_does_not_echo_password(client):
     assert response.status_code == 422
     assert "secret-pass-123" not in response.text
     assert [e["msg"] for e in response.json()["detail"]] == ["글자로 입력하세요"]
+
+
+# --- 비밀번호 규칙 (T37) ------------------------------------------------------------
+
+LENGTH = "비밀번호는 8~16자로 입력하세요"
+LETTER = "영문을 1자 이상 넣어 주세요"
+DIGIT = "숫자를 1자 이상 넣어 주세요"
+SPECIAL = "특수문자를 1자 이상 넣어 주세요"
+CHARSET = "영문·숫자·특수문자만 쓸 수 있어요"
+
+
+@pytest.mark.parametrize(
+    ("password", "message"),
+    [
+        ("abc12!", LENGTH),
+        ("abcdefgh12345678!", LENGTH),
+        ("abcdefgh", DIGIT),
+        ("12345678!", LETTER),
+        ("abcd1234", SPECIAL),
+        ("abcd 12!", CHARSET),
+        ("비밀번호12!a", CHARSET),
+    ],
+)
+def test_signup_password_rules(api, password, message):
+    response = api.post(
+        "/auth/signup", json={"signup_token": signup_token(api), "password": password}
+    )
+
+    assert response.status_code == 422
+    assert message in response.text
+
+
+@pytest.mark.parametrize("password", ["abcd123!", "Abcdefgh1234567!"])
+def test_signup_password_rules_accept(api, password):
+    assert signup(api, password=password).status_code == 201
+
+
+def test_login_still_accepts_old_style_password(api, factory):
+    add_user(factory, email="old@example.com", password_hash=hash_password("password123"))
+
+    assert login(api, email="old@example.com", password="password123").status_code == 200
