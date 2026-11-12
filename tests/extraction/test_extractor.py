@@ -432,6 +432,12 @@ def test_headings_go_to_no_list():
     assert "해당돼요" not in prompt
 
 
+def test_display_name_has_no_evidence():
+    """display_name은 조건이 아니라 근거 키로 쓰면 검증 실패였습니다(eval sw_dept_1154905)."""
+    line = _prompt_line("- `display_name`은 조건이 아니므로")
+    assert "`evidence`" in line and "`evidence_source`" in line
+
+
 def test_prompt_v10_drops_source_line_rule():
     """규정 출처 문장은 조건이 아니므로 basic_conditions 예시에서 뺐습니다(extract_v10)."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")

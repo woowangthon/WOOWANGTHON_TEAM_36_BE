@@ -315,6 +315,28 @@ def test_display_name_at_max_length_is_kept():
     assert s.display_name == "가" * DISPLAY_NAME_MAX
 
 
+def test_display_name_key_in_evidence_is_dropped():
+    """Gemini가 가끔 display_name을 근거 키로 넣습니다. 조건이 아니므로 버리고 검증은 통과합니다."""
+    s = ScholarshipCriteria.model_validate(
+        {
+            "scholarship_name": "원래 이름",
+            "display_name": "두산연강재단 장학금",
+            "evidence": {"display_name": "두산연강재단 장학생 선발", "min_gpa": "평점 3.5 이상"},
+            "evidence_source": {"display_name": "본문", "min_gpa": "본문"},
+        }
+    )
+    assert s.evidence == {"min_gpa": "평점 3.5 이상"}
+    assert s.evidence_source == {"min_gpa": "본문"}
+
+
+@pytest.mark.parametrize("field", ["evidence", "evidence_source"])
+def test_other_unknown_evidence_key_still_fails(field):
+    """display_name 말고 모르는 키는 그대로 검증 실패입니다."""
+    data = {"scholarship_name": "원래 이름", field: {"foo": "본문"}}
+    with pytest.raises(ValidationError):
+        ScholarshipCriteria.model_validate(data)
+
+
 def test_display_name_in_json_schema():
     """Gemini Structured Output 스키마에 display_name이 들어가야 합니다."""
     props = ScholarshipCriteria.model_json_schema()["properties"]

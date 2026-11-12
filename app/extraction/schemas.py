@@ -184,6 +184,15 @@ class ScholarshipCriteria(BaseModel):
     def _clean_display_name(cls, value: object) -> object:
         return _clean_short_text(value)
 
+    @field_validator("evidence", "evidence_source", mode="before")
+    @classmethod
+    def _drop_display_name_key(cls, value: object) -> object:
+        # display_name은 조건이 아니라 근거가 없는데, Gemini가 가끔 근거 키로 넣습니다
+        # (eval sw_dept_1154905). 이 키만 버리고, 다른 모르는 키는 그대로 검증 실패입니다.
+        if isinstance(value, dict) and "display_name" in value:
+            return {key: text for key, text in value.items() if key != "display_name"}
+        return value
+
     @field_validator("extra_conditions", "basic_conditions", mode="before")
     @classmethod
     def _wrap_legacy_conditions(cls, value: object) -> object:
