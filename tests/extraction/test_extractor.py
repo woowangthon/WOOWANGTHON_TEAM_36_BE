@@ -123,7 +123,7 @@ def server_error(code: int) -> errors.APIError:
 def test_success(gemini, clock):
     models = gemini([json.dumps(VALID_RESPONSE)])
     result = extract(request())
-    assert result.model_version == "gemini-test-flash+extract_v8"
+    assert result.model_version == "gemini-test-flash+extract_v9"
     scholarship = result.criteria.scholarships[0]
     assert scholarship.apply_end == datetime(2026, 11, 12, 18, 0, tzinfo=SEOUL)
     assert scholarship.ambiguous_fields == ["max_income_bracket"]
@@ -177,7 +177,8 @@ def test_prompt_contains_required_rules():
         "`min_remaining_semesters`",
         "`excludes_transfer_students`",  # 새 필드(extract_v7)
         "`target_nationality`",
-        "`display_name`",  # 쉬운 이름(extract_v8)
+        "`school_excluded`",  # 새 필드(extract_v8)
+        "`display_name`",  # 쉬운 이름(extract_v9)
         "다듬지 않는다",  # scholarship_name은 원래 이름 그대로(재추출 매칭 키)
         "지어내지 않는다",
         "충북대학교",  # 학교 정보로 알 수 있는 조건 → basic_conditions
@@ -207,7 +208,7 @@ def test_nationality_is_not_basic_condition():
 
 
 def test_basic_conditions_only_when_school_satisfies():
-    """학교 정보로 판정되더라도 충북대가 충족하지 못하는 조건은 basic이 아니라 extra입니다."""
+    """충북대가 충족하는 학교 조건만 basic이고, 못 하면 school_excluded입니다(extract_v8)."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
     assert "충북대학교가 충족하는" in prompt
     assert "충족하지 못하는" in prompt
@@ -337,7 +338,7 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert extract(request()).model_version == "mock+extract_v8"
+    assert extract(request()).model_version == "mock+extract_v9"
 
 
 # --- import 경계 (8.1) ---
@@ -398,3 +399,24 @@ def test_importing_extraction_does_not_load_genai():
         cwd=Path(__file__).parents[2],
     ).stdout.strip()
     assert output == "False"
+
+
+def test_unmet_school_condition_goes_to_school_excluded():
+    """충북대가 충족하지 못하는 학교 조건은 지원 불가로 판정합니다(extract_v8)."""
+    line = _prompt_line("- `school_excluded`")
+    assert "사립대학" in line and "전문대학" in line
+    assert "`false`는 쓰지 않는다" in line
+
+
+def test_regulation_title_with_details_is_not_external_reference():
+    """세부 자격이 같은 공지에 있으면 "관리지침을 따름"은 외부 기준 참조가 아닙니다(extract_v8)."""
+    line = _prompt_line("- **외부 기준 참조**")
+    assert "같은 공지에 이어서 적혀 있으면" in line
+    assert "`basic_conditions`에 넣는다" in line
+
+
+def test_extra_conditions_must_be_answerable():
+    """extra_conditions 문장은 학생이 직접 답하므로 답할 수 있는 문장만 넣습니다(extract_v8)."""
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert "답할 수 있는 문장만 넣는다" in prompt
+    assert "추후 안내" in prompt

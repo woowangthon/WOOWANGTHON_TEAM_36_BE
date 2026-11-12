@@ -834,3 +834,20 @@ def test_v7_conditions_ambiguous_is_unknown(field):
 def test_foreign_domestic_only_is_ineligible():
     c = criteria(target_nationality="domestic")
     assert evaluate(profile(is_foreign=True), c, TODAY).result == "INELIGIBLE"
+
+
+def test_school_excluded_is_unmet_and_ineligible():
+    """충북대가 충족하지 못하는 학교 조건은 지원 불가입니다(extract_v8)."""
+    c = criteria(school_excluded=True)
+    assert outcome("school_excluded", profile(), c) == "UNMET"
+    assert evaluate(profile(), c, TODAY).result == "INELIGIBLE"
+
+
+@pytest.mark.parametrize("value", [None, False])
+def test_school_excluded_absent_is_not_compared(value):
+    assert outcome("school_excluded", profile(), criteria(school_excluded=value)) is None
+
+
+def test_school_excluded_ambiguous_is_unknown():
+    c = criteria(ambiguous_fields=["school_excluded"])
+    assert outcome("school_excluded", profile(), c) == "UNKNOWN"

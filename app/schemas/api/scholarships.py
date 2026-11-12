@@ -22,6 +22,7 @@ ConditionName = Literal[
     "excludes_transfer_students",  # 편입생 제외 (extract_v7)
     "min_remaining_semesters",  # 남은 정규학기 N학기 이상 (extract_v6)
     "enrollment_status",
+    "school_excluded",  # 학교 조건 (extract_v8)
     "min_gpa",
     "min_score_100",
     "min_credits",
@@ -68,7 +69,7 @@ class ScholarshipSummary(BaseModel):
 
     id: int
     name: str  # 공지에 적힌 원래 이름
-    display_name: str  # 화면에 보일 쉬운 이름(5.2, extract_v8). 추출값이 없으면 name과 같음
+    display_name: str  # 화면에 보일 쉬운 이름(5.2, extract_v9). 추출값이 없으면 name과 같음
     source_code: SourceCode
     source_name: str
     is_internal: bool

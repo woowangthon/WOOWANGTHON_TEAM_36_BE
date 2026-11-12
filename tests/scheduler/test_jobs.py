@@ -213,7 +213,7 @@ def test_fixture_site_with_mock_ai(session_factory):
     assert {r.external_id for r in rows} == {"pVAfFxOycuAihHhbGS0LAc", "aq74eFJIirVMESsaQS7qtM"}
     for row in rows:
         assert row.extract_status == "DONE"
-        assert row.model_version == "mock+extract_v8"
+        assert row.model_version == "mock+extract_v9"
         assert row.notice_kind == "모집"
         assert len(row.content_hash) == 64
         [scholarship] = row.scholarships
@@ -630,11 +630,11 @@ def test_re_extraction_keeps_scholarship_id(crawl, site, extractor, session_fact
 
 
 def test_re_extraction_updates_display_name_and_keeps_id(crawl, site, extractor, session_factory):
-    """쉬운 이름(extract_v8)은 매칭 키가 아니라서, 바뀌어도 같은 장학금으로 남습니다."""
+    """쉬운 이름(extract_v9)은 매칭 키가 아니라서, 바뀌어도 같은 장학금으로 남습니다."""
     end = kst(2026, 11, 12, 18, 0)
     site.post("100", body="v1")
     first = result("모집", ("A 장학금 모집", end))
-    first.criteria.scholarships[0].display_name = None  # extract_v7 이전 결과
+    first.criteria.scholarships[0].display_name = None  # extract_v9 이전 결과
     extractor.set("2026 장학생 모집", first)
     crawl()
     before = scholarships(session_factory)["A 장학금 모집"]

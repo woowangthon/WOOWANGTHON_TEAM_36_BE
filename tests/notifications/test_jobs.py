@@ -384,7 +384,7 @@ def test_select_count_does_not_grow_with_users(session_factory, outbox, migrated
 
 
 def test_mail_uses_display_name(session_factory, outbox):
-    """알림 메일에는 쉬운 이름(extract_v8)을 쓰고, 없으면 원래 이름을 씁니다."""
+    """알림 메일에는 쉬운 이름(extract_v9)을 쓰고, 없으면 원래 이름을 씁니다."""
     add_user(session_factory, "a@example.com")
     add_scholarship(
         session_factory,

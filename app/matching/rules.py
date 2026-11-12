@@ -147,6 +147,13 @@ def min_credits(p: Profile, c: ScholarshipCriteria) -> Outcome:
 # --- 인적 사항 ----------------------------------------------------------------------
 
 
+def school_excluded(_p: Profile, c: ScholarshipCriteria) -> Outcome:
+    """학교 조건 (extract_v8). 충북대학교가 충족하지 못하는 학교 조건이면 불충족."""
+    if not c.school_excluded:
+        return None
+    return _bool(False)
+
+
 def target_nationality(p: Profile, c: ScholarshipCriteria) -> Outcome:
     """국적 (extract_v7). domestic이면 내국인, foreign이면 외국인만 충족."""
     if c.target_nationality is None:

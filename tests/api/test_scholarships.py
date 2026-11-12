@@ -310,7 +310,7 @@ def test_state_is_per_user(student, factory):  # noqa: F811
 
 
 def test_list_and_detail_use_display_name(student, factory):  # noqa: F811
-    """쉬운 이름(extract_v8)이 있으면 display_name으로 내려 주고, 원래 이름도 유지합니다."""
+    """쉬운 이름(extract_v9)이 있으면 display_name으로 내려 주고, 원래 이름도 유지합니다."""
     notice_id = add_notice(factory)
     sid = add_scholarship(
         factory,

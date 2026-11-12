@@ -172,7 +172,7 @@ def test_criteria_fields_cover_scholarship_fields():
         "ambiguous_fields",
         "evidence",
         "evidence_source",
-        "display_name",  # 표시용 이름(extract_v8). 조건이 아니라 근거·모호 표시가 없음
+        "display_name",  # 표시용 이름(extract_v9). 조건이 아니라 근거·모호 표시가 없음
     }
     assert set(CRITERIA_FIELDS) == model_fields - meta
 
@@ -264,7 +264,7 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     result = extract(_request())
     assert isinstance(result, ExtractionResult)
-    assert result.model_version == "mock+extract_v8"
+    assert result.model_version == "mock+extract_v9"
     # 목 응답도 스키마 검증을 다시 통과해야 합니다.
     again = ExtractionResult.model_validate_json(result.model_dump_json())
     assert again.criteria.notice_kind == "모집"
@@ -279,12 +279,19 @@ def test_extract_without_model_name_fails(monkeypatch):
         extract(_request())
 
 
-# --- 쉬운 이름 display_name (T41, extract_v8) -----------------------------------------
-
-
-def test_v7_criteria_without_display_name_load():
-    """extract_v8 이전에 저장된 조건(display_name 없음)도 읽혀야 합니다."""
+def test_v7_criteria_without_school_excluded_load():
+    """extract_v8 이전에 저장된 조건(school_excluded 없음)도 읽혀야 합니다."""
     s = ScholarshipCriteria.model_validate({"scholarship_name": "v7 장학금"})
+    assert s.school_excluded is None
+    assert "school_excluded" in CRITERIA_FIELDS
+
+
+# --- 쉬운 이름 display_name (T41, extract_v9) -----------------------------------------
+
+
+def test_v8_criteria_without_display_name_load():
+    """extract_v9 이전에 저장된 조건(display_name 없음)도 읽혀야 합니다."""
+    s = ScholarshipCriteria.model_validate({"scholarship_name": "v8 장학금"})
     assert s.display_name is None
 
 
