@@ -13,6 +13,8 @@
 - 보조 지표 `needs_check`(extract_v5): 장학금마다 `extra_conditions`(자격을 좁히는 조건)가
   있는지 없는지가 정답과 같은지 봅니다. 판정의 "확인 필요"를 정하는 값이라 따로 세고,
   버전끼리 비교할 수 있게 전체 정답률(`correct`·`total`)에는 넣지 않습니다.
+- 보조 지표 `excludes_new_students`·`min_remaining_semesters`(extract_v6): 값이 정답과 같은지
+  봅니다. 같은 이유로 전체 정답률에는 넣지 않습니다.
 """
 
 from dataclasses import dataclass, field
@@ -30,7 +32,9 @@ SCHOLARSHIP_FIELDS = (
     "target_department",
 )
 FIELDS = NOTICE_FIELDS + SCHOLARSHIP_FIELDS
-AUX_FIELDS = ("needs_check",)  # 전체 정답률에 넣지 않는 보조 지표
+# 전체 정답률에 넣지 않는 보조 지표. needs_check는 아래에서 따로 계산합니다.
+AUX_VALUE_FIELDS = ("excludes_new_students", "min_remaining_semesters")
+AUX_FIELDS = ("needs_check", *AUX_VALUE_FIELDS)
 TARGET_ACCURACY = 0.90
 
 
@@ -98,7 +102,7 @@ def score_notice(
 
     pairs = pair_scholarships(expected.scholarships, predicted.scholarships if predicted else [])
     for expected_one, predicted_one in pairs:
-        for name in SCHOLARSHIP_FIELDS:
+        for name in SCHOLARSHIP_FIELDS + AUX_VALUE_FIELDS:
             want = getattr(expected_one, name)
             got = None if predicted_one is None else getattr(predicted_one, name)
             if predicted_one is None:

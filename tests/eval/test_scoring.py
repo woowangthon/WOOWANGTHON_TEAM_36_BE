@@ -84,7 +84,7 @@ def test_missing_scholarship_counts_all_fields_wrong():
     assert not score.count_match
     assert score.fields["min_gpa"].total == 2
     assert score.fields["min_gpa"].correct == 1
-    assert sum(1 for m in score.mismatches if m["got"] == "(장학금 없음)") == 5
+    assert sum(1 for m in score.mismatches if m["got"] == "(장학금 없음)") == 7  # 필드 5 + 보조 값 2(extract_v6)
 
 
 def test_extra_predicted_scholarship_does_not_grow_denominator():
@@ -143,6 +143,28 @@ def test_needs_check_is_aux_and_not_in_total():
     summary = summarize([score])
     assert summary["fields"]["needs_check"] == {"correct": 0, "total": 1, "accuracy": 0.0}
     assert summary["correct"] == 6 and summary["total"] == 6
+
+
+def test_new_semester_fields_are_aux_and_not_in_total():
+    """신·편입생 제외·남은 정규학기는 보조 지표로만 셉니다(extract_v6)."""
+    want = {**BASE, "excludes_new_students": True, "min_remaining_semesters": 1}
+    got = {**BASE, "excludes_new_students": None, "min_remaining_semesters": 1}
+    score = score_notice("n1", criteria(scholarships=[want]), criteria(scholarships=[got]))
+    summary = summarize([score])
+    assert summary["fields"]["excludes_new_students"]["correct"] == 0
+    assert summary["fields"]["min_remaining_semesters"] == {
+        "correct": 1,
+        "total": 1,
+        "accuracy": 1.0,
+    }
+    assert summary["correct"] == 6 and summary["total"] == 6
+
+
+def test_new_semester_fields_count_wrong_when_scholarship_missing():
+    want = {**BASE, "excludes_new_students": True}
+    score = score_notice("n1", criteria(scholarships=[want]), criteria(scholarships=[]))
+    assert score.fields["excludes_new_students"].total == 1
+    assert score.fields["excludes_new_students"].correct == 0
 
 
 def test_golden_set_expected_answers_score_perfectly():
