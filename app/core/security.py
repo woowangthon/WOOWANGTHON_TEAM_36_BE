@@ -434,6 +434,18 @@ signup_verify_limiter = WindowRateLimiter(
 )
 
 
+# 비밀번호 변경(T37): 로그인한 사용자 기준 분당 5회.
+# 쿠키를 훔친 사람이 현재 비밀번호를 대입하지 못하게 합니다.
+password_change_limiter = WindowRateLimiter(
+    {"user": (5, 60.0)},
+    "비밀번호 변경을 너무 많이 시도했어요. 잠시 후 다시 시도하세요",
+)
+
+
+def check_password_change_rate(user_id: int) -> None:
+    password_change_limiter.hit(user=str(user_id))
+
+
 def check_signup_code_rate(request: Request, email: str) -> None:
     signup_code_limiter.hit(email_minute=email, email_hour=email, ip_hour=client_ip(request))
 

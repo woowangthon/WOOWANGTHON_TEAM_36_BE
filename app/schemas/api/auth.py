@@ -81,6 +81,17 @@ class SignupRequest(BaseModel):
     _password = field_validator("password")(validate_new_password)
 
 
+class PasswordChangeRequest(BaseModel):
+    """내 정보 화면의 비밀번호 변경 (T37). 새 비밀번호는 가입과 같은 규칙입니다."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str
+
+    _new_password = field_validator("new_password")(validate_new_password)
+
+
 class LoginRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
