@@ -22,6 +22,8 @@ def profile(**overrides) -> Profile:
         "completed_semesters": 5,  # 3학년
         "enrollment_status": "재학",
         "aibc_member": False,
+        "is_transfer": False,
+        "is_foreign": False,
         "income_bracket": 4,
         "self_region": {"sido": "충청북도", "sigungu": "청주시"},
         "parent_region": {"sido": "충청남도", "sigungu": "논산시"},
@@ -753,3 +755,82 @@ def test_engine_is_pure():
                 )
                 for name in names:
                     assert not name.startswith(banned), f"{path}: {name}"
+
+
+# --- 편입생·국적 (T39, extract_v7) ---------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("semesters", "grades", "expected"),
+    [
+        (0, [3], "MET"),  # 편입 첫 학기 = 4학기 = 3학년
+        (0, [1], "UNMET"),
+        (4, [4], "MET"),
+    ],
+)
+def test_transfer_target_grades(semesters, grades, expected):
+    p = profile(is_transfer=True, completed_semesters=semesters)
+    assert outcome("target_grades", p, criteria(target_grades=grades)) == expected
+
+
+def test_transfer_extra_semester():
+    p = profile(is_transfer=True, completed_semesters=4)  # 판정용 8학기 = 초과학기
+    assert outcome("excludes_extra_semester", p, criteria(excludes_extra_semester=True)) == "UNMET"
+
+
+@pytest.mark.parametrize(("semesters", "expected"), [(2, "MET"), (3, "UNMET")])
+def test_transfer_min_remaining(semesters, expected):
+    p = profile(is_transfer=True, completed_semesters=semesters)  # 8 − (학기 + 4) ≥ 2
+    assert outcome("min_remaining_semesters", p, criteria(min_remaining_semesters=2)) == expected
+
+
+@pytest.mark.parametrize(("semesters", "expected"), [(0, "UNMET"), (1, "MET")])
+def test_transfer_excludes_new_students(semesters, expected):
+    """편입생은 편입 후 이 학교에서 마친 학기로 봅니다. 편입 첫 학기는 불충족."""
+    p = profile(is_transfer=True, completed_semesters=semesters)
+    assert outcome("excludes_new_students", p, criteria(excludes_new_students=True)) == expected
+
+
+@pytest.mark.parametrize(
+    ("transfer", "semesters", "expected"),
+    [(False, 0, "MET"), (True, 0, "UNMET"), (True, 1, "MET")],
+)
+def test_excludes_transfer_students(transfer, semesters, expected):
+    p = profile(is_transfer=transfer, completed_semesters=semesters)
+    c = criteria(excludes_transfer_students=True)
+    assert outcome("excludes_transfer_students", p, c) == expected
+
+
+@pytest.mark.parametrize("value", [None, False])
+def test_excludes_transfer_students_absent_is_not_compared(value):
+    p = profile(is_transfer=True, completed_semesters=0)
+    c = criteria(excludes_transfer_students=value)
+    assert outcome("excludes_transfer_students", p, c) is None
+
+
+@pytest.mark.parametrize(
+    ("nationality", "foreign", "expected"),
+    [
+        ("domestic", False, "MET"),
+        ("domestic", True, "UNMET"),
+        ("foreign", True, "MET"),
+        ("foreign", False, "UNMET"),
+    ],
+)
+def test_target_nationality(nationality, foreign, expected):
+    p = profile(is_foreign=foreign)
+    assert outcome("target_nationality", p, criteria(target_nationality=nationality)) == expected
+
+
+def test_target_nationality_absent_is_not_compared():
+    assert outcome("target_nationality", profile(is_foreign=True), criteria()) is None
+
+
+@pytest.mark.parametrize("field", ["excludes_transfer_students", "target_nationality"])
+def test_v7_conditions_ambiguous_is_unknown(field):
+    assert outcome(field, profile(), criteria(ambiguous_fields=[field])) == "UNKNOWN"
+
+
+def test_foreign_domestic_only_is_ineligible():
+    c = criteria(target_nationality="domestic")
+    assert evaluate(profile(is_foreign=True), c, TODAY).result == "INELIGIBLE"
