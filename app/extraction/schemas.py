@@ -114,12 +114,13 @@ class ScholarshipCriteria(BaseModel):
     target_program: TargetProgram = "제한없음"
 
     required_documents: list[str] = Field(default_factory=list)
-    # 필드로 옮기지 못한 문장은 판정에 미치는 영향에 따라 세 갈래로 나눕니다(extract_v5, v6에서 기준 수정).
-    # - extra_conditions: 프로필로 판정할 수 없는 자격(프로그램 수료, 외부 기준 참조, 수혜·선발 이력,
-    #   필드와 섞인 문장 등) → 확인 필요. v6부터 중복 수혜·기존 장학생 제외·관리지침 참조도 여기입니다.
-    # - basic_conditions: 학교 정보로 알 수 있거나 재학생 거의 모두가 충족하는 조건(국적, 4년제·지방
-    #   대학 재학, 징계 없음 등) → 판정은 바꾸지 않고 상세에 "지원 전 확인"으로 보여 줌
-    # - notes: 자격이 아닌 안내(선발 방식, 선발 뒤 의무, 그 장학금의 신청 절차, 예외·완화 규정 등)
+    # 필드로 옮기지 못한 문장은 판정 영향에 따라 세 갈래로 나눕니다(extract_v5, v6에서 기준 수정).
+    # - extra_conditions: 프로필로 판정할 수 없는 자격 → 확인 필요.
+    #   프로그램 수료, 외부 기준 참조, 수혜·선발 이력, 필드와 섞인 문장 등.
+    #   v6부터 중복 수혜·기존 장학생 제외·관리지침 참조도 여기입니다.
+    # - basic_conditions: 학교 정보로 알 수 있거나 재학생 거의 모두가 충족하는 조건
+    #   (국적, 4년제·지방 대학 재학, 징계 없음 등) → 판정은 그대로, 상세에 "지원 전 확인"
+    # - notes: 자격이 아닌 안내(선발 방식, 선발 뒤 의무, 그 장학금의 신청 절차, 예외 규정 등)
     # 기본값이 빈 목록이라 DB에 저장된 v4 결과도 그대로 읽힙니다(v4는 셋 모두 extra_conditions).
     extra_conditions: list[str] = Field(default_factory=list)
     basic_conditions: list[str] = Field(default_factory=list)

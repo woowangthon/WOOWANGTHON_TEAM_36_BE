@@ -84,7 +84,8 @@ def test_missing_scholarship_counts_all_fields_wrong():
     assert not score.count_match
     assert score.fields["min_gpa"].total == 2
     assert score.fields["min_gpa"].correct == 1
-    assert sum(1 for m in score.mismatches if m["got"] == "(장학금 없음)") == 7  # 필드 5 + 보조 값 2(extract_v6)
+    # 필드 5 + 보조 값 2(extract_v6)
+    assert sum(1 for m in score.mismatches if m["got"] == "(장학금 없음)") == 7
 
 
 def test_extra_predicted_scholarship_does_not_grow_denominator():

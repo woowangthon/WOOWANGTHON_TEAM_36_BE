@@ -164,11 +164,19 @@ def test_new_condition_unmet_is_ineligible():
 
 
 def test_new_conditions_follow_extra_semester_in_checklist():
-    c = criteria(excludes_extra_semester=True, excludes_new_students=True,
-                 min_remaining_semesters=1, enrollment_status=["재학"])
+    c = criteria(
+        excludes_extra_semester=True,
+        excludes_new_students=True,
+        min_remaining_semesters=1,
+        enrollment_status=["재학"],
+    )
     order = [check.condition for check in evaluate(profile(), c, TODAY).checks]
-    assert order[:4] == ["excludes_extra_semester", "excludes_new_students",
-                         "min_remaining_semesters", "enrollment_status"]
+    assert order[:4] == [
+        "excludes_extra_semester",
+        "excludes_new_students",
+        "min_remaining_semesters",
+        "enrollment_status",
+    ]
 ```
 
 - [ ] **Step 2: 실패 확인**
@@ -280,7 +288,11 @@ def test_new_semester_fields_are_aux_and_not_in_total():
     score = score_notice("n1", criteria(scholarships=[want]), criteria(scholarships=[got]))
     summary = summarize([score])
     assert summary["fields"]["excludes_new_students"]["correct"] == 0
-    assert summary["fields"]["min_remaining_semesters"] == {"correct": 1, "total": 1, "accuracy": 1.0}
+    assert summary["fields"]["min_remaining_semesters"] == {
+        "correct": 1,
+        "total": 1,
+        "accuracy": 1.0,
+    }
     assert summary["correct"] == 6 and summary["total"] == 6
 ```
 
