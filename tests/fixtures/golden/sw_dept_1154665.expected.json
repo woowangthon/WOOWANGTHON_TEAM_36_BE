@@ -49,8 +49,10 @@
         "max_income_bracket": "한국장학재단 학자금지원구간 6 구간 이내인 자",
         "benefit_type": "학기당 생활비성 장학금 400 만 원 지원",
         "min_gpa": "전체학기 평점 평균이 3.0 이상 인 자",
-        "grade_basis": "전체학기 평점 평균이 3.0 이상 인 자"
-      }
+        "grade_basis": "전체학기 평점 평균이 3.0 이상 인 자",
+        "target_nationality": "국내 대학교 중 4년제 학과에 소속된 대한민국 국적의 학부생"
+      },
+      "target_nationality": "domestic"
     }
   ]
 }

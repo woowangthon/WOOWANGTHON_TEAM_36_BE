@@ -18,6 +18,7 @@ NoticeKind = Literal["모집", "결과", "기준안내", "기타"]
 BenefitType = Literal["등록금성", "생활비성", "혼합"]
 EnrollmentStatus = Literal["재학", "휴학", "수료", "졸업유예"]  # 계획서 4.1 재학상태 선택지
 Gender = Literal["남", "여"]
+Nationality = Literal["domestic", "foreign"]  # 내국인 대상 / 외국인 대상 (extract_v7)
 RegionBasis = Literal["본인", "부모", "무관"]
 TargetDepartment = Literal["제한없음", "소프트웨어학부 포함", "소프트웨어학부 불포함", "불명"]
 TargetProgram = Literal["제한없음", "AIBC 양성인재"]
@@ -36,12 +37,14 @@ CriteriaField = Literal[
     "target_grades",
     "excludes_extra_semester",
     "excludes_new_students",
+    "excludes_transfer_students",
     "min_remaining_semesters",
     "enrollment_status",
     "min_gpa",
     "min_score_100",
     "grade_basis",
     "min_credits",
+    "target_nationality",
     "gender",
     "max_age",
     "max_income_bracket",
@@ -87,6 +90,9 @@ class ScholarshipCriteria(BaseModel):
     # extract_v6에서 추가했습니다. 기본값이 None이라 DB에 저장된 v5 결과도 그대로 읽힙니다.
     # 신입생·편입생 제외면 true. 공지에 조건이 없으면 null(false도 쓰지 않음)
     excludes_new_students: bool | None = None
+    # extract_v7에서 추가했습니다. 기본값이 None이라 DB에 저장된 v6 결과도 그대로 읽힙니다.
+    # 편입생만 제외하면 true("신·편입생 제외"는 excludes_new_students). 조건이 없으면 null
+    excludes_transfer_students: bool | None = None
     # 남은 정규학기가 N학기 이상이어야 함(예: "잔여정규학기 1개 학기 이상" → 1)
     min_remaining_semesters: int | None = Field(default=None, ge=1, le=8)
     enrollment_status: list[EnrollmentStatus] | None = None
@@ -100,6 +106,8 @@ class ScholarshipCriteria(BaseModel):
     min_credits: int | None = Field(default=None, ge=0)
 
     gender: Gender | None = None
+    # 국적 조건 (extract_v7). domestic = 대한민국 국적자 대상, foreign = 외국인 대상, null = 없음
+    target_nationality: Nationality | None = None
     max_age: int | None = Field(default=None, ge=0, le=100)  # 만 나이
 
     max_income_bracket: float | None = None
@@ -119,7 +127,8 @@ class ScholarshipCriteria(BaseModel):
     #   프로그램 수료, 외부 기준 참조, 수혜·선발 이력, 필드와 섞인 문장 등.
     #   v6부터 중복 수혜·기존 장학생 제외·관리지침 참조도 여기입니다.
     # - basic_conditions: 학교 정보로 알 수 있거나 재학생 거의 모두가 충족하는 조건
-    #   (국적, 4년제·지방 대학 재학, 징계 없음 등) → 판정은 그대로, 상세에 "지원 전 확인"
+    #   (4년제·지방 대학 재학, 징계 없음 등) → 판정은 그대로, 상세에 "지원 전 확인".
+    #   국적은 v7부터 target_nationality로 판정합니다.
     # - notes: 자격이 아닌 안내(선발 방식, 선발 뒤 의무, 그 장학금의 신청 절차, 예외 규정 등)
     # 기본값이 빈 목록이라 DB에 저장된 v4 결과도 그대로 읽힙니다(v4는 셋 모두 extra_conditions).
     extra_conditions: list[str] = Field(default_factory=list)

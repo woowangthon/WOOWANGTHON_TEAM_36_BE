@@ -84,8 +84,8 @@ def test_missing_scholarship_counts_all_fields_wrong():
     assert not score.count_match
     assert score.fields["min_gpa"].total == 2
     assert score.fields["min_gpa"].correct == 1
-    # 필드 5 + 보조 값 2(extract_v6)
-    assert sum(1 for m in score.mismatches if m["got"] == "(장학금 없음)") == 7
+    # 필드 5 + 보조 값 4(extract_v6 2개, extract_v7 2개)
+    assert sum(1 for m in score.mismatches if m["got"] == "(장학금 없음)") == 9
 
 
 def test_extra_predicted_scholarship_does_not_grow_denominator():
@@ -158,6 +158,17 @@ def test_new_semester_fields_are_aux_and_not_in_total():
         "total": 1,
         "accuracy": 1.0,
     }
+    assert summary["correct"] == 6 and summary["total"] == 6
+
+
+def test_v7_fields_are_aux_and_not_in_total():
+    """편입생 제외·국적은 보조 지표로만 셉니다(extract_v7)."""
+    want = {**BASE, "excludes_transfer_students": True, "target_nationality": "domestic"}
+    got = {**BASE, "excludes_transfer_students": None, "target_nationality": "domestic"}
+    score = score_notice("n1", criteria(scholarships=[want]), criteria(scholarships=[got]))
+    summary = summarize([score])
+    assert summary["fields"]["excludes_transfer_students"]["correct"] == 0
+    assert summary["fields"]["target_nationality"] == {"correct": 1, "total": 1, "accuracy": 1.0}
     assert summary["correct"] == 6 and summary["total"] == 6
 
 

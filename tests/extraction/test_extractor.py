@@ -123,7 +123,7 @@ def server_error(code: int) -> errors.APIError:
 def test_success(gemini, clock):
     models = gemini([json.dumps(VALID_RESPONSE)])
     result = extract(request())
-    assert result.model_version == "gemini-test-flash+extract_v6"
+    assert result.model_version == "gemini-test-flash+extract_v7"
     scholarship = result.criteria.scholarships[0]
     assert scholarship.apply_end == datetime(2026, 11, 12, 18, 0, tzinfo=SEOUL)
     assert scholarship.ambiguous_fields == ["max_income_bracket"]
@@ -175,6 +175,8 @@ def test_prompt_contains_required_rules():
         "`notes`",
         "`excludes_new_students`",  # 새 필드(extract_v6)
         "`min_remaining_semesters`",
+        "`excludes_transfer_students`",  # 새 필드(extract_v7)
+        "`target_nationality`",
         "충북대학교",  # 학교 정보로 알 수 있는 조건 → basic_conditions
         "세 목록 어디에도 다시 넣지 않는다",  # 필드로 옮긴 문장
         "문장 전체",  # 섞인 문장
@@ -188,11 +190,17 @@ def _prompt_line(prefix: str) -> str:
     return next(line for line in prompt.splitlines() if line.lstrip().startswith(prefix))
 
 
-def test_transfer_only_exclusion_is_not_new_student_field():
-    """편입생만 제외하면 신입생을 떨어뜨리지 않게 새 필드에 넣지 않습니다(편입생 아님 간주)."""
+def test_transfer_only_exclusion_goes_to_transfer_field():
+    """편입생만 제외하면 신입생을 떨어뜨리지 않게 따로 둡니다(extract_v7)."""
     line = _prompt_line("- `excludes_new_students`")
     assert "**신입생을 제외하면** `true`" in line
-    assert "**편입생만** 제외하면 이 필드에 넣지 않고 `basic_conditions`" in line
+    assert "**편입생만** 제외하면 이 필드에 넣지 않고 `excludes_transfer_students`" in line
+
+
+def test_nationality_is_not_basic_condition():
+    """국적은 판정하는 필드로 옮겼으므로 basic_conditions 예시에 없어야 합니다(extract_v7)."""
+    line = _prompt_line("- 충북대학교가 충족하는 학교 조건")
+    assert "국적" not in line
 
 
 def test_basic_conditions_only_when_school_satisfies():
@@ -326,7 +334,7 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert extract(request()).model_version == "mock+extract_v6"
+    assert extract(request()).model_version == "mock+extract_v7"
 
 
 # --- import 경계 (8.1) ---

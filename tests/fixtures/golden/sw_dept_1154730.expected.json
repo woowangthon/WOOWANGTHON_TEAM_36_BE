@@ -41,8 +41,10 @@
         "apply_end": "2026. 10. 22.( 목 ) 09:00 ∼ 11. 12.( 목 ) 18:00",
         "enrollment_status": "대한민국 국적의 대학교 재학생",
         "excludes_new_students": "※ 신·편입생제외, 푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자",
-        "min_remaining_semesters": "※ 신·편입생제외, 푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자"
-      }
+        "min_remaining_semesters": "※ 신·편입생제외, 푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자",
+        "target_nationality": "대한민국 국적의 대학교 재학생"
+      },
+      "target_nationality": "domestic"
     },
     {
       "scholarship_name": "2026년 2학기 푸른등대 기부장학금(2차) - KOSAF기부펀드 지역 1차 산업",
@@ -83,8 +85,10 @@
         "apply_end": "2026. 10. 22.( 목 ) 09:00 ∼ 11. 12.( 목 ) 18:00",
         "target_department": "농업, 수산업, 축산업, 산림업 관련 학과 전공자",
         "excludes_new_students": "※ 신·편입생제외, 푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자",
-        "min_remaining_semesters": "※ 신·편입생제외, 푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자"
-      }
+        "min_remaining_semesters": "※ 신·편입생제외, 푸른등대기부장학금신청시작일기준잔여정규학기1개학기이상인자",
+        "target_nationality": "대한민국 국적 및 지방 소재* 대학교 재학생"
+      },
+      "target_nationality": "domestic"
     }
   ]
 }

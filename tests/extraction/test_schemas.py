@@ -140,6 +140,28 @@ def test_v5_criteria_without_new_fields_still_load():
     assert s.excludes_new_students is None and s.min_remaining_semesters is None
 
 
+def test_v6_criteria_without_new_fields_load():
+    """extract_v7 이전에 저장된 조건(새 키 없음)도 읽혀야 합니다."""
+    s = ScholarshipCriteria.model_validate({"scholarship_name": "v6 장학금"})
+    assert s.excludes_transfer_students is None and s.target_nationality is None
+
+
+@pytest.mark.parametrize("value", ["domestic", "foreign"])
+def test_target_nationality_values(value):
+    s = ExtractedCriteria.model_validate(_example(target_nationality=value)).scholarships[0]
+    assert s.target_nationality == value
+
+
+def test_target_nationality_rejects_other():
+    with pytest.raises(ValidationError):
+        ExtractedCriteria.model_validate(_example(target_nationality="korean"))
+
+
+def test_new_v7_fields_in_criteria_field():
+    assert "excludes_transfer_students" in CRITERIA_FIELDS
+    assert "target_nationality" in CRITERIA_FIELDS
+
+
 def test_criteria_fields_cover_scholarship_fields():
     """ambiguous_fields·evidence 키 목록이 조건 필드와 어긋나지 않게 합니다."""
     model_fields = set(ScholarshipCriteria.model_fields)
@@ -241,7 +263,7 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     result = extract(_request())
     assert isinstance(result, ExtractionResult)
-    assert result.model_version == "mock+extract_v6"
+    assert result.model_version == "mock+extract_v7"
     # 목 응답도 스키마 검증을 다시 통과해야 합니다.
     again = ExtractionResult.model_validate_json(result.model_dump_json())
     assert again.criteria.notice_kind == "모집"
