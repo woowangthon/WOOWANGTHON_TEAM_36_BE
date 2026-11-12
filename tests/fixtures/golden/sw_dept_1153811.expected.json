@@ -29,7 +29,9 @@
       "target_department": "제한없음",
       "target_program": "제한없음",
       "required_documents": [],
-      "extra_conditions": [],
+      "extra_conditions": [
+        "소속대학이 참여대학이 아닐 경우 학생 장학 신청 불가"
+      ],
       "basic_conditions": [],
       "notes": [
         "졸업 후 의무종사 기간 동안 중소기업 취업 또는 창업상태 유지",
