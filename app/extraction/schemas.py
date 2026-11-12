@@ -11,7 +11,7 @@ None으로 두고 필드 이름을 ambiguous_fields에 넣습니다.
 
 from typing import Literal, Self, get_args
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 SourceCode = Literal["SW_DEPT", "AIBC", "KOSAF"]
 NoticeKind = Literal["모집", "결과", "기준안내", "기타"]
@@ -26,6 +26,8 @@ GradeBasis = Literal["직전학기", "전체"]  # 성적 조건이 어느 학기
 
 # 기초생활수급자 = 0, 차상위 = 0.5, 학자금지원구간 1~10 = 1~10 (5.2)
 INCOME_BRACKETS: frozenset[float] = frozenset({0.0, 0.5, *(float(n) for n in range(1, 11))})
+
+DISPLAY_NAME_MAX = 40  # 쉬운 이름(display_name) 최대 글자 수 (extract_v8)
 
 # ambiguous_fields·evidence의 키로 쓸 수 있는 필드 이름 (장학금 단위 필드)
 CriteriaField = Literal[
@@ -77,7 +79,12 @@ class ScholarshipCriteria(BaseModel):
 
     model_config = _STRICT
 
+    # 공지에 적힌 원래 이름. 재추출 때 같은 장학금을 찾는 키라 다듬지 않습니다(5.2).
     scholarship_name: str = Field(min_length=1)
+    # 학생이 한눈에 알아볼 수 있게 다듬은 표시용 이름(extract_v8). 화면·알림 메일에 씁니다.
+    # 기본값이 None이라 DB에 저장된 v7 결과도 그대로 읽히고, 없으면 scholarship_name을 보여 줍니다.
+    # 표시용 값 하나 때문에 공지 전체가 추출 실패가 되지 않게, 비었거나 너무 길면 None으로 둡니다.
+    display_name: str | None = None
     benefit_amount_text: str | None = None
     benefit_type: BenefitType | None = None
 
@@ -139,6 +146,16 @@ class ScholarshipCriteria(BaseModel):
     # 근거 문장이 나온 곳: "본문" 또는 입력의 `[첨부 …: 파일 이름]`에 적힌 파일 이름(extract_v4).
     # 기본값이 빈 dict라 DB에 저장된 v3 결과도 그대로 읽힙니다.
     evidence_source: dict[CriteriaField, str] = Field(default_factory=dict)
+
+    @field_validator("display_name", mode="before")
+    @classmethod
+    def _clean_display_name(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        cleaned = " ".join(value.split())
+        if not cleaned or len(cleaned) > DISPLAY_NAME_MAX:
+            return None
+        return cleaned
 
     @model_validator(mode="after")
     def _check_values(self) -> Self:

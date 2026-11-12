@@ -108,7 +108,9 @@ class Scholarship(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     notice_id: Mapped[int] = mapped_column(ForeignKey("notices.id", ondelete="CASCADE"), index=True)
-    name: Mapped[str] = mapped_column(String(300))
+    name: Mapped[str] = mapped_column(String(300))  # 공지 원래 이름. 재추출 때 id 유지 키(5.2)
+    # 화면·알림 메일에 보이는 쉬운 이름(extract_v8). 없으면(v7 이전 추출) name을 보여 줍니다.
+    display_name: Mapped[str | None] = mapped_column(String(100))
     benefit_type: Mapped[str | None] = mapped_column(String(10))
     benefit_amount_text: Mapped[str | None] = mapped_column(String(300))
     apply_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

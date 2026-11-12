@@ -381,3 +381,22 @@ def test_select_count_does_not_grow_with_users(session_factory, outbox, migrated
 
     assert len(outbox.mails) == 1 + 6
     assert small == large
+
+
+def test_mail_uses_display_name(session_factory, outbox):
+    """알림 메일에는 쉬운 이름(extract_v8)을 쓰고, 없으면 원래 이름을 씁니다."""
+    add_user(session_factory, "a@example.com")
+    add_scholarship(
+        session_factory,
+        "2026학년도 2학기 (재)두산연강재단 장학생 선발",
+        display_name="두산연강재단 장학금",
+        created_at=FRESH,
+    )
+    add_scholarship(session_factory, "옛 추출 장학금", created_at=FRESH)
+
+    run(session_factory, outbox)
+
+    [mail] = outbox.mails
+    assert "두산연강재단 장학금" in mail.text
+    assert "2026학년도 2학기" not in mail.text
+    assert "옛 추출 장학금" in mail.text

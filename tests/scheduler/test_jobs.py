@@ -213,11 +213,12 @@ def test_fixture_site_with_mock_ai(session_factory):
     assert {r.external_id for r in rows} == {"pVAfFxOycuAihHhbGS0LAc", "aq74eFJIirVMESsaQS7qtM"}
     for row in rows:
         assert row.extract_status == "DONE"
-        assert row.model_version == "mock+extract_v7"
+        assert row.model_version == "mock+extract_v8"
         assert row.notice_kind == "모집"
         assert len(row.content_hash) == 64
         [scholarship] = row.scholarships
-        assert scholarship.name == "두산연강재단 장학금"
+        assert scholarship.name == "2026학년도 2학기 (재)두산연강재단 장학생 선발"
+        assert scholarship.display_name == "두산연강재단 장학금"
         assert scholarship.status == "OPEN"  # 마감 11/12 18:00 > 실행 시각 11/5
         assert scholarship.deadline_source == "AI"
         assert scholarship.deadline_conflict is False
@@ -626,6 +627,29 @@ def test_re_extraction_keeps_scholarship_id(crawl, site, extractor, session_fact
     assert after["B 장학금"].status == "CLOSED"  # 재추출 결과에서 사라짐
     assert after["C 장학금"].id not in {s.id for s in before.values()}
     assert after["C 장학금"].status == "OPEN"
+
+
+def test_re_extraction_updates_display_name_and_keeps_id(crawl, site, extractor, session_factory):
+    """쉬운 이름(extract_v8)은 매칭 키가 아니라서, 바뀌어도 같은 장학금으로 남습니다."""
+    end = kst(2026, 11, 12, 18, 0)
+    site.post("100", body="v1")
+    first = result("모집", ("A 장학금 모집", end))
+    first.criteria.scholarships[0].display_name = None  # extract_v7 이전 결과
+    extractor.set("2026 장학생 모집", first)
+    crawl()
+    before = scholarships(session_factory)["A 장학금 모집"]
+    assert before.display_name is None
+
+    site.post("100", body="v2")
+    second = result("모집", ("A 장학금 모집", end))
+    second.criteria.scholarships[0].display_name = "A 장학금"
+    extractor.set("2026 장학생 모집", second)
+    crawl(at=NOW + timedelta(hours=1))
+
+    after = scholarships(session_factory)["A 장학금 모집"]
+    assert after.id == before.id
+    assert after.display_name == "A 장학금"
+    assert after.criteria["display_name"] == "A 장학금"
 
 
 def test_deadline_extension_reopens_and_vanished_stays_closed(

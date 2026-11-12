@@ -67,7 +67,8 @@ class ScholarshipSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    name: str
+    name: str  # 공지에 적힌 원래 이름
+    display_name: str  # 화면에 보일 쉬운 이름(5.2, extract_v8). 추출값이 없으면 name과 같음
     source_code: SourceCode
     source_name: str
     is_internal: bool
@@ -132,6 +133,7 @@ class SiblingScholarship(BaseModel):
 
     id: int
     name: str
+    display_name: str  # ScholarshipSummary.display_name과 같음
     status: ScholarshipStatus
 
 

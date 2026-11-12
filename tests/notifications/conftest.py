@@ -129,6 +129,7 @@ def add_scholarship(
     kind: str = "모집",
     apply_end: datetime | None = None,
     created_at: datetime | None = None,
+    display_name: str | None = None,
 ) -> int:
     n = next(_counter)
     with factory() as session:
@@ -148,6 +149,7 @@ def add_scholarship(
         scholarship = Scholarship(
             notice_id=notice.id,
             name=name,
+            display_name=display_name,
             benefit_type="등록금성",
             apply_end=apply_end,
             status=status,
