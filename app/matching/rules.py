@@ -68,6 +68,30 @@ def excludes_extra_semester(p: Profile, c: ScholarshipCriteria) -> Outcome:
     return _bool(not is_extra_semester(p.completed_semesters))
 
 
+# 정규학기 수 (4년제 8학기). 남은 정규학기 = 8 − 이수학기
+REGULAR_SEMESTERS = 8
+
+
+def excludes_new_students(p: Profile, c: ScholarshipCriteria) -> Outcome:
+    """신·편입생 제외 (extract_v6). 이수학기 0이면 불충족, 1 이상이면 충족. false·null은 조건 없음.
+
+    프로필에 편입 여부가 없어 모든 사용자를 편입생이 아니라고 간주합니다(2026-11-12).
+    """
+    if not c.excludes_new_students:
+        return None
+    return _bool(p.completed_semesters >= 1)
+
+
+def min_remaining_semesters(p: Profile, c: ScholarshipCriteria) -> Outcome:
+    """남은 정규학기 N학기 이상 (extract_v6). `8 − 이수학기 ≥ N`이면 충족.
+
+    이수학기는 마친 학기 수라서 지금 다니는 학기도 남은 학기로 셉니다(2026-11-12).
+    """
+    if c.min_remaining_semesters is None:
+        return None
+    return _bool(REGULAR_SEMESTERS - p.completed_semesters >= c.min_remaining_semesters)
+
+
 def enrollment_status(p: Profile, c: ScholarshipCriteria) -> Outcome:
     if c.enrollment_status is None:
         return None
