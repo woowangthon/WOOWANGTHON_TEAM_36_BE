@@ -84,8 +84,8 @@ def test_missing_scholarship_counts_all_fields_wrong():
     assert not score.count_match
     assert score.fields["min_gpa"].total == 2
     assert score.fields["min_gpa"].correct == 1
-    # 필드 5 + 보조 값 4(extract_v6 2개, extract_v7 2개)
-    assert sum(1 for m in score.mismatches if m["got"] == "(장학금 없음)") == 9
+    # 필드 5 + 보조 값 5(extract_v6 2개, extract_v7 2개, extract_v8 1개)
+    assert sum(1 for m in score.mismatches if m["got"] == "(장학금 없음)") == 10
 
 
 def test_extra_predicted_scholarship_does_not_grow_denominator():
@@ -224,3 +224,12 @@ def test_run_refuses_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     with pytest.raises(SystemExit):
         run.main([])
+
+
+def test_v8_school_excluded_is_aux_and_not_in_total():
+    """학교 조건은 보조 지표로만 셉니다(extract_v8)."""
+    want = {**BASE, "school_excluded": True}
+    score = score_notice("n1", criteria(scholarships=[want]), criteria(scholarships=[BASE]))
+    summary = summarize([score])
+    assert summary["fields"]["school_excluded"]["correct"] == 0
+    assert summary["correct"] == 6 and summary["total"] == 6

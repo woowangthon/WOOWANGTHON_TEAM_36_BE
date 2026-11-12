@@ -16,6 +16,7 @@
 - 보조 지표 `excludes_new_students`·`min_remaining_semesters`(extract_v6): 값이 정답과 같은지
   봅니다. 같은 이유로 전체 정답률에는 넣지 않습니다.
 - 보조 지표 `excludes_transfer_students`·`target_nationality`(extract_v7): 위와 같습니다.
+- 보조 지표 `school_excluded`(extract_v8): 위와 같습니다.
 """
 
 from dataclasses import dataclass, field
@@ -39,6 +40,7 @@ AUX_VALUE_FIELDS = (
     "min_remaining_semesters",
     "excludes_transfer_students",
     "target_nationality",
+    "school_excluded",
 )
 AUX_FIELDS = ("needs_check", *AUX_VALUE_FIELDS)
 TARGET_ACCURACY = 0.90
