@@ -48,6 +48,7 @@ from app.schemas.api.scholarships import (
     ConditionAnswer,
     ConditionAnswerRequest,
     ConditionAnswerResponse,
+    ConditionTextOut,
     MatchResult,
     NoticeAttachmentText,
     NoticeRef,
@@ -164,7 +165,7 @@ def _summary(
         "result": evaluation.result,
         "my_state": state,
         "open_conditions": [
-            OpenCondition(key=c.key, text=c.text)
+            OpenCondition(key=c.key, text=c.text, summary=c.summary)
             for c in evaluation.extra_checks
             if c.answer is None
         ],
@@ -290,6 +291,9 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
             "extra_conditions": evaluation.extra_conditions,
             "extra_checks": evaluation.extra_checks,
             "basic_conditions": evaluation.basic_conditions,
+            "basic_items": [
+                ConditionTextOut(text=i.text, summary=i.summary) for i in evaluation.basic_items
+            ],
             "notes": evaluation.notes,
             "required_documents": criteria.required_documents,
             "notice": NoticeRef(

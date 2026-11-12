@@ -24,8 +24,9 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date
 
-from app.extraction.schemas import ScholarshipCriteria
+from app.extraction.schemas import ConditionText, ScholarshipCriteria
 from app.matching import rules
+from app.matching.describe import describe, is_ambiguous
 from app.schemas.api.profile import Profile
 from app.schemas.api.scholarships import (
     ConditionAnswer,
@@ -44,7 +45,8 @@ class Evaluation:
     checks: list[ConditionCheck]  # 화면 체크리스트 순서(5.3 표 순서)
     extra_conditions: list[str]
     extra_checks: list[ExtraCheck]  # extra_conditions 순서 그대로, 사용자 답 포함
-    basic_conditions: list[str]
+    basic_conditions: list[str]  # text만
+    basic_items: list[ConditionText]  # text와 summary
     notes: list[str]
     # 답하지 않은 extra_conditions 말고도 판정을 막는 것(알 수 없음·못 읽은 첨부)이 있는지
     other_unknown: bool
@@ -136,15 +138,21 @@ def evaluate(
         outcome = rules.UNKNOWN if name in ambiguous else rule(profile, criteria, today)
         if outcome is not None:
             evidence, source = _evidence(criteria, name)
+            amb = is_ambiguous(name, criteria)
             checks.append(
                 ConditionCheck(
-                    condition=name, outcome=outcome, evidence=evidence, evidence_source=source
+                    condition=name,
+                    outcome=outcome,
+                    evidence=evidence,
+                    evidence_source=source,
+                    requirement=None if amb else describe(name, criteria),
+                    ambiguous=amb,
                 )
             )
 
     answers = answers or {}
     extra_checks = [
-        ExtraCheck(key=key, text=item.text, answer=answers.get(key))
+        ExtraCheck(key=key, text=item.text, answer=answers.get(key), summary=item.summary)
         for item in criteria.extra_conditions
         for key in (condition_key(item.text),)
     ]
@@ -165,5 +173,6 @@ def evaluate(
         extra_checks=extra_checks,
         other_unknown=other_unknown,
         basic_conditions=[item.text for item in criteria.basic_conditions],
+        basic_items=list(criteria.basic_conditions),
         notes=list(criteria.notes),
     )

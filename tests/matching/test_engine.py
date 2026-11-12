@@ -851,3 +851,48 @@ def test_school_excluded_absent_is_not_compared(value):
 def test_school_excluded_ambiguous_is_unknown():
     c = criteria(ambiguous_fields=["school_excluded"])
     assert outcome("school_excluded", profile(), c) == "UNKNOWN"
+
+
+# --- 조건 요약 (T43) ----------------------------------------------------------------
+
+
+def test_checks_carry_requirement_and_ambiguous():
+    c = criteria(
+        min_gpa=3.5,
+        grade_basis="직전학기",
+        max_income_bracket=5,
+        excludes_new_students=True,
+        ambiguous_fields=["max_income_bracket"],
+    )
+    checks = {x.condition: x for x in evaluate(profile(), c, TODAY).checks}
+    assert checks["min_gpa"].requirement == "직전학기 3.5 이상"
+    assert checks["min_gpa"].ambiguous is False
+    assert checks["max_income_bracket"].requirement is None
+    assert checks["max_income_bracket"].ambiguous is True
+    assert checks["excludes_new_students"].requirement is None
+    assert checks["excludes_new_students"].ambiguous is False
+
+
+def test_extra_check_carries_summary_and_text_key():
+    text = "타 장학금과 중복 수혜 불가"
+    c = criteria(extra_conditions=[{"text": text, "summary": "다른 장학금을 받지 않는 학생"}])
+    ev = evaluate(profile(), c, TODAY)
+    assert ev.extra_checks[0].summary == "다른 장학금을 받지 않는 학생"
+    assert ev.extra_checks[0].key == condition_key(text)
+    assert ev.extra_conditions == [text]
+
+
+def test_basic_items_carry_summary():
+    c = criteria(basic_conditions=[{"text": "품행이 단정한 자", "summary": None}])
+    ev = evaluate(profile(), c, TODAY)
+    assert ev.basic_conditions == ["품행이 단정한 자"]
+    assert [(i.text, i.summary) for i in ev.basic_items] == [("품행이 단정한 자", None)]
+
+
+def test_answer_kept_when_only_summary_changes():
+    text = "타 장학금과 중복 수혜 불가"
+    key = condition_key(text)
+    for summary in ("요약 A", "요약 B"):
+        c = criteria(extra_conditions=[{"text": text, "summary": summary}])
+        ev = evaluate(profile(), c, TODAY, answers={key: "YES"})
+        assert ev.extra_checks[0].answer == "YES"

@@ -52,6 +52,7 @@ class OpenCondition(BaseModel):
 
     key: str  # condition_key: 문장 정규화 후 SHA-256 앞 16자 (5.3)
     text: str
+    summary: str | None = None  # 쉬운 요약. 없으면 화면이 text를 그대로 보입니다
 
 
 class ExtraCheck(BaseModel):
@@ -60,6 +61,7 @@ class ExtraCheck(BaseModel):
     key: str
     text: str
     answer: ConditionAnswer | None
+    summary: str | None = None  # 쉬운 요약. 없으면 화면이 text를 그대로 보입니다
 
 
 class ScholarshipSummary(BaseModel):
@@ -99,6 +101,9 @@ class ConditionCheck(BaseModel):
     evidence: str | None  # 공지 원문 근거 문장 (5.2 evidence)
     # 근거가 나온 곳: "본문" 또는 첨부 파일 이름. extract_v4 이전 결과는 null
     evidence_source: str | None = None
+    # 코드가 값으로 만든 조건 요약("직전학기 3.5 이상"). 모호하거나 이름만으로 충분한 조건은 null
+    requirement: str | None = None
+    ambiguous: bool = False  # ambiguous_fields에 든 조건. 화면이 "공지가 모호해요"로 보입니다
 
 
 class NoticeAttachmentText(BaseModel):
@@ -138,12 +143,21 @@ class SiblingScholarship(BaseModel):
     status: ScholarshipStatus
 
 
+class ConditionTextOut(BaseModel):
+    """기본 조건 1줄: 공지 원문 문장과 쉬운 요약."""
+
+    text: str
+    summary: str | None = None
+
+
 class ScholarshipDetail(ScholarshipSummary):
     apply_start: AwareDatetime | None
     conditions: list[ConditionCheck]
     extra_conditions: list[str]  # 자격을 좁히는 조건 (답하지 않은 것이 있으면 확인 필요)
     extra_checks: list[ExtraCheck]  # 위 조건마다 사용자 답 (5.3)
     basic_conditions: list[str]  # 대부분 충족하는 기본 조건 (판정에 영향 없음, 지원 전 확인)
+    # 위와 같은 조건의 {text, summary}. 화면은 summary가 있으면 요약을, 없으면 text를 보입니다.
+    basic_items: list[ConditionTextOut] = []
     notes: list[str]  # 자격이 아닌 안내 (선발 방식·의무·예외 등, 판정에 영향 없음)
     required_documents: list[str]
     notice: NoticeRef
