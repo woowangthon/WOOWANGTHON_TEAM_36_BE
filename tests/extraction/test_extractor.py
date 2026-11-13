@@ -141,6 +141,7 @@ def test_request_uses_structured_output_and_prompt(gemini):
     assert config.response_json_schema["title"] == "ExtractedCriteria"
     assert config.system_instruction == PROMPT_PATH.read_text(encoding="utf-8")
     assert config.temperature == 0
+    assert config.thinking_config.thinking_level == "LOW"  # 기본값(높음)이면 큰 공지가 시간 초과
     assert config.http_options.timeout == 60_000  # 호출 1회 60초
 
 
