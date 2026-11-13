@@ -492,3 +492,21 @@ def test_grade_shortfall_without_score_is_basic_not_ambiguous():
     assert "**ambiguous에도 넣지 않는다**" in prompt
     line = _prompt_line("- 기준 점수 없는 성적 제외")
     assert "성적 미달" in line
+
+
+def test_mixed_sentence_summary_skips_field_parts():
+    """섞인 문장의 요약에는 필드로 판정한 부분을 다시 묻지 않습니다(전체 오류 현황 E-18).
+
+    AI부트캠프 자격증 장학금은 사업단 ✗로 판정했는데 직접 답하는 조건에서
+    "사업단 참여 학생이면서 중급 이상…"을 다시 물었습니다.
+    """
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert "**이때 `summary`에는 필드로 옮긴 부분을 빼고 남은 부분만 쓴다.**" in prompt
+    assert '"중급 이상 자격을 갖춘 학생"' in prompt
+
+
+def test_foundation_request_to_university_counts_as_designated():
+    """재단이 대학에 공고를 요청한 공지의 "재단 지정 대학"은 충북대가 충족합니다."""
+    line = _prompt_line("- `basic_conditions`")
+    assert "공고를 요청한 공문" in line
+    assert "충북대학교가 충족한다(`basic_conditions`)" in line
