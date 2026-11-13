@@ -74,4 +74,4 @@ tests/fixtures/ # 사이트별 저장 HTML, PDF 샘플, AI 응답 샘플, golden
 - 골든셋 평가: `uv run python -m eval.run`
 
 ## 환경변수 (계획서 9.6)
-`DATABASE_URL`, `DATABASE_URL_DIRECT`, `JWT_SECRET`, `FIELD_ENCRYPTION_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL`(최신 안정 Flash 모델 이름, 계획서 9.6·T08에서 확정), `AI_MOCK`(로컬 전용), `CRON_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `ADMIN_EMAILS`, `SMTP_USER`, `SMTP_PASSWORD`(Gmail 앱 비밀번호), `MAIL_MOCK`(로컬 전용), `APP_BASE_URL`(알림 메일 링크의 기준 주소, 계획서 7.4)
+`DATABASE_URL`, `DATABASE_URL_DIRECT`, `JWT_SECRET`, `FIELD_ENCRYPTION_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL`(모델 이름, 계획서 9.6에 기록. 2026-11-13 T47: `gemini-4-hydrogen`), `AI_MOCK`(로컬 전용), `CRON_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `ADMIN_EMAILS`, `SMTP_USER`, `SMTP_PASSWORD`(Gmail 앱 비밀번호), `MAIL_MOCK`(로컬 전용), `APP_BASE_URL`(알림 메일 링크의 기준 주소, 계획서 7.4)
