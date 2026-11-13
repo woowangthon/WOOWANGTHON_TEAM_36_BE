@@ -479,3 +479,16 @@ def test_enrollment_year_limit_is_not_a_plan_note():
     assert "입학 연도나 입학 예정자로 한정하는 문장" in prompt
     line = _prompt_line("- 그 밖의 자격")
     assert "입학 연도·입학 예정자 한정" in line
+
+
+def test_grade_shortfall_without_score_is_basic_not_ambiguous():
+    """점수 없이 "성적 미달"만 적힌 제외 대상은 평점을 애매함으로 두지 않고 기본 조건으로 보냅니다.
+
+    v10에서 학과수석장학생(1154016)의 평점이 ambiguous가 되어
+    다른 조건이 모두 맞아도 확인 필요였습니다.
+    """
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert '기준 점수 없이 "성적 미달"만 적힌 제외 대상' in prompt
+    assert "**ambiguous에도 넣지 않는다**" in prompt
+    line = _prompt_line("- 기준 점수 없는 성적 제외")
+    assert "성적 미달" in line
