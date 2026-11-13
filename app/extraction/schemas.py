@@ -46,6 +46,7 @@ CriteriaField = Literal[
     "min_gpa",
     "min_score_100",
     "grade_basis",
+    "grade_either",
     "min_credits",
     "target_nationality",
     "school_excluded",
@@ -141,6 +142,11 @@ class ScholarshipCriteria(BaseModel):
     min_gpa: float | None = Field(default=None, ge=0, le=4.5)
     min_score_100: float | None = Field(default=None, ge=0, le=100)
     grade_basis: GradeBasis | None = None
+    # extract_v12에서 추가했습니다(T50). 기본값이 None이라 DB에 저장된 v11 결과도 그대로 읽힙니다.
+    # true면 "평점 Y 이상 또는 100점 X 이상"처럼 min_gpa·min_score_100 중 하나만 맞으면 됩니다.
+    # 두 값은 원문 숫자 그대로이고 OR 판정은 규칙 엔진이 합니다.
+    # 조건이 없으면 null(false도 쓰지 않음)
+    grade_either: bool | None = None
     min_credits: int | None = Field(default=None, ge=0)
 
     gender: Gender | None = None

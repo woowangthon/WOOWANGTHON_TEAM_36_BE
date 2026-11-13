@@ -156,6 +156,24 @@ def min_score_100(p: Profile, c: ScholarshipCriteria, *, basis_ambiguous: bool =
     return _at_least(value, c.min_score_100)
 
 
+def either(*outcomes: Outcome) -> Outcome:
+    """둘 중 하나만 맞으면 되는 조건(`grade_either`, extract_v12)의 결과.
+
+    하나라도 충족이면 충족, 비교한 것이 모두 불충족이면 불충족, 그 밖은 알 수 없음입니다.
+    비교하지 않은 조건(`None`)은 빼고, 모두 `None`이면 `None`입니다.
+    100점 환산은 평점에서 계산하므로(평점×10+52.5) "평점 ≥ Y 또는 100점 ≥ X"는
+    "평점 ≥ min(Y, (X−52.5)÷10)"과 같습니다.
+    """
+    compared = [o for o in outcomes if o is not None]
+    if not compared:
+        return None
+    if MET in compared:
+        return MET
+    if all(o == UNMET for o in compared):
+        return UNMET
+    return UNKNOWN
+
+
 def min_credits(p: Profile, c: ScholarshipCriteria) -> Outcome:
     if c.min_credits is None:
         return None

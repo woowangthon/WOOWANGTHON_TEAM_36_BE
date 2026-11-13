@@ -13,6 +13,8 @@
 
 공지 조건이 null이면 비교하지 않습니다.
 `ambiguous_fields`에 든 조건은 값과 관계없이 알 수 없음입니다(5.2).
+`grade_either = true`이고 평점·100점 조건이 모두 있으면 둘을 OR로 묶어 `min_gpa` 한 줄로
+판정합니다(`rules.either`, extract_v12). 그 밖에는 두 성적 조건을 따로(AND) 판정합니다.
 `basic_conditions`(학교 조건·품행 등 대부분 충족)와 `notes`(자격이 아닌 안내)는 판정을 바꾸지 않고
 화면에 보여 주기만 합니다(extract_v5).
 """
@@ -26,7 +28,7 @@ from datetime import date
 
 from app.extraction.schemas import ConditionText, ScholarshipCriteria
 from app.matching import rules
-from app.matching.describe import describe, is_ambiguous
+from app.matching.describe import describe, grade_either_applies, is_ambiguous
 from app.schemas.api.profile import Profile
 from app.schemas.api.scholarships import (
     ConditionAnswer,
@@ -136,10 +138,21 @@ def evaluate(
     """
     checks: list[ConditionCheck] = []
     ambiguous = set(criteria.ambiguous_fields)
+    either = grade_either_applies(criteria)
+
+    def judge(name: ConditionName, rule: Rule) -> rules.Outcome:
+        return rules.UNKNOWN if name in ambiguous else rule(profile, criteria, today)
+
     for name, rule in RULES:
-        outcome = rules.UNKNOWN if name in ambiguous else rule(profile, criteria, today)
+        if either and name == "min_score_100":
+            continue  # min_gpa 줄에서 함께 판정했습니다.
+        outcome = judge(name, rule)
+        if either and name == "min_gpa":
+            outcome = rules.either(outcome, judge("min_score_100", _no_date(_min_score_100)))
         if outcome is not None:
             evidence, source = _evidence(criteria, name)
+            if evidence is None and either and name == "min_gpa":
+                evidence, source = _evidence(criteria, "min_score_100")
             amb = is_ambiguous(name, criteria)
             checks.append(
                 ConditionCheck(

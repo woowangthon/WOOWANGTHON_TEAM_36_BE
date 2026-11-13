@@ -123,7 +123,7 @@ def server_error(code: int) -> errors.APIError:
 def test_success(gemini, clock):
     models = gemini([json.dumps(VALID_RESPONSE)])
     result = extract(request())
-    assert result.model_version == "gemini-test-flash+extract_v11"
+    assert result.model_version == "gemini-test-flash+extract_v12"
     scholarship = result.criteria.scholarships[0]
     assert scholarship.apply_end == datetime(2026, 11, 12, 18, 0, tzinfo=SEOUL)
     assert scholarship.ambiguous_fields == ["max_income_bracket"]
@@ -180,6 +180,7 @@ def test_prompt_contains_required_rules():
         "`target_nationality`",
         "`school_excluded`",  # 새 필드(extract_v8)
         "`min_admission_year`",  # 새 필드(extract_v11)
+        "`grade_either`",  # 새 필드(extract_v12)
         "`display_name`",  # 쉬운 이름(extract_v9)
         "다듬지 않는다",  # scholarship_name은 원래 이름 그대로(재추출 매칭 키)
         "지어내지 않는다",
@@ -344,7 +345,7 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert extract(request()).model_version == "mock+extract_v11"
+    assert extract(request()).model_version == "mock+extract_v12"
 
 
 # --- import 경계 (8.1) ---
@@ -501,3 +502,13 @@ def test_admission_year_goes_to_field_not_extra_conditions():
     assert "2027학년도 신입생" in _prompt_line("- `min_admission_year`")
     assert "게시 시점과 비교해 학년으로 바꾸지 않는다" in prompt
     assert "자격이므로 `min_admission_year`다" in prompt
+
+
+def test_gpa_or_score_goes_to_grade_either():
+    """평점·100점 중 하나만 맞는 조건은 원문 숫자 그대로 두 칸 + grade_either(extract_v12)."""
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert "**원문 숫자를 그대로**" in prompt
+    assert "`grade_either`를 `true`로 둔다" in prompt
+    assert "서로 환산하거나 하나로 합치지 않는다" in prompt
+    # 학기 기준 둘 중 하나("직전학기 또는 전체")는 그대로 extra_conditions입니다.
+    assert "학기 기준 둘 중 하나만 맞으면 되는 조건" in prompt
