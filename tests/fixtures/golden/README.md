@@ -2,7 +2,7 @@
 
 공지 30건. 공지마다 파일 두 개를 둡니다.
 
-- `<source>_<id>.input.json`: `ExtractRequest` 형식(`source_code`, `title`, `posted_at`, `text`). `text`는 본문 + `[첨부 PDF: 파일명]` 뒤에 PDF 추출 텍스트(PyMuPDF)입니다. 3만 자 자르기는 하지 않았습니다(extractor가 합니다).
+- `<source>_<id>.input.json`: `ExtractRequest` 형식(`source_code`, `title`, `posted_at`, `text`). `text`는 본문 + `[첨부 PDF: 파일명]` 뒤에 PDF 추출 텍스트(PyMuPDF)입니다. 10만 자 자르기는 하지 않았습니다(extractor가 합니다).
 - `<source>_<id>.expected.json`: `ExtractedCriteria` 형식 정답. `app.extraction.schemas.ExtractedCriteria`로 검증을 통과한 값을 `model_dump(mode="json")`으로 저장했습니다.
 
 정답은 Claude가 원문을 읽고 초안을 만든 뒤(2026-11-05), 권남렬이 원문과 나란히 놓고 직접 검토했습니다(2026-11-06, 30건 중 1건 수정: `sw_dept_1154674`). 2026-11-07 성적 입력 C안에 따라 `min_score_100`·`grade_basis` 정답을 추가했습니다. 필드마다 `evidence`에 근거 원문을 남겼습니다.

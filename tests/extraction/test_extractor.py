@@ -142,7 +142,7 @@ def test_request_uses_structured_output_and_prompt(gemini):
     assert config.system_instruction == PROMPT_PATH.read_text(encoding="utf-8")
     assert config.temperature == 0
     assert config.thinking_config.thinking_level == "LOW"  # 기본값(높음)이면 큰 공지가 시간 초과
-    assert config.http_options.timeout == 60_000  # 호출 1회 60초
+    assert config.http_options.timeout == 90_000  # 호출 1회 90초
 
 
 def test_request_contains_only_notice_fields(gemini):
@@ -154,7 +154,7 @@ def test_request_contains_only_notice_fields(gemini):
     assert contents.endswith("---\n본문 내용")
 
 
-def test_input_is_truncated_to_30000_chars(gemini):
+def test_input_is_truncated_to_max_chars(gemini):
     models = gemini([json.dumps(VALID_RESPONSE)])
     extract(request("가" * (MAX_INPUT_CHARS + 5000)))
     body = models.calls[0]["contents"].split("---\n", 1)[1]
@@ -299,30 +299,30 @@ def test_empty_response_fails(gemini):
         extract(request())
 
 
-# --- 전체 시간 제한 (100초) ---
+# --- 전체 시간 제한 (150초) ---
 
 
 def test_total_timeout_stops_retrying(gemini, clock):
-    # 호출마다 45초 걸리고 실패 → 45 + 2 + 45 = 92초, 다음 백오프 4초 후 96초에 시작하면
-    # 남은 시간 4초만 쓸 수 있음 → 그 호출도 실패하면 100초를 넘어 중단
-    models = gemini([server_error(503)] * 5, call_seconds=45.0)
-    with pytest.raises(ExtractionError, match="100초"):
+    # 호출마다 70초 걸리고 실패 → 70 + 2 + 70 = 142초, 다음 백오프 4초 후 146초에 시작하면
+    # 남은 시간 4초만 쓸 수 있음 → 그 호출도 실패하면 150초를 넘어 중단
+    models = gemini([server_error(503)] * 5, call_seconds=70.0)
+    with pytest.raises(ExtractionError, match="150초"):
         extract(request())
     assert len(models.calls) == 3
-    assert clock.now <= 100 + 45  # 마지막 호출은 남은 시간만큼만 기다림(가짜 시계라 45초 더해짐)
+    assert clock.now <= 150 + 70  # 마지막 호출은 남은 시간만큼만 기다림(가짜 시계라 70초 더해짐)
 
 
 def test_call_timeout_is_capped_by_remaining_time(gemini, clock):
-    models = gemini([server_error(503), json.dumps(VALID_RESPONSE)], call_seconds=50.0)
+    models = gemini([server_error(503), json.dumps(VALID_RESPONSE)], call_seconds=80.0)
     extract(request())
-    # 두 번째 호출은 50 + 2 = 52초 뒤 시작 → 남은 48초가 제한 시간
-    assert models.calls[0]["config"].http_options.timeout == 60_000
-    assert models.calls[1]["config"].http_options.timeout == 48_000
+    # 두 번째 호출은 80 + 2 = 82초 뒤 시작 → 남은 68초가 제한 시간
+    assert models.calls[0]["config"].http_options.timeout == 90_000
+    assert models.calls[1]["config"].http_options.timeout == 68_000
 
 
 def test_no_retry_when_backoff_exceeds_deadline(gemini, clock):
-    models = gemini([server_error(503), json.dumps(VALID_RESPONSE)], call_seconds=99.0)
-    with pytest.raises(ExtractionError, match="100초"):
+    models = gemini([server_error(503), json.dumps(VALID_RESPONSE)], call_seconds=149.0)
+    with pytest.raises(ExtractionError, match="150초"):
         extract(request())
     assert len(models.calls) == 1
     assert clock.sleeps == []

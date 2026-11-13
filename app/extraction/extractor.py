@@ -7,8 +7,10 @@
 - 모델 이름은 GEMINI_MODEL에서만 읽습니다. 코드에 기본값이 없고, 없으면 ExtractionError입니다.
 - Structured Output(`response_json_schema`)으로 ExtractedCriteria 형태를 강제하고,
   응답을 Pydantic으로 다시 검증합니다. 검증 실패는 재시도하지 않습니다(9.3).
-- 429·5xx·호출 시간 초과는 지수 백오프로 최대 3회 재시도합니다. 호출 1회 60초, 공지 1건의 재시도를
-  포함한 전체 처리는 100초를 넘지 않습니다.
+- 429·5xx·호출 시간 초과는 지수 백오프로 최대 3회 재시도합니다. 호출 1회 90초, 공지 1건의 재시도를
+  포함한 전체 처리는 150초를 넘지 않습니다.
+- 추론 강도(thinking level)는 LOW로 둡니다. 모델 기본값(HIGH)은 공지 1건에 60~85초가 걸려
+  시간 제한에 걸렸고, LOW는 같은 공지를 13~22초에 같은 정답으로 처리했습니다(T47).
 - 입력 텍스트는 10만 자에서 자릅니다(D5). 수집 작업이 본문 → 공고문 첨부 순으로 붙이고
   신청서·서식 같은 양식 파일은 넣지 않으므로, 넘쳐도 잘리는 쪽은 뒤쪽 첨부입니다.
 - google-genai는 학생 요청 경로에서 불러오지 않도록 함수 안에서 import합니다(9.5).
@@ -34,8 +36,8 @@ MOCK_MODEL_NAME = "mock"
 PROMPT_PATH = Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.md"
 
 MAX_INPUT_CHARS = 100_000  # 약 120쪽. 넘치면 뒤쪽 첨부부터 잘림(D5)
-CALL_TIMEOUT_SECONDS = 60.0
-TOTAL_TIMEOUT_SECONDS = 100.0
+CALL_TIMEOUT_SECONDS = 90.0
+TOTAL_TIMEOUT_SECONDS = 150.0
 MAX_RETRIES = 3
 BACKOFF_BASE_SECONDS = 2.0  # 2, 4, 8초
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
@@ -108,7 +110,7 @@ def _generate_with_retry(client: Any, model: str, content: str) -> str:
     for attempt in range(MAX_RETRIES + 1):
         remaining = deadline - _monotonic()
         if remaining <= 0:
-            raise ExtractionError("추출 전체 시간(100초)을 넘었습니다")
+            raise ExtractionError(f"추출 전체 시간({TOTAL_TIMEOUT_SECONDS:.0f}초)을 넘었습니다")
         try:
             return _generate(client, model, content, timeout=min(CALL_TIMEOUT_SECONDS, remaining))
         except _RetryableError as error:
@@ -116,7 +118,9 @@ def _generate_with_retry(client: Any, model: str, content: str) -> str:
                 raise ExtractionError(f"재시도를 다 썼습니다({error})") from error
             backoff = BACKOFF_BASE_SECONDS * 2**attempt
             if _monotonic() + backoff >= deadline:
-                raise ExtractionError("추출 전체 시간(100초) 안에 재시도할 수 없습니다") from error
+                raise ExtractionError(
+                    f"추출 전체 시간({TOTAL_TIMEOUT_SECONDS:.0f}초) 안에 재시도할 수 없습니다"
+                ) from error
             log_event(
                 logger,
                 "Gemini 호출 재시도",
@@ -139,8 +143,8 @@ def _generate(client: Any, model: str, content: str, *, timeout: float) -> str:
         response_mime_type="application/json",
         response_json_schema=ExtractedCriteria.model_json_schema(),
         temperature=0,
-        # 생각 수준을 정하지 않으면 모델 기본값(높음)으로 오래 생각해
-        # 큰 첨부 공지가 60초를 넘습니다. 추출은 원문의 값을 옮겨 적는 일이라 낮음으로 충분합니다.
+        # 생각 수준을 정하지 않으면 모델 기본값(높음)으로 오래 생각해 공지 1건에 60~85초가
+        # 걸립니다(T47 측정). 추출은 원문의 값을 옮겨 적는 일이라 낮음으로 충분합니다.
         thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
         http_options=types.HttpOptions(timeout=int(timeout * 1000)),  # 밀리초
     )
