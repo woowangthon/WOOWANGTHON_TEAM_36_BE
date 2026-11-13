@@ -42,6 +42,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.api.scholarships import unread_attachments_exist
 from app.core.db import get_sessionmaker
 from app.core.logging import configure_logging, log_event
 from app.crawlers.aibc import AibcCrawler
@@ -51,6 +52,7 @@ from app.crawlers.sw_dept import SwDeptCrawler
 from app.extraction import ExtractionError, ExtractionResult, ExtractRequest, extract
 from app.extraction.extractor import MAX_INPUT_CHARS
 from app.models import CrawlRun, Notice, NoticeAttachment, Scholarship
+from app.models.notice import UNREAD_ATTACHMENT_STATUSES
 from app.parsers.attachments import read_attachment
 from app.parsers.dates import now_kst
 from app.parsers.deadline import title_deadline
@@ -73,6 +75,8 @@ MAX_EXTRACT_ATTEMPTS = 3  # FAILED가 연속 이만큼 실패하면 자동 재�
 BACKFILL_PERIOD = timedelta(days=365)
 MAX_BACKFILL_PAGES = 60  # 목록 구조가 바뀌어 끝을 못 찾을 때의 안전장치
 ALWAYS_RECRUIT_PERIOD = timedelta(days=60)  # 마감 없는 모집
+# 마감 없는 모집인데 읽지 못한 첨부가 있으면 마감일이 첨부에만 있을 수 있어 짧게 둡니다(T45).
+ALWAYS_RECRUIT_UNREAD_PERIOD = timedelta(days=14)
 ALWAYS_CRITERIA_PERIOD = timedelta(days=365)  # 기준안내
 ERROR_TEXT_LIMIT = 500
 MAX_ATTACHMENTS = 10  # 공지 1건에서 받는 첨부 수 상한(넘는 것은 SKIPPED)
@@ -496,6 +500,7 @@ def apply_extraction(
     compare_title = notice.source_code == "SW_DEPT" and len(criteria.scholarships) == 1
     title_end = title_deadline(notice.title, notice.posted_at) if compare_title else None
 
+    has_unread = any(f.status in UNREAD_ATTACHMENT_STATUSES for f in notice.files)
     kept: set[int] = set()
     for item in criteria.scholarships:
         row = existing.get(item.scholarship_name)
@@ -511,7 +516,13 @@ def apply_extraction(
         row.deadline_source = source
         row.deadline_conflict = conflict
         row.criteria = item.model_dump(mode="json")
-        row.status = scholarship_status(criteria.notice_kind, apply_end, notice.posted_at, now)
+        row.status = scholarship_status(
+            criteria.notice_kind,
+            apply_end,
+            notice.posted_at,
+            now,
+            has_unread_attachments=has_unread,
+        )
         session.flush()
         kept.add(row.id)
 
@@ -532,15 +543,21 @@ def resolve_deadline(
 
 
 def scholarship_status(
-    notice_kind: str | None, apply_end: datetime | None, posted_at: datetime, now: datetime
+    notice_kind: str | None,
+    apply_end: datetime | None,
+    posted_at: datetime,
+    now: datetime,
+    *,
+    has_unread_attachments: bool = False,
 ) -> str:
-    """5.2 장학금 상태 표."""
+    """5.2 장학금 상태 표. 마감 없는 모집은 읽지 못한 첨부가 있으면 14일, 없으면 60일 상시."""
     if apply_end is not None and apply_end <= now:
         return "CLOSED"
     if notice_kind == "모집":
         if apply_end is not None:
             return "OPEN"
-        return "ALWAYS" if now < posted_at + ALWAYS_RECRUIT_PERIOD else "CLOSED"
+        period = ALWAYS_RECRUIT_UNREAD_PERIOD if has_unread_attachments else ALWAYS_RECRUIT_PERIOD
+        return "ALWAYS" if now < posted_at + period else "CLOSED"
     if notice_kind == "기준안내":
         return "ALWAYS" if now < posted_at + ALWAYS_CRITERIA_PERIOD else "CLOSED"
     return "CLOSED"
@@ -587,14 +604,23 @@ def close_expired(session: Session, now: datetime) -> int:
     마감·상시 기간이 지난 것에 더해, 같은 출처·이름의 새 상시 공지가 있는 옛 상시 공지도 닫습니다.
     """
     rows = session.execute(
-        select(Scholarship, Notice.notice_kind, Notice.posted_at, Notice.source_code)
+        select(
+            Scholarship,
+            Notice.notice_kind,
+            Notice.posted_at,
+            Notice.source_code,
+            unread_attachments_exist(),
+        )
         .join(Notice)
         .where(Scholarship.status.in_(("OPEN", "ALWAYS")))
     ).all()
     closed = 0
     still_always: list[tuple[Scholarship, AlwaysRow]] = []
-    for row, kind, posted_at, source_code in rows:
-        if scholarship_status(kind, row.apply_end, posted_at, now) == "CLOSED":
+    for row, kind, posted_at, source_code, has_unread in rows:
+        status = scholarship_status(
+            kind, row.apply_end, posted_at, now, has_unread_attachments=has_unread
+        )
+        if status == "CLOSED":
             row.status = "CLOSED"
             closed += 1
         elif row.status == "ALWAYS":

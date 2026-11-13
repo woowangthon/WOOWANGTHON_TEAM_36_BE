@@ -89,6 +89,8 @@ class ScholarshipSummary(BaseModel):
     # 있는지. "이것만 확인하면 N개가 풀려요" 안내를 화면이 계산합니다(7.1).
     open_conditions: list[OpenCondition] = []
     other_unknown: bool = False
+    # 같은 장학금(이름·마감 시각이 같음)이 올라온 다른 게시판 이름. 기본 목록에서만 채웁니다(T45).
+    also_posted_in: list[str] = []
 
 
 class ScholarshipListResponse(BaseModel):

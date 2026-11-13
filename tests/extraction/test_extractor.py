@@ -459,3 +459,22 @@ def test_extra_conditions_must_be_answerable():
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
     assert "답할 수 있는 문장만 넣는다" in prompt
     assert "추후 안내" in prompt
+
+
+def test_basic_conditions_line_sends_unmet_school_to_school_excluded():
+    """기본 조건 설명도 충북대가 충족하지 못하는 학교 조건을 school_excluded로 보냅니다.
+
+    v8에서 이 줄만 extra_conditions로 남아 3장 규칙과 충돌했습니다(오류 현황 E-07).
+    """
+    line = _prompt_line("- `basic_conditions`")
+    assert "충족하지 못하면 여기가 아니라 `school_excluded`" in line
+    assert "충족하지 못하면 `extra_conditions`다" not in line
+
+
+def test_enrollment_year_limit_is_not_a_plan_note():
+    """입학 연도로 대상을 좁히는 문장은 안내(notes)가 아니라 자격입니다(서비스 QA 문제-6)."""
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert '연차별 대상 학년을 확대할 예정입니다"' not in prompt
+    assert "입학 연도나 입학 예정자로 한정하는 문장" in prompt
+    line = _prompt_line("- 그 밖의 자격")
+    assert "입학 연도·입학 예정자 한정" in line
