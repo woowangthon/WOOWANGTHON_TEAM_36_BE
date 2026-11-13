@@ -16,7 +16,7 @@ def criteria(**fields) -> ScholarshipCriteria:
 def test_every_condition_is_classified():
     assert DESCRIBED | NAME_ONLY == set(get_args(ConditionName))
     assert not DESCRIBED & NAME_ONLY
-    assert len(DESCRIBED) == 13
+    assert len(DESCRIBED) == 14
     assert len(NAME_ONLY) == 6
 
 
@@ -25,6 +25,7 @@ def test_every_condition_is_classified():
     [
         ("target_grades", {"target_grades": [2, 3]}, "2·3학년"),
         ("min_remaining_semesters", {"min_remaining_semesters": 1}, "1학기 이상"),
+        ("min_admission_year", {"min_admission_year": 2027}, "2027학년도 이후 입학생"),
         ("enrollment_status", {"enrollment_status": ["재학"]}, "재학생"),
         ("enrollment_status", {"enrollment_status": ["재학", "휴학"]}, "재학생 또는 휴학생"),
         ("min_gpa", {"min_gpa": 3.5, "grade_basis": "직전학기"}, "직전학기 3.5 이상"),

@@ -912,3 +912,51 @@ def test_answer_kept_when_only_summary_changes():
         c = criteria(extra_conditions=[{"text": text, "summary": summary}])
         ev = evaluate(profile(), c, TODAY, answers={key: "YES"})
         assert ev.extra_checks[0].answer == "YES"
+
+
+# --- 입학 학년도 (extract_v11) -----------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("today", "semesters", "expected"),
+    [
+        # 2026학년도 중: 2027학년도 입학 예정자 대상 → 가입한 재학생은 모두 불충족
+        (date(2026, 11, 13), 0, "UNMET"),
+        (date(2026, 11, 13), 1, "UNMET"),
+        (date(2027, 2, 28), 0, "UNMET"),  # 학년도는 3월 1일에 바뀜
+        # 2027학년도: 2027학번은 1학년 → 1학년 충족, 2학년 이상 불충족
+        (date(2027, 3, 2), 0, "MET"),
+        (date(2027, 9, 1), 1, "MET"),
+        (date(2027, 3, 2), 2, "UNMET"),
+        # 2028학년도: 2027학번은 2학년 → 2학년 이하 충족("이후 입학"), 3학년 이상 불충족
+        (date(2028, 3, 2), 2, "MET"),
+        (date(2028, 3, 2), 0, "MET"),  # 2028학번 신입생도 "2027학년도 이후 입학"
+        (date(2028, 3, 2), 4, "UNMET"),
+    ],
+)
+def test_min_admission_year_changes_with_today(today, semesters, expected):
+    p = profile(completed_semesters=semesters, gpa=None, credits=None)
+    c = criteria(min_admission_year=2027)
+    assert outcome("min_admission_year", p, c, today) == expected
+
+
+def test_min_admission_year_transfer_uses_effective_semesters():
+    """편입생은 판정용 이수학기(+4)로 3학년 이상이므로 올해 입학생 대상이면 불충족입니다."""
+    p = profile(is_transfer=True, completed_semesters=0)
+    c = criteria(min_admission_year=2026)
+    assert outcome("min_admission_year", p, c, date(2026, 11, 13)) == "UNMET"
+
+
+def test_min_admission_year_absent_is_not_compared():
+    assert outcome("min_admission_year", profile(), criteria()) is None
+
+
+def test_min_admission_year_ambiguous_is_unknown():
+    c = criteria(min_admission_year=2027, ambiguous_fields=["min_admission_year"])
+    assert outcome("min_admission_year", profile(), c) == "UNKNOWN"
+
+
+def test_prospective_freshmen_only_is_ineligible():
+    """다음 학년도 신입생 대상은 지금 재학생에게 지원 불가입니다(T48)."""
+    c = criteria(min_admission_year=2027)
+    assert evaluate(profile(completed_semesters=0), c, date(2026, 11, 13)).result == "INELIGIBLE"

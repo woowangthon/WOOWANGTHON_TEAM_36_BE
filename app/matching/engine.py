@@ -84,6 +84,7 @@ RULES: tuple[tuple[ConditionName, Rule], ...] = (
     ("excludes_extra_semester", _no_date(rules.excludes_extra_semester)),
     ("excludes_new_students", _no_date(rules.excludes_new_students)),
     ("excludes_transfer_students", _no_date(rules.excludes_transfer_students)),
+    ("min_admission_year", rules.min_admission_year),
     ("min_remaining_semesters", _no_date(rules.min_remaining_semesters)),
     ("enrollment_status", _no_date(rules.enrollment_status)),
     ("school_excluded", _no_date(rules.school_excluded)),
@@ -127,7 +128,8 @@ def evaluate(
 ) -> Evaluation:
     """프로필과 장학금 조건을 비교합니다.
 
-    `today`는 한국 날짜이고, `apply_end`가 없을 때 나이 기준일로 씁니다.
+    `today`는 한국 날짜이고, `apply_end`가 없을 때 나이 기준일로 쓰며
+    입학 학년도 조건의 기준일로도 씁니다.
     `has_unread_attachments`는 공지 첨부 중 읽지 못한 것(스캔본·지원 안 하는 형식·실패)이
     있는지입니다. 있으면 지원 가능을 확인 필요로 낮추고, 불충족은 그대로 둡니다.
     `answers`는 사용자가 `extra_conditions`에 답한 값(`condition_key` → YES/NO)입니다.

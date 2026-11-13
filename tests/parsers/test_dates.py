@@ -1,11 +1,12 @@
 """날짜 해석 테스트 (T14, 계획서 2장 "날짜 해석")."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
 from app.parsers.dates import (
     SEOUL,
+    academic_year,
     deadline_at,
     infer_year,
     kst,
@@ -94,3 +95,16 @@ def test_deadline_explicit_year_wins():
 
 def test_deadline_invalid_date_is_none():
     assert deadline_at(2, 30, posted_at=POSTED_OCT) is None
+
+
+@pytest.mark.parametrize(
+    ("day", "expected"),
+    [
+        (date(2027, 2, 28), 2026),  # 2월까지는 전 학년도
+        (date(2027, 3, 1), 2027),  # 3월 1일에 바뀜
+        (date(2026, 11, 13), 2026),
+        (date(2027, 1, 5), 2026),
+    ],
+)
+def test_academic_year(day, expected):
+    assert academic_year(day) == expected

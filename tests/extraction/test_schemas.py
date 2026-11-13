@@ -265,7 +265,7 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     result = extract(_request())
     assert isinstance(result, ExtractionResult)
-    assert result.model_version == "mock+extract_v10"
+    assert result.model_version == "mock+extract_v11"
     # 목 응답도 스키마 검증을 다시 통과해야 합니다.
     again = ExtractionResult.model_validate_json(result.model_dump_json())
     assert again.criteria.notice_kind == "모집"
@@ -411,3 +411,19 @@ def test_condition_summary_explicit_null_from_gemini():
         {**MINIMAL, "extra_conditions": [{"text": "고등학교를 졸업한 자(단, …)", "summary": None}]}
     )
     assert c.extra_conditions[0].summary is None
+
+
+def test_v10_criteria_without_admission_year_load():
+    """extract_v11 이전에 저장된 조건(새 키 없음)도 읽혀야 합니다."""
+    s = ScholarshipCriteria.model_validate({"scholarship_name": "v10 장학금"})
+    assert s.min_admission_year is None
+
+
+@pytest.mark.parametrize("value", [1999, 2101])
+def test_min_admission_year_rejects_out_of_range(value):
+    with pytest.raises(ValidationError):
+        ExtractedCriteria.model_validate(_example(min_admission_year=value))
+
+
+def test_min_admission_year_in_criteria_field():
+    assert "min_admission_year" in CRITERIA_FIELDS
