@@ -143,6 +143,8 @@ def _generate(client: Any, model: str, content: str, *, timeout: float) -> str:
         response_mime_type="application/json",
         response_json_schema=ExtractedCriteria.model_json_schema(),
         temperature=0,
+        # 생각 수준을 정하지 않으면 모델 기본값(높음)으로 오래 생각해 공지 1건에 60~85초가
+        # 걸립니다(T47 측정). 추출은 원문의 값을 옮겨 적는 일이라 낮음으로 충분합니다.
         thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
         http_options=types.HttpOptions(timeout=int(timeout * 1000)),  # 밀리초
     )
