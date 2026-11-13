@@ -469,3 +469,12 @@ def test_basic_conditions_line_sends_unmet_school_to_school_excluded():
     line = _prompt_line("- `basic_conditions`")
     assert "충족하지 못하면 여기가 아니라 `school_excluded`" in line
     assert "충족하지 못하면 `extra_conditions`다" not in line
+
+
+def test_enrollment_year_limit_is_not_a_plan_note():
+    """입학 연도로 대상을 좁히는 문장은 안내(notes)가 아니라 자격입니다(서비스 QA 문제-6)."""
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert '연차별 대상 학년을 확대할 예정입니다"' not in prompt
+    assert "입학 연도나 입학 예정자로 한정하는 문장" in prompt
+    line = _prompt_line("- 그 밖의 자격")
+    assert "입학 연도·입학 예정자 한정" in line
