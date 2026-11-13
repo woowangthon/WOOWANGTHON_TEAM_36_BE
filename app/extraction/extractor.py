@@ -29,7 +29,7 @@ from app.core.config import get_settings
 from app.core.logging import log_event
 from app.extraction.schemas import ExtractedCriteria, ExtractionResult, ExtractRequest
 
-PROMPT_VERSION = "extract_v9"
+PROMPT_VERSION = "extract_v10"
 MOCK_MODEL_NAME = "mock"
 PROMPT_PATH = Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.md"
 
@@ -200,7 +200,12 @@ def _mock_result() -> ExtractionResult:
                     "target_department": "제한없음",
                     "target_program": "제한없음",
                     "required_documents": ["재학증명서", "성적증명서"],
-                    "extra_conditions": ["직전학기 봉사활동 20시간 이상"],
+                    "extra_conditions": [
+                        {
+                            "text": "직전학기 봉사활동 20시간 이상",
+                            "summary": "직전학기 봉사활동 20시간 이상",
+                        }
+                    ],
                     "ambiguous_fields": [],
                     "evidence": {"min_gpa": "직전학기 평점평균 3.5 이상인 자"},
                 }

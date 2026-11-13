@@ -8,7 +8,7 @@ import pytest
 
 from app.extraction.schemas import ExtractedCriteria, ExtractionResult
 from eval import run
-from eval.scoring import FIELDS, pair_scholarships, score_notice, summarize
+from eval.scoring import FIELDS, condition_summaries, pair_scholarships, score_notice, summarize
 
 SEOUL = ZoneInfo("Asia/Seoul")
 
@@ -233,3 +233,40 @@ def test_v8_school_excluded_is_aux_and_not_in_total():
     summary = summarize([score])
     assert summary["fields"]["school_excluded"]["correct"] == 0
     assert summary["correct"] == 6 and summary["total"] == 6
+
+
+def test_condition_summaries_lists_extra_then_basic():
+    predicted = criteria(
+        scholarships=[
+            scholarship(
+                "A",
+                extra_conditions=[
+                    {
+                        "text": "타 장학금과 중복 수혜 불가",
+                        "summary": "다른 장학금을 받지 않는 학생",
+                    }
+                ],
+                basic_conditions=["징계사실이 없는 자"],
+            )
+        ]
+    )
+    assert condition_summaries("n1", predicted) == [
+        {
+            "notice": "n1",
+            "scholarship": "A",
+            "list": "extra",
+            "text": "타 장학금과 중복 수혜 불가",
+            "summary": "다른 장학금을 받지 않는 학생",
+        },
+        {
+            "notice": "n1",
+            "scholarship": "A",
+            "list": "basic",
+            "text": "징계사실이 없는 자",
+            "summary": None,
+        },
+    ]
+
+
+def test_condition_summaries_failed_notice_is_empty():
+    assert condition_summaries("n1", None) == []

@@ -23,7 +23,14 @@ from app.core.config import get_settings
 from app.extraction import ExtractionError, ExtractRequest, extract
 from app.extraction.schemas import ExtractedCriteria
 from app.parsers.dates import now_kst
-from eval.scoring import AUX_FIELDS, FIELDS, NoticeScore, score_notice, summarize
+from eval.scoring import (
+    AUX_FIELDS,
+    FIELDS,
+    NoticeScore,
+    condition_summaries,
+    score_notice,
+    summarize,
+)
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 GOLDEN_DIR = BACKEND_DIR / "tests" / "fixtures" / "golden"
@@ -65,6 +72,7 @@ def run_one(notice_id: str) -> dict[str, Any]:
         "error": error,
         "model_version": model_version,
         "predicted": None if predicted is None else predicted.model_dump(mode="json"),
+        "condition_summaries": condition_summaries(notice_id, predicted),
     }
 
 
@@ -114,6 +122,8 @@ def main(argv: list[str] | None = None) -> int:
             }
             for notice_id, r in runs.items()
         },
+        # 공지 ID 순으로 이은 "원문 → 요약" 목록. 병합 전에 사람이 요약 극성을 확인합니다.
+        "condition_summaries": [item for r in runs.values() for item in r["condition_summaries"]],
     }
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     path = RESULTS_DIR / f"{model_version}.json"
@@ -158,6 +168,12 @@ def print_table(report: dict[str, Any]) -> None:
         )
     print()
     print(f"목표 {summary['target']:.0%} 대비 {summary['gap']:+.1%}p")
+    items = report.get("condition_summaries", [])
+    missing = sum(1 for i in items if not i["summary"])
+    print(
+        f"요약 {len(items)}개 (summary 없음 {missing}개) — "
+        "결과 파일의 condition_summaries를 사람이 확인하세요"
+    )
 
 
 if __name__ == "__main__":

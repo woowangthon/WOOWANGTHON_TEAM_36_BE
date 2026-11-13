@@ -1,4 +1,5 @@
 import copy
+import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -13,7 +14,7 @@ from app.extraction import (
     ScholarshipCriteria,
     extract,
 )
-from app.extraction.schemas import CRITERIA_FIELDS, DISPLAY_NAME_MAX
+from app.extraction.schemas import CRITERIA_FIELDS, DISPLAY_NAME_MAX, ConditionText
 
 SEOUL = ZoneInfo("Asia/Seoul")
 
@@ -264,7 +265,7 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     result = extract(_request())
     assert isinstance(result, ExtractionResult)
-    assert result.model_version == "mock+extract_v9"
+    assert result.model_version == "mock+extract_v10"
     # 목 응답도 스키마 검증을 다시 통과해야 합니다.
     again = ExtractionResult.model_validate_json(result.model_dump_json())
     assert again.criteria.notice_kind == "모집"
@@ -314,7 +315,99 @@ def test_display_name_at_max_length_is_kept():
     assert s.display_name == "가" * DISPLAY_NAME_MAX
 
 
+def test_display_name_key_in_evidence_is_dropped():
+    """Gemini가 가끔 display_name을 근거 키로 넣습니다. 조건이 아니므로 버리고 검증은 통과합니다."""
+    s = ScholarshipCriteria.model_validate(
+        {
+            "scholarship_name": "원래 이름",
+            "display_name": "두산연강재단 장학금",
+            "evidence": {"display_name": "두산연강재단 장학생 선발", "min_gpa": "평점 3.5 이상"},
+            "evidence_source": {"display_name": "본문", "min_gpa": "본문"},
+        }
+    )
+    assert s.evidence == {"min_gpa": "평점 3.5 이상"}
+    assert s.evidence_source == {"min_gpa": "본문"}
+
+
+@pytest.mark.parametrize("field", ["evidence", "evidence_source"])
+def test_other_unknown_evidence_key_still_fails(field):
+    """display_name 말고 모르는 키는 그대로 검증 실패입니다."""
+    data = {"scholarship_name": "원래 이름", field: {"foo": "본문"}}
+    with pytest.raises(ValidationError):
+        ScholarshipCriteria.model_validate(data)
+
+
 def test_display_name_in_json_schema():
     """Gemini Structured Output 스키마에 display_name이 들어가야 합니다."""
     props = ScholarshipCriteria.model_json_schema()["properties"]
     assert "display_name" in props
+
+
+MINIMAL = {"scholarship_name": "테스트 장학금"}
+
+
+def test_condition_text_reads_legacy_strings():
+    c = ScholarshipCriteria.model_validate(
+        {
+            **MINIMAL,
+            "extra_conditions": ["TOEIC 500점 이상"],
+            "basic_conditions": ["징계사실이 없는 자"],
+        }
+    )
+    assert c.extra_conditions == [ConditionText(text="TOEIC 500점 이상", summary=None)]
+    assert c.basic_conditions[0].text == "징계사실이 없는 자"
+
+
+def test_blank_condition_items_are_dropped():
+    c = ScholarshipCriteria.model_validate(
+        {**MINIMAL, "extra_conditions": ["", "  ", "TOEIC 500점 이상"]}
+    )
+    assert c.extra_conditions == [ConditionText(text="TOEIC 500점 이상", summary=None)]
+
+
+def test_blank_condition_dicts_are_dropped():
+    c = ScholarshipCriteria.model_validate(
+        {
+            **MINIMAL,
+            "extra_conditions": [{"text": "  ", "summary": "x"}],
+            "basic_conditions": [{"summary": "y"}],
+        }
+    )
+    assert c.extra_conditions == []
+    assert c.basic_conditions == []
+
+
+def test_condition_summary_cleaned_or_dropped():
+    c = ScholarshipCriteria.model_validate(
+        {
+            **MINIMAL,
+            "extra_conditions": [
+                {"text": "a", "summary": "  다른  장학금을 받지 않는 학생 "},
+                {"text": "b", "summary": "   "},
+                {"text": "c", "summary": "가" * 41},
+                {"text": "d"},
+            ],
+        }
+    )
+    assert [x.summary for x in c.extra_conditions] == [
+        "다른 장학금을 받지 않는 학생",
+        None,
+        None,
+        None,
+    ]
+
+
+def test_condition_text_in_gemini_schema():
+    schema = json.dumps(ExtractedCriteria.model_json_schema())
+    assert "ConditionText" in schema and '"summary"' in schema
+
+
+def test_condition_summary_explicit_null_from_gemini():
+    """단서·예외를 25자에 담지 못하면 Gemini가 summary를 null로 보냅니다(extract_v10)."""
+    item = ExtractedCriteria.model_json_schema()["$defs"]["ConditionText"]
+    assert {"type": "null"} in item["properties"]["summary"]["anyOf"]
+    assert "summary" not in item["required"]
+    c = ScholarshipCriteria.model_validate(
+        {**MINIMAL, "extra_conditions": [{"text": "고등학교를 졸업한 자(단, …)", "summary": None}]}
+    )
+    assert c.extra_conditions[0].summary is None

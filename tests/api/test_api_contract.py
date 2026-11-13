@@ -100,7 +100,14 @@ def test_match_result_dto_shape(client):
     assert summary["result"]["enum"] == ["ELIGIBLE", "CONDITIONAL", "INELIGIBLE"]
     assert summary["status"]["enum"] == ["OPEN", "ALWAYS", "CLOSED"]
     check = schemas["ConditionCheck"]["properties"]
-    assert set(check) == {"condition", "outcome", "evidence", "evidence_source"}
+    assert set(check) == {
+        "condition",
+        "outcome",
+        "evidence",
+        "evidence_source",
+        "requirement",
+        "ambiguous",
+    }
     assert check["outcome"]["enum"] == ["MET", "UNMET", "UNKNOWN"]
     detail = schemas["ScholarshipDetail"]["properties"]
     assert {"conditions", "unread_attachments", "input_truncated"} <= set(detail)

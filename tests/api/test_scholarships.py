@@ -367,12 +367,16 @@ def test_detail(student, factory):  # noqa: F811
             "outcome": "MET",
             "evidence": "직전학기 평점 3.5 이상",
             "evidence_source": "붙임1.zip / 선발 공고문.pdf",
+            "requirement": "3.5 이상",
+            "ambiguous": False,
         },
         {
             "condition": "max_income_bracket",
             "outcome": "UNKNOWN",
             "evidence": None,
             "evidence_source": None,
+            "requirement": "8구간 이하",
+            "ambiguous": False,
         },
     ]
     assert body["extra_conditions"] == ["봉사활동 20시간 이상"]
@@ -409,8 +413,8 @@ def test_answers_change_result(student, factory):  # noqa: F811
     detail = student.get(f"/scholarships/{sid}").json()
     assert detail["result"] == "CONDITIONAL"
     assert detail["extra_checks"] == [
-        {"key": condition_key(VOLUNTEER), "text": VOLUNTEER, "answer": None},
-        {"key": condition_key(TOEIC), "text": TOEIC, "answer": None},
+        {"key": condition_key(VOLUNTEER), "text": VOLUNTEER, "answer": None, "summary": None},
+        {"key": condition_key(TOEIC), "text": TOEIC, "answer": None, "summary": None},
     ]
 
     first = answer(student, sid, VOLUNTEER, "YES")
@@ -440,10 +444,12 @@ def test_list_has_open_conditions(student, factory):  # noqa: F811
     seed(factory, "모름", criteria={**CONDITIONAL, "extra_conditions": [VOLUNTEER]})
     answer(student, sid, VOLUNTEER, "YES")
     items = {i["name"]: i for i in student.get("/scholarships").json()["items"]}
-    assert items["추가조건"]["open_conditions"] == [{"key": condition_key(TOEIC), "text": TOEIC}]
+    assert items["추가조건"]["open_conditions"] == [
+        {"key": condition_key(TOEIC), "text": TOEIC, "summary": None}
+    ]
     assert items["추가조건"]["other_unknown"] is False
     assert items["모름"]["open_conditions"] == [
-        {"key": condition_key(VOLUNTEER), "text": VOLUNTEER}
+        {"key": condition_key(VOLUNTEER), "text": VOLUNTEER, "summary": None}
     ]  # 같은 문장이라도 답은 장학금마다 따로
     assert items["모름"]["other_unknown"] is True
 
@@ -673,3 +679,51 @@ def test_list_300_notices_under_one_second(student, factory):  # noqa: F811
     elapsed = time.perf_counter() - started
     assert len(response.json()["items"]) == 300
     assert elapsed < 1.0, f"{elapsed:.3f}s"
+
+
+# --- 조건 요약 (T43) ----------------------------------------------------------------
+
+SUMMARIZED = {
+    **NO_LIMIT,
+    "min_gpa": 3.5,
+    "grade_basis": "직전학기",
+    "max_income_bracket": 8,
+    "ambiguous_fields": ["max_income_bracket"],
+    "extra_conditions": [{"text": VOLUNTEER, "summary": "봉사활동 20시간 이상 한 학생"}],
+    "basic_conditions": [{"text": "품행이 단정한 자", "summary": "품행 단정"}],
+}
+
+
+def test_detail_has_summaries(student, factory):  # noqa: F811
+    sid = seed(factory, "요약", criteria=SUMMARIZED)
+    body = student.get(f"/scholarships/{sid}").json()
+    checks = {c["condition"]: c for c in body["conditions"]}
+    assert checks["min_gpa"]["requirement"] == "직전학기 3.5 이상"
+    assert checks["min_gpa"]["ambiguous"] is False
+    assert checks["max_income_bracket"]["requirement"] is None
+    assert checks["max_income_bracket"]["ambiguous"] is True
+    assert body["extra_checks"][0]["summary"] == "봉사활동 20시간 이상 한 학생"
+    assert body["extra_conditions"] == [VOLUNTEER]
+    assert body["basic_items"] == [{"text": "품행이 단정한 자", "summary": "품행 단정"}]
+    assert body["basic_conditions"] == ["품행이 단정한 자"]
+
+
+def test_list_open_conditions_have_summary(student, factory):  # noqa: F811
+    seed(factory, "요약", criteria=SUMMARIZED)
+    items = student.get("/scholarships").json()["items"]
+    assert items[0]["open_conditions"][0]["summary"] == "봉사활동 20시간 이상 한 학생"
+
+
+def test_detail_reads_legacy_string_conditions(student, factory):  # noqa: F811
+    legacy = {**NO_LIMIT, "extra_conditions": [VOLUNTEER], "basic_conditions": ["대한민국 국적"]}
+    sid = seed(factory, "옛형식", criteria=legacy)
+    resp = student.get(f"/scholarships/{sid}")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["extra_checks"][0]["summary"] is None
+    assert body["basic_items"][0] == {"text": "대한민국 국적", "summary": None}
+
+
+def test_answer_finds_key_of_object_item(student, factory):  # noqa: F811
+    sid = seed(factory, "객체", criteria=SUMMARIZED)
+    assert answer(student, sid, VOLUNTEER, "YES").status_code == 200

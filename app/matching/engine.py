@@ -1,12 +1,12 @@
 """3단계 판정 (계획서 5.3). DB·HTTP·LLM에 의존하지 않는 순수 함수입니다.
 
 1. 하나라도 불충족이거나, 사용자가 `extra_conditions`(자격을 좁히는 조건) 중 하나에
-   "아니에요"로 답함 → 지원 불가(`INELIGIBLE`)
+   "안 맞아요(불충족)"로 답함 → 지원 불가(`INELIGIBLE`)
 2. 그 밖에 알 수 없음이 있거나, 답하지 않은 `extra_conditions`가 있거나,
    **읽지 못한 첨부가 있음**
    → 확인 필요(`CONDITIONAL`). 못 읽은 첨부에 조건이 있을 수 있어
    "지원 가능"이라 단정하지 않습니다(D8).
-3. 전부 충족이고 `extra_conditions`에 모두 "해당돼요"로 답함 → 지원 가능(`ELIGIBLE`)
+3. 전부 충족이고 `extra_conditions`에 모두 "맞아요(충족)"로 답함 → 지원 가능(`ELIGIBLE`)
 
 `extra_conditions` 답은 문장마다 `condition_key()`로 찾습니다. 재추출로 문장이 바뀌면
 이전 답은 맞는 문장이 없어 쓰이지 않습니다(5.3, 2026-11-12).
@@ -24,8 +24,9 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date
 
-from app.extraction.schemas import ScholarshipCriteria
+from app.extraction.schemas import ConditionText, ScholarshipCriteria
 from app.matching import rules
+from app.matching.describe import describe, is_ambiguous
 from app.schemas.api.profile import Profile
 from app.schemas.api.scholarships import (
     ConditionAnswer,
@@ -44,7 +45,8 @@ class Evaluation:
     checks: list[ConditionCheck]  # 화면 체크리스트 순서(5.3 표 순서)
     extra_conditions: list[str]
     extra_checks: list[ExtraCheck]  # extra_conditions 순서 그대로, 사용자 답 포함
-    basic_conditions: list[str]
+    basic_conditions: list[str]  # text만
+    basic_items: list[ConditionText]  # text와 summary
     notes: list[str]
     # 답하지 않은 extra_conditions 말고도 판정을 막는 것(알 수 없음·못 읽은 첨부)이 있는지
     other_unknown: bool
@@ -136,17 +138,23 @@ def evaluate(
         outcome = rules.UNKNOWN if name in ambiguous else rule(profile, criteria, today)
         if outcome is not None:
             evidence, source = _evidence(criteria, name)
+            amb = is_ambiguous(name, criteria)
             checks.append(
                 ConditionCheck(
-                    condition=name, outcome=outcome, evidence=evidence, evidence_source=source
+                    condition=name,
+                    outcome=outcome,
+                    evidence=evidence,
+                    evidence_source=source,
+                    requirement=describe(name, criteria),
+                    ambiguous=amb,
                 )
             )
 
     answers = answers or {}
     extra_checks = [
-        ExtraCheck(key=key, text=text, answer=answers.get(key))
-        for text in criteria.extra_conditions
-        for key in (condition_key(text),)
+        ExtraCheck(key=key, text=item.text, answer=answers.get(key), summary=item.summary)
+        for item in criteria.extra_conditions
+        for key in (condition_key(item.text),)
     ]
     extra_answers = {check.answer for check in extra_checks}
 
@@ -161,9 +169,10 @@ def evaluate(
     return Evaluation(
         result=result,
         checks=checks,
-        extra_conditions=list(criteria.extra_conditions),
+        extra_conditions=[item.text for item in criteria.extra_conditions],
         extra_checks=extra_checks,
         other_unknown=other_unknown,
-        basic_conditions=list(criteria.basic_conditions),
+        basic_conditions=[item.text for item in criteria.basic_conditions],
+        basic_items=list(criteria.basic_conditions),
         notes=list(criteria.notes),
     )

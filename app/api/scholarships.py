@@ -48,6 +48,7 @@ from app.schemas.api.scholarships import (
     ConditionAnswer,
     ConditionAnswerRequest,
     ConditionAnswerResponse,
+    ConditionTextOut,
     MatchResult,
     NoticeAttachmentText,
     NoticeRef,
@@ -164,7 +165,7 @@ def _summary(
         "result": evaluation.result,
         "my_state": state,
         "open_conditions": [
-            OpenCondition(key=c.key, text=c.text)
+            OpenCondition(key=c.key, text=c.text, summary=c.summary)
             for c in evaluation.extra_checks
             if c.answer is None
         ],
@@ -290,6 +291,9 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
             "extra_conditions": evaluation.extra_conditions,
             "extra_checks": evaluation.extra_checks,
             "basic_conditions": evaluation.basic_conditions,
+            "basic_items": [
+                ConditionTextOut(text=i.text, summary=i.summary) for i in evaluation.basic_items
+            ],
             "notes": evaluation.notes,
             "required_documents": criteria.required_documents,
             "notice": NoticeRef(
@@ -358,7 +362,7 @@ def _condition_target(db: Session, scholarship_id: int, key: str) -> Scholarship
     if s is None:
         raise _not_found()
     criteria = ScholarshipCriteria.model_validate(s.criteria)
-    if key not in {key_of(text) for text in criteria.extra_conditions}:
+    if key not in {key_of(item.text) for item in criteria.extra_conditions}:
         raise _not_found("조건을 찾을 수 없습니다")
     return s
 
@@ -401,7 +405,7 @@ def put_condition_answer(
     user: ConsentedUser,
     db: DB,
 ) -> ConditionAnswerResponse:
-    """자격을 좁히는 조건 1줄에 답합니다: YES(해당돼요) / NO(아니에요). 새 값으로 바꿉니다."""
+    """자격을 좁히는 조건 1줄에 답합니다: YES(맞아요, 충족) / NO(안 맞아요, 불충족). 새 값 교체."""
     s = _condition_target(db, scholarship_id, condition_key)
     enc_answer = encrypt(body.answer, aad=_answer_aad(user.id, s.id, condition_key))
     answered_at = now_kst()
