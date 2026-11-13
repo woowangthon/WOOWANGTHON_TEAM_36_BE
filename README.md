@@ -78,8 +78,27 @@ GCP 무료 체험 크레딧은 Gemini에 쓸 수 없습니다(2026-03부터). AI
     | tr -d '\n' | gcloud secrets create GEMINI_API_KEY --replication-policy=automatic --data-file=-
   ```
 
-- [ ] 새 프로젝트에서 쓸 수 있는 **최신 안정 Flash 모델 이름**을 확인해 계획서 9.6 `GEMINI_MODEL` 칸에 기록(2026-11-05: `gemini-3.8-flash`)
+- [ ] 새 프로젝트에서 쓸 수 있는 모델 이름을 확인해 계획서 9.6 `GEMINI_MODEL` 칸과 `deploy.yml`에 기록(2026-11-05 T08: `gemini-3.8-flash`, 2026-11-13 T47: `gemini-4-hydrogen`)
 - [ ] AI Studio 한도 화면의 **분당·하루 요청 한도**를 계획서 9.9에 기록(2026-11-05 Tier 1: RPM 1,000 / TPM 2M / RPD 10,000)
+
+**키·계정 교체** (2026-11-13 T47부터 다른 사람 계정의 키를 씀, 계획서 9.1)
+
+- [ ] 키 소유자가 자기 AI Studio 프로젝트에서 **유료 등급** 키를 발급하고, 모델 사용 가능 여부와 한도를 확인
+- [ ] 담당자가 아래 명령을 먼저 실행한 뒤 입력 프롬프트에 키를 붙여 넣고 Enter. `create`가 아니라 `versions add`라서 Cloud Run 서비스 계정의 읽기 권한이 그대로 유지됨
+
+  ```bash
+  read -rs k && printf %s "$k" | gcloud secrets versions add GEMINI_API_KEY \
+    --project=scholarship-matcher-513804 --data-file=- ; unset k
+  ```
+
+- [ ] 실행 중인 인스턴스는 이전 키를 계속 쓰므로 새 revision을 띄움(`deploy` 워크플로 수동 실행, 또는 아래 명령)
+
+  ```bash
+  gcloud run services update scholarship-backend --region asia-southeast1 \
+    --project scholarship-matcher-513804 --update-secrets GEMINI_API_KEY=GEMINI_API_KEY:latest
+  ```
+
+- [ ] 다음 수집에서 추출이 `FAILED`로 남지 않는지 확인한 뒤, 이전 버전을 사용 중지(`gcloud secrets versions disable <이전 버전> --secret=GEMINI_API_KEY`)하고 이전 계정의 키를 삭제
 
 ### 5. Google OAuth (7.3 표)
 
