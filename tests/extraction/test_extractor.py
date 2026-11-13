@@ -154,7 +154,7 @@ def test_request_contains_only_notice_fields(gemini):
     assert contents.endswith("---\n본문 내용")
 
 
-def test_input_is_truncated_to_30000_chars(gemini):
+def test_input_is_truncated_to_max_chars(gemini):
     models = gemini([json.dumps(VALID_RESPONSE)])
     extract(request("가" * (MAX_INPUT_CHARS + 5000)))
     body = models.calls[0]["contents"].split("---\n", 1)[1]
