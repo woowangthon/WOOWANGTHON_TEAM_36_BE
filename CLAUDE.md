@@ -53,7 +53,7 @@ tests/fixtures/ # 사이트별 저장 HTML, PDF 샘플, AI 응답 샘플, golden
   - Gemini는 Structured Output(`response_schema`)으로 `ExtractedCriteria`를 강제하고, 응답은 Pydantic으로 다시 검증합니다.
   - 모델 이름은 환경변수 `GEMINI_MODEL`에서 읽습니다. 코드에 모델 이름을 박지 않습니다.
   - 429·5xx는 지수 백오프로 최대 3회 재시도합니다. 입력 텍스트는 10만 자에서 자릅니다(본문 → 공고문 첨부 순, 양식 파일 제외).
-  - Gemini 호출 1회 60초, 공지 1건의 재시도 포함 전체 100초입니다. 넘거나 재시도를 다 쓰거나 검증에 실패하면 `ExtractionError`를 던지고, 수집 작업은 `extract_status = FAILED`로 기록한 뒤 다음 공지를 계속 처리합니다.
+  - Gemini 호출 1회 90초, 공지 1건의 재시도 포함 전체 150초입니다. 추론 강도(`thinking_level`)는 LOW로 지정합니다(기본값 HIGH는 `gemini-4-hydrogen`에서 시간 제한에 걸림, T47). 넘거나 재시도를 다 쓰거나 검증에 실패하면 `ExtractionError`를 던지고, 수집 작업은 `extract_status = FAILED`로 기록한 뒤 다음 공지를 계속 처리합니다.
   - 테스트는 Gemini를 실제로 호출하지 않습니다(클라이언트를 목으로 대체). 실제 호출은 `eval/`과 카드의 수동 확인에서만 합니다.
 - **골든셋 평가**(`eval/`): `uv run python -m eval.run` → 필드별 정답률과 전체 정답률을 출력하고 `eval/results/{model_version}.json`에 저장합니다. 채점은 계획서 10장 "골든셋 정답률 계산"을 따르고 목표는 90%입니다. 결과 파일은 커밋합니다(프롬프트 변경 이력 추적용).
 - **지연 대책**(계획서 9.5, 9.8):
