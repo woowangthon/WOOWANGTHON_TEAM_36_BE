@@ -263,7 +263,8 @@ class ProfileUpdate(BaseModel):
             self.completed_semesters = semesters_from_grade(self.grade, self.extra_semester)
         if self.is_transfer and self.completed_semesters > MAX_TRANSFER_SEMESTERS:
             raise ValueError(f"편입 후 마친 학기는 0~{MAX_TRANSFER_SEMESTERS} 사이로 입력하세요")
-        if self.completed_semesters == 0:  # 신입생 첫 학기: 성적이 없음(4.1)
+        # 신입생 첫 학기는 성적이 없습니다. 편입 첫 학기는 전 학교 성적을 받습니다(4.1).
+        if self.completed_semesters == 0 and not self.is_transfer:
             self.gpa = self.credits = self.gpa_total = None
         else:
             for value, label in _grade_fields(self):

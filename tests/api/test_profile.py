@@ -445,6 +445,25 @@ def test_freshman_can_omit_grades(api):
     assert api.put("/profile", json={**body, "completed_semesters": 0}).status_code == 200
 
 
+def test_transfer_first_semester_keeps_prior_grades(api):
+    """편입 첫 학기(편입 후 0학기)는 전 학교 성적을 저장합니다(4.1)."""
+    body = api.put(
+        "/profile", json={**PROFILE, "completed_semesters": 0, "is_transfer": True}
+    ).json()
+
+    assert body["gpa"] == PROFILE["gpa"]
+    assert body["gpa_total"] == PROFILE["gpa_total"]
+    assert body["credits"] == PROFILE["credits"]
+    assert body["score_100"] is not None
+
+
+@pytest.mark.parametrize("field", ["gpa", "credits", "gpa_total"])
+def test_transfer_first_semester_requires_prior_grades(api, field):
+    body = {k: v for k, v in REQUIRED_ONLY.items() if k != field}
+    response = api.put("/profile", json={**body, "completed_semesters": 0, "is_transfer": True})
+    assert response.status_code == 422
+
+
 @pytest.mark.parametrize(
     ("field", "message"),
     [
