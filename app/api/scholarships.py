@@ -7,19 +7,26 @@
 - 공지에 읽지 못한 첨부가 있으면 판정을 "지원 가능"이 아니라 "확인 필요"로 낮춥니다(D8).
   목록은 같은 쿼리의 EXISTS 열로 확인해 쿼리 수를 늘리지 않습니다.
   `state`를 주면 내 장학금 화면용으로 마감(`CLOSED`)된 것도 포함합니다.
+- 상태(`status`)는 수집 작업이 갱신하므로, 수집 사이에 마감이 지난 장학금도 조회 시각 기준으로
+  목록에서 빼고 `CLOSED`로 보여 줍니다(T45).
+- 여러 게시판에 같은 장학금(이름·마감 시각이 같음)이 올라오면 기본 목록에서 하나로 묶고
+  `also_posted_in`에 다른 게시판 이름을 담습니다. DB는 합치지 않습니다(1.1, T45).
 - 자격을 좁히는 조건(`extra_conditions`)에 사용자가 답한 값(✓/✗)을 판정에 반영합니다(5.3).
   답은 암호화해 저장하고 목록·상세 모두 쿼리 한 번으로 읽습니다.
 - 프로필 값과 조건 답은 로그에 남기지 않습니다(4.2). 사용자는 `user_id`로만 기록합니다.
 """
 
 import logging
+import re
+import unicodedata
 from collections import defaultdict
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import and_, exists, select
+from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -146,8 +153,20 @@ def load_condition_answers(
     return answers
 
 
+def _status(s: Scholarship, now: datetime) -> str:
+    """조회 시각 기준 상태. 수집 사이에 마감이 지났으면 DB 값과 관계없이 `CLOSED`입니다(T45)."""
+    if s.apply_end is not None and s.apply_end <= now:
+        return "CLOSED"
+    return s.status
+
+
 def _summary(
-    s: Scholarship, notice: Notice, source: Source, state: str | None, evaluation: Evaluation
+    s: Scholarship,
+    notice: Notice,
+    source: Source,
+    state: str | None,
+    evaluation: Evaluation,
+    now: datetime,
 ) -> dict[str, Any]:
     return {
         "id": s.id,
@@ -159,7 +178,7 @@ def _summary(
         "benefit_amount_text": s.benefit_amount_text,
         "benefit_type": s.benefit_type,
         "apply_end": _kst(s.apply_end),
-        "status": s.status,
+        "status": _status(s, now),
         "deadline_conflict": s.deadline_conflict,
         "posted_at": _kst(notice.posted_at),
         "result": evaluation.result,
@@ -217,9 +236,13 @@ def list_scholarships(
     정렬: deadline = 마감 임박순(마감일 없는 상시는 뒤), latest = 게시일 최신순.
     """
     profile = _load_profile(db, user)
+    now = now_kst()
     query = _base_query(user.id).where(Notice.notice_kind.in_(LISTED_NOTICE_KINDS))
     if state is None:
-        query = query.where(Scholarship.status.in_(LISTED_STATUSES))
+        query = query.where(
+            Scholarship.status.in_(LISTED_STATUSES),
+            or_(Scholarship.apply_end.is_(None), Scholarship.apply_end > now),
+        )
     else:
         query = query.where(UserScholarshipState.state == STATE_FILTERS[state])
     if source is not None:
@@ -233,20 +256,85 @@ def list_scholarships(
     else:
         query = query.order_by(Notice.posted_at.desc(), Scholarship.id)
 
-    today = now_kst().date()
+    today = now.date()
     wanted = RESULT_FILTERS[result]
     answers = load_condition_answers(db, [user.id], None).get(user.id, {})
-    items = []
+    rows: list[_Row] = []
     for s, notice, src, my_state, has_unread in db.execute(query):
         criteria = ScholarshipCriteria.model_validate(s.criteria)
         evaluation = evaluate(
             profile, criteria, today, has_unread_attachments=has_unread, answers=answers.get(s.id)
         )
-        if evaluation.result in wanted:
-            items.append(
-                ScholarshipSummary.model_validate(_summary(s, notice, src, my_state, evaluation))
-            )
+        rows.append(_Row(s, notice, src, my_state, evaluation))
+    # 내 장학금 화면(state)은 사용자가 표시한 것을 그대로 보여 주므로 묶지 않습니다.
+    groups = [[row] for row in rows] if state is not None else group_same_scholarships(rows)
+    items = []
+    for group in groups:
+        rep = pick_representative(group)
+        # 묶은 뒤 대표의 판정으로 거릅니다. 같은 장학금이 탭마다 다르게 나오지 않게 합니다.
+        if rep.evaluation.result not in wanted:
+            continue
+        summary = _summary(rep.s, rep.notice, rep.src, rep.my_state, rep.evaluation, now)
+        summary["also_posted_in"] = sorted(
+            {row.src.name for row in group if row.src.code != rep.src.code}
+        )
+        items.append(ScholarshipSummary.model_validate(summary))
     return ScholarshipListResponse(items=items)
+
+
+# --- 같은 장학금 묶기 (T45) ---------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _Row:
+    s: Scholarship
+    notice: Notice
+    src: Source
+    my_state: str | None
+    evaluation: Evaluation
+
+
+# 이름에서 빼는 것: 공백, 괄호·문장부호, 법인 표기. "(재)두산연강재단 장학생"과
+# "재단법인 두산연강재단 장학생"을 같은 이름으로 봅니다.
+_CORPORATE_MARKS = re.compile(r"\((?:재|사|주)\)|재단법인|사단법인|주식회사")
+_NOT_WORD = re.compile(r"[^0-9a-z가-힣]")
+
+
+def same_scholarship_key(name: str, apply_end: datetime | None) -> tuple[str, datetime] | None:
+    """같은 장학금을 찾는 키. 마감 시각이 없는 상시 공지는 잘못 묶지 않도록 묶지 않습니다."""
+    if apply_end is None:
+        return None
+    text = unicodedata.normalize("NFC", name).lower()
+    return _NOT_WORD.sub("", _CORPORATE_MARKS.sub("", text)), apply_end
+
+
+def group_same_scholarships(rows: list[_Row]) -> list[list[_Row]]:
+    """이름(정규화)과 마감 시각이 같은 장학금을 한 묶음으로. 순서는 묶음의 첫 행 위치를 따릅니다."""
+    groups: list[list[_Row]] = []
+    by_key: dict[tuple[str, datetime], list[_Row]] = {}
+    for row in rows:
+        key = same_scholarship_key(row.s.name, row.s.apply_end)
+        if key is None:
+            groups.append([row])
+        elif key in by_key:
+            by_key[key].append(row)
+        else:
+            by_key[key] = [row]
+            groups.append(by_key[key])
+    return groups
+
+
+def pick_representative(group: list[_Row]) -> _Row:
+    """묶음에서 보여 줄 장학금: 내가 표시한 것 → 교내 게시판 → 최근 게시 → 작은 id 순."""
+    return min(
+        group,
+        key=lambda r: (
+            r.my_state is None,
+            not r.src.is_internal,
+            -r.notice.posted_at.timestamp(),
+            r.s.id,
+        ),
+    )
 
 
 @router.get(
@@ -285,7 +373,7 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
     ).all()
     return ScholarshipDetail.model_validate(
         {
-            **_summary(s, notice, src, my_state, evaluation),
+            **_summary(s, notice, src, my_state, evaluation, now_kst()),
             "apply_start": _kst(s.apply_start),
             "conditions": evaluation.checks,
             "extra_conditions": evaluation.extra_conditions,
