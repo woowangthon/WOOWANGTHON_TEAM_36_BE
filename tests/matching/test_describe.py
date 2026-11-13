@@ -32,6 +32,12 @@ def test_every_condition_is_classified():
         ("min_gpa", {"min_gpa": 3.5}, "3.5 이상"),
         ("min_gpa", {"min_gpa": 3.0}, "3.0 이상"),
         ("min_score_100", {"min_score_100": 80, "grade_basis": "전체"}, "전체 학기 80점 이상"),
+        (
+            "min_gpa",
+            {"min_gpa": 3.6, "min_score_100": 90, "grade_basis": "직전학기", "grade_either": True},
+            "직전학기 3.6 이상 또는 90점 이상",
+        ),
+        ("min_gpa", {"min_gpa": 3.6, "min_score_100": 90}, "3.6 이상"),  # 둘 다 만족(AND)
         ("min_credits", {"min_credits": 12}, "12학점 이상"),
         ("target_nationality", {"target_nationality": "domestic"}, "대한민국 국적"),
         ("target_nationality", {"target_nationality": "foreign"}, "외국 국적"),

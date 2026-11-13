@@ -253,6 +253,92 @@ def test_score_evidence_falls_back_to_grade_basis():
     assert checks["min_score_100"].evidence == "직전학기 성적 70점 이상"
 
 
+# --- 평점 또는 100점 (grade_either, extract_v12, T50) ----------------------------------
+
+
+def either_criteria(**fields) -> ScholarshipCriteria:
+    """인문100년 장학금: "직전학기 백분위 90점 이상 또는 평점 3.6 이상"."""
+    base = {"min_gpa": 3.6, "min_score_100": 90, "grade_basis": "직전학기", "grade_either": True}
+    return criteria(**{**base, **fields})
+
+
+@pytest.mark.parametrize(
+    ("p", "expected"),
+    [
+        # 평점 3.7 → 100점 환산 89.5. 둘 다 따로 판정하면 90점 미달로 불충족이 되던 사례
+        ({"gpa": 3.7}, "MET"),
+        ({"gpa": 3.6}, "MET"),  # 평점 기준 경계
+        ({"gpa": 3.59}, "UNMET"),  # 평점 미달이고 100점 환산(88.4)도 미달
+        ({"gpa": None}, "UNKNOWN"),
+        ({"gpa": 3.0, "gpa_total": 4.5}, "UNMET"),  # 직전학기 기준이라 전체 평점은 보지 않음
+    ],
+)
+def test_grade_either(p, expected):
+    assert outcome("min_gpa", profile(**p), either_criteria()) == expected
+
+
+def test_grade_either_score_side_can_satisfy():
+    """100점 기준이 더 낮으면(85점 = 평점 3.25) 평점이 미달이어도 100점 쪽으로 충족입니다."""
+    c = either_criteria(min_score_100=85)
+    assert outcome("min_gpa", profile(gpa=3.3), c) == "MET"
+    assert outcome("min_gpa", profile(gpa=3.2), c) == "UNMET"
+
+
+def test_grade_either_by_total_basis():
+    c = either_criteria(grade_basis="전체")
+    assert outcome("min_gpa", profile(gpa=1.0, gpa_total=3.6), c) == "MET"
+    assert outcome("min_gpa", profile(gpa=4.5, gpa_total=None), c) == "UNKNOWN"
+
+
+def test_grade_either_is_one_check_line():
+    evaluation = evaluate(profile(gpa=3.7), either_criteria(), TODAY)
+    conditions = [check.condition for check in evaluation.checks]
+    assert "min_gpa" in conditions
+    assert "min_score_100" not in conditions
+    assert evaluation.result == "ELIGIBLE"
+    check = next(ch for ch in evaluation.checks if ch.condition == "min_gpa")
+    assert check.requirement == "직전학기 3.6 이상 또는 90점 이상"
+    assert check.ambiguous is False
+
+
+def test_grade_either_basis_ambiguous_is_unknown():
+    c = either_criteria(ambiguous_fields=["grade_basis"])
+    assert outcome("min_gpa", profile(gpa=4.5, gpa_total=4.5), c) == "UNKNOWN"
+
+
+def test_grade_either_one_side_ambiguous():
+    """한쪽 점수가 모호(null + ambiguous)해도 다른 쪽이 충족이면 충족, 미달이면 알 수 없음."""
+    c = either_criteria(min_score_100=None, ambiguous_fields=["min_score_100"])
+    assert outcome("min_gpa", profile(gpa=3.7), c) == "MET"
+    assert outcome("min_gpa", profile(gpa=3.0), c) == "UNKNOWN"
+    check = next(ch for ch in evaluate(profile(gpa=3.7), c, TODAY).checks)
+    assert check.ambiguous is True
+    assert check.requirement is None
+
+
+def test_grade_either_evidence_falls_back_to_score():
+    c = either_criteria(evidence={"min_score_100": "백분위 90점 이상 또는 평점 3.6 이상"})
+    checks = {ch.condition: ch for ch in evaluate(profile(gpa=3.7), c, TODAY).checks}
+    assert checks["min_gpa"].evidence == "백분위 90점 이상 또는 평점 3.6 이상"
+
+
+def test_without_grade_either_both_must_be_met():
+    """grade_either가 없으면 지금처럼 둘 다 만족해야 합니다(AND)."""
+    c = either_criteria(grade_either=None)
+    evaluation = evaluate(profile(gpa=3.7), c, TODAY)
+    checks = {ch.condition: ch.outcome for ch in evaluation.checks}
+    assert (checks["min_gpa"], checks["min_score_100"]) == ("MET", "UNMET")
+    assert evaluation.result == "INELIGIBLE"
+
+
+@pytest.mark.parametrize("fields", [{"min_score_100": None}, {"min_gpa": None}])
+def test_grade_either_with_one_value_is_judged_alone(fields):
+    """값이 한쪽만 있으면 플래그와 관계없이 그 조건만 따로 판정합니다."""
+    c = either_criteria(**fields)
+    conditions = {check.condition for check in evaluate(profile(gpa=3.7), c, TODAY).checks}
+    assert len(conditions & {"min_gpa", "min_score_100"}) == 1
+
+
 @pytest.mark.parametrize(
     ("credits", "ambiguous", "expected"),
     [(12, [], "MET"), (11, [], "UNMET"), (18, ["min_credits"], "UNKNOWN"), (None, [], "UNKNOWN")],
