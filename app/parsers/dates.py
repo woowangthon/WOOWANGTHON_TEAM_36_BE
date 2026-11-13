@@ -5,10 +5,11 @@
 - 연도가 없는 날짜(`11.12`)는 게시일의 연도로 보고, 월이 게시 월보다 작으면 다음 해로 봅니다
   (12월 게시, 1월 마감).
 - 마감 시각이 없으면 그날 23:59로 봅니다.
+- 학년도는 3월 1일에 시작합니다(2027학년도 = 2027-03-01 ~ 2028-02-말일).
 """
 
 import re
-from datetime import datetime, time
+from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
 SEOUL = ZoneInfo("Asia/Seoul")
@@ -46,6 +47,11 @@ def parse_posted_at(text: str) -> datetime | None:
         return None
     year, month, day, hour, minute = match.groups()
     return kst(int(year), int(month), int(day), int(hour or 0), int(minute or 0))
+
+
+def academic_year(day: date) -> int:
+    """한국 날짜가 속한 학년도. 3월 1일에 바뀝니다(2027-02-28 → 2026, 2027-03-01 → 2027)."""
+    return day.year if day.month >= 3 else day.year - 1
 
 
 def infer_year(month: int, posted_at: datetime) -> int:

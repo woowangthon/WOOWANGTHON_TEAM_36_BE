@@ -29,6 +29,12 @@ def _target_grades(c: ScholarshipCriteria) -> str | None:
     return "·".join(str(g) for g in c.target_grades) + "학년"
 
 
+def _min_admission_year(c: ScholarshipCriteria) -> str | None:
+    if c.min_admission_year is None:
+        return None
+    return f"{c.min_admission_year}학년도 이후 입학생"
+
+
 def _min_remaining_semesters(c: ScholarshipCriteria) -> str | None:
     if c.min_remaining_semesters is None:
         return None
@@ -108,6 +114,7 @@ def _target_department(c: ScholarshipCriteria) -> str | None:
 
 _DESCRIBERS: dict[ConditionName, Callable[[ScholarshipCriteria], str | None]] = {
     "target_grades": _target_grades,
+    "min_admission_year": _min_admission_year,
     "min_remaining_semesters": _min_remaining_semesters,
     "enrollment_status": _enrollment_status,
     "min_gpa": _min_gpa,
@@ -122,7 +129,7 @@ _DESCRIBERS: dict[ConditionName, Callable[[ScholarshipCriteria], str | None]] = 
     "target_department": _target_department,
 }
 
-# 요약을 붙이는 13개
+# 요약을 붙이는 14개
 DESCRIBED: frozenset[ConditionName] = frozenset(_DESCRIBERS)
 # 이름만으로 충분해 요약을 붙이지 않는 6개
 NAME_ONLY: frozenset[ConditionName] = frozenset(

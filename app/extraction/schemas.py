@@ -40,6 +40,7 @@ CriteriaField = Literal[
     "excludes_extra_semester",
     "excludes_new_students",
     "excludes_transfer_students",
+    "min_admission_year",
     "min_remaining_semesters",
     "enrollment_status",
     "min_gpa",
@@ -125,6 +126,11 @@ class ScholarshipCriteria(BaseModel):
     # extract_v7에서 추가했습니다. 기본값이 None이라 DB에 저장된 v6 결과도 그대로 읽힙니다.
     # 편입생만 제외하면 true("신·편입생 제외"는 excludes_new_students). 조건이 없으면 null
     excludes_transfer_students: bool | None = None
+    # extract_v11에서 추가했습니다. 기본값이 None이라 DB에 저장된 v10 결과도 그대로 읽힙니다.
+    # 대상 입학 학년도("2027학년도 신입생", "'27학년도 이후 입학" → 2027).
+    # 이 학년도 이후 입학생만 대상입니다.
+    # 게시 시점 학년으로 바꾸지 않고 연도 그대로 두며, 판정하는 날 학년과 비교합니다(5.3).
+    min_admission_year: int | None = Field(default=None, ge=2000, le=2100)
     # 남은 정규학기가 N학기 이상이어야 함(예: "잔여정규학기 1개 학기 이상" → 1)
     min_remaining_semesters: int | None = Field(default=None, ge=1, le=8)
     enrollment_status: list[EnrollmentStatus] | None = None

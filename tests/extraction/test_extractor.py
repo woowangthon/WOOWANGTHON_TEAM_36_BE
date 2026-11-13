@@ -123,7 +123,7 @@ def server_error(code: int) -> errors.APIError:
 def test_success(gemini, clock):
     models = gemini([json.dumps(VALID_RESPONSE)])
     result = extract(request())
-    assert result.model_version == "gemini-test-flash+extract_v10"
+    assert result.model_version == "gemini-test-flash+extract_v11"
     scholarship = result.criteria.scholarships[0]
     assert scholarship.apply_end == datetime(2026, 11, 12, 18, 0, tzinfo=SEOUL)
     assert scholarship.ambiguous_fields == ["max_income_bracket"]
@@ -179,6 +179,7 @@ def test_prompt_contains_required_rules():
         "`excludes_transfer_students`",  # 새 필드(extract_v7)
         "`target_nationality`",
         "`school_excluded`",  # 새 필드(extract_v8)
+        "`min_admission_year`",  # 새 필드(extract_v11)
         "`display_name`",  # 쉬운 이름(extract_v9)
         "다듬지 않는다",  # scholarship_name은 원래 이름 그대로(재추출 매칭 키)
         "지어내지 않는다",
@@ -343,7 +344,7 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert extract(request()).model_version == "mock+extract_v10"
+    assert extract(request()).model_version == "mock+extract_v11"
 
 
 # --- import 경계 (8.1) ---
@@ -477,8 +478,8 @@ def test_enrollment_year_limit_is_not_a_plan_note():
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
     assert '연차별 대상 학년을 확대할 예정입니다"' not in prompt
     assert "입학 연도나 입학 예정자로 한정하는 문장" in prompt
-    line = _prompt_line("- 그 밖의 자격")
-    assert "입학 연도·입학 예정자 한정" in line
+    # extract_v11부터는 extra_conditions가 아니라 min_admission_year로 판정합니다(T48).
+    assert "입학 연도·입학 예정자 한정" not in _prompt_line("- 그 밖의 자격")
 
 
 def test_grade_shortfall_without_score_is_basic_not_ambiguous():
@@ -492,3 +493,11 @@ def test_grade_shortfall_without_score_is_basic_not_ambiguous():
     assert "**ambiguous에도 넣지 않는다**" in prompt
     line = _prompt_line("- 기준 점수 없는 성적 제외")
     assert "성적 미달" in line
+
+
+def test_admission_year_goes_to_field_not_extra_conditions():
+    """입학 학년도 한정은 판정하는 필드로 옮겼습니다(extract_v11)."""
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert "2027학년도 신입생" in _prompt_line("- `min_admission_year`")
+    assert "게시 시점과 비교해 학년으로 바꾸지 않는다" in prompt
+    assert "자격이므로 `min_admission_year`다" in prompt

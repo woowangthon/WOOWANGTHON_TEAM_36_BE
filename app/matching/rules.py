@@ -9,7 +9,7 @@
 from datetime import date
 
 from app.extraction.schemas import ScholarshipCriteria
-from app.parsers.dates import to_kst
+from app.parsers.dates import academic_year, to_kst
 from app.schemas.api.profile import (
     Profile,
     Region,
@@ -86,6 +86,24 @@ def excludes_new_students(p: Profile, c: ScholarshipCriteria) -> Outcome:
     if not c.excludes_new_students:
         return None
     return _bool(p.completed_semesters >= 1)
+
+
+def min_admission_year(p: Profile, c: ScholarshipCriteria, today: date) -> Outcome:
+    """입학 학년도 (extract_v11). `today`(한국 날짜)의 학년도로 판정해 해가 지나면 결과가 바뀝니다.
+
+    - 오늘 학년도 < 대상 학년도: 아직 입학 전인 학생 대상이라 가입한 재학생은 모두 불충족
+    - 그 밖: 대상 학번은 지금 `오늘 학년도 − 대상 학년도 + 1`학년입니다.
+      판정용 이수학기(편입생 +4)로 계산한 학년이 그 이하면 충족,
+      높으면 더 일찍 입학한 학생이라 불충족.
+      입학 연도는 프로필에 없으므로 학년 조건(`target_grades`)과 같은 정도로만 구분합니다
+      (휴학으로 학년이 늦은 선배는 충족으로 나올 수 있음).
+    """
+    if c.min_admission_year is None:
+        return None
+    year = academic_year(today)
+    if year < c.min_admission_year:
+        return UNMET
+    return _bool(grade_of(effective_semesters(p)) <= year - c.min_admission_year + 1)
 
 
 def min_remaining_semesters(p: Profile, c: ScholarshipCriteria) -> Outcome:
