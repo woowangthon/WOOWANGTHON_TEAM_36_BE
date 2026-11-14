@@ -1,6 +1,6 @@
 """골든셋 평가 실행 (계획서 10장, T16).
 
-    uv run python -m eval.run              # 30건 전체
+    uv run python -m eval.run              # 31건 전체
     uv run python -m eval.run --only sw_dept_1154730 --workers 1
 
 `tests/fixtures/golden/*.input.json`을 실제 `extract()`로 추출하고, `*.expected.json`과 채점해

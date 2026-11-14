@@ -41,6 +41,19 @@ def _min_remaining_semesters(c: ScholarshipCriteria) -> str | None:
     return f"{_num(c.min_remaining_semesters)}학기 이상"
 
 
+def _completed_semesters(c: ScholarshipCriteria) -> str | None:
+    low, high = c.min_completed_semesters, c.max_completed_semesters
+    if low is None and high is None:
+        return None
+    if low is None:
+        return f"{high}학기 이하 이수"
+    if high is None:
+        return f"{low}학기 이상 이수"
+    if low == high:
+        return f"{low}학기 이수"
+    return f"{low}~{high}학기 이수"
+
+
 def _enrollment_status(c: ScholarshipCriteria) -> str | None:
     if not c.enrollment_status:
         return None
@@ -133,6 +146,7 @@ _DESCRIBERS: dict[ConditionName, Callable[[ScholarshipCriteria], str | None]] = 
     "target_grades": _target_grades,
     "min_admission_year": _min_admission_year,
     "min_remaining_semesters": _min_remaining_semesters,
+    "min_completed_semesters": _completed_semesters,
     "enrollment_status": _enrollment_status,
     "min_gpa": _min_gpa,
     "min_score_100": _min_score_100,
@@ -146,7 +160,7 @@ _DESCRIBERS: dict[ConditionName, Callable[[ScholarshipCriteria], str | None]] = 
     "target_department": _target_department,
 }
 
-# 요약을 붙이는 14개
+# 요약을 붙이는 15개
 DESCRIBED: frozenset[ConditionName] = frozenset(_DESCRIBERS)
 # 이름만으로 충분해 요약을 붙이지 않는 6개
 NAME_ONLY: frozenset[ConditionName] = frozenset(
@@ -172,6 +186,8 @@ def _own_field_ambiguous(condition: ConditionName, c: ScholarshipCriteria) -> bo
     """조건 자기 필드가 모호하다고 표시됐는지. 소속 학과 "불명"도 모호로 봅니다."""
     if condition in c.ambiguous_fields:
         return True
+    if condition == "min_completed_semesters" and "max_completed_semesters" in c.ambiguous_fields:
+        return True  # 이수 학기 범위는 두 칸이 한 줄이라 한쪽만 모호해도 모호입니다(extract_v15).
     return condition == "target_department" and c.target_department == "불명"
 
 
