@@ -123,7 +123,7 @@ def server_error(code: int) -> errors.APIError:
 def test_success(gemini, clock):
     models = gemini([json.dumps(VALID_RESPONSE)])
     result = extract(request())
-    assert result.model_version == "gemini-test-flash+extract_v12"
+    assert result.model_version == "gemini-test-flash+extract_v13"
     scholarship = result.criteria.scholarships[0]
     assert scholarship.apply_end == datetime(2026, 11, 12, 18, 0, tzinfo=SEOUL)
     assert scholarship.ambiguous_fields == ["max_income_bracket"]
@@ -345,7 +345,7 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert extract(request()).model_version == "mock+extract_v12"
+    assert extract(request()).model_version == "mock+extract_v13"
 
 
 # --- import 경계 (8.1) ---
@@ -530,3 +530,16 @@ def test_foundation_request_to_university_counts_as_designated():
     line = _prompt_line("- `basic_conditions`")
     assert "공고를 요청한 공문" in line
     assert "충북대학교가 충족한다(`basic_conditions`)" in line
+
+
+def test_or_conditions_stay_in_one_item():
+    """또는으로 이어진 자격은 한 항목, 나열된 서로 다른 자격은 나눕니다(extract_v13).
+
+    국가우수장학금(이공계) 성적우수는 "고교 성적 기준 또는 수능성적 기준"을 항목 둘로 나눠
+    둘 다 맞아야 하는 것처럼 판정됐습니다(직접 답하는 조건 오류 B).
+    """
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert '**"또는"으로 이어진 자격은 한 항목으로 둔다.**' in prompt
+    assert '"고교 성적 또는 수능 기준 충족 학생"' in prompt
+    assert '**"및"이나 쉼표로 나열된 서로 다른 자격은 나눈다.**' in prompt
+    assert '"졸업이수학점 40% 이상 취득 학생"' in prompt
