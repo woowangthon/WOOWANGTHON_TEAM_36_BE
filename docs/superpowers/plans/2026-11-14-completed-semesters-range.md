@@ -8,6 +8,8 @@
 
 **Tech Stack:** Python 3.12, Pydantic v2, pytest, ruff. 새 의존성 없음.
 
+> **실행 메모(2026-11-14):** 실행 중 `main`에 다른 변경(#72)이 `extract_v14`로 먼저 머지되어, 이 계획의 프롬프트는 `main`을 병합한 뒤 **`extract_v15`**(main의 v14 + 다섯 줄)로 올렸습니다. 아래 본문의 "v14"는 v15로, "v13 기준선"은 v13·v14 기준선으로 읽습니다. 측정 결과: v13 165/166, v14 165/166, v15 166/166.
+
 **Spec:** `../docs/장학금_매칭_서비스_계획서.md` 5.2(`min_completed_semesters`·`max_completed_semesters` 행), 5.3("이수 학기" 행), 10장(골든셋 31건). 카드는 `../docs/작업카드.md` T51, 분류는 `../docs/조건문장_분류표.md` Case 1-a.
 
 ## Global Constraints
