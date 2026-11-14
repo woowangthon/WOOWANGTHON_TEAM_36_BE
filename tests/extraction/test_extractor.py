@@ -123,7 +123,7 @@ def server_error(code: int) -> errors.APIError:
 def test_success(gemini, clock):
     models = gemini([json.dumps(VALID_RESPONSE)])
     result = extract(request())
-    assert result.model_version == "gemini-test-flash+extract_v13"
+    assert result.model_version == "gemini-test-flash+extract_v14"
     scholarship = result.criteria.scholarships[0]
     assert scholarship.apply_end == datetime(2026, 11, 12, 18, 0, tzinfo=SEOUL)
     assert scholarship.ambiguous_fields == ["max_income_bracket"]
@@ -181,6 +181,8 @@ def test_prompt_contains_required_rules():
         "`school_excluded`",  # 새 필드(extract_v8)
         "`min_admission_year`",  # 새 필드(extract_v11)
         "`grade_either`",  # 새 필드(extract_v12)
+        "`min_completed_semesters`",  # 새 필드(extract_v14)
+        "`max_completed_semesters`",
         "`display_name`",  # 쉬운 이름(extract_v9)
         "다듬지 않는다",  # scholarship_name은 원래 이름 그대로(재추출 매칭 키)
         "지어내지 않는다",
@@ -345,7 +347,7 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert extract(request()).model_version == "mock+extract_v13"
+    assert extract(request()).model_version == "mock+extract_v14"
 
 
 # --- import 경계 (8.1) ---
@@ -543,3 +545,23 @@ def test_or_conditions_stay_in_one_item():
     assert '"고교 성적 또는 수능 기준 충족 학생"' in prompt
     assert '**"및"이나 쉼표로 나열된 서로 다른 자격은 나눈다.**' in prompt
     assert '"졸업이수학점 40% 이상 취득 학생"' in prompt
+
+
+def test_completed_semesters_rule_keeps_numbers_as_written():
+    """이수 학기 수는 원문 숫자 그대로 두고 학년으로 바꾸지 않습니다(extract_v14, T51)."""
+    line = _prompt_line("- `min_completed_semesters`")
+    assert "4∼5개 학기를 이수한 학생" in line
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert "학년으로 바꿔 `target_grades`를 채우지 않는다" in prompt
+    assert '"N학기 진학 예정자"는 이 필드가 아니라 `target_grades`다' in prompt
+    assert "4년제 값을 쓴다" in prompt
+    assert "성적 산정 기간" in prompt
+
+
+def test_v14_only_adds_lines_to_v13():
+    """v14는 v13에 줄을 더하기만 합니다. 있던 규칙을 고치면 이 테스트가 실패합니다."""
+    v13 = (PROMPT_PATH.parent / "extract_v13.md").read_text(encoding="utf-8").splitlines()
+    v14 = PROMPT_PATH.read_text(encoding="utf-8").splitlines()
+    remaining = iter(v14)
+    assert all(line in remaining for line in v13)
+    assert len(v14) - len(v13) == 5
