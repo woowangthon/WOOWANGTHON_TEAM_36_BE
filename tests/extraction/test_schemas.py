@@ -439,3 +439,17 @@ def test_grade_either_in_criteria_field_and_json_schema():
     assert "grade_either" in CRITERIA_FIELDS
     schema = ExtractedCriteria.model_json_schema()
     assert "grade_either" in schema["$defs"]["ScholarshipCriteria"]["properties"]
+
+
+def test_condition_text_or_fields():
+    """or_fields(extract_v13): 프로필로 판정하는 필드만, 중복과 빈 목록은 정리합니다."""
+    item = ConditionText.model_validate(
+        {"text": "평점 3.0 이상 또는 기초생활수급자", "or_fields": ["min_gpa", "min_gpa"]}
+    )
+    assert item.or_fields == ["min_gpa"]
+    assert ConditionText.model_validate({"text": "봉사", "or_fields": []}).or_fields is None
+    assert ConditionText.model_validate({"text": "v12 조건"}).or_fields is None
+    with pytest.raises(ValidationError):
+        ConditionText.model_validate({"text": "x", "or_fields": ["scholarship_name"]})
+    schema = ExtractedCriteria.model_json_schema()
+    assert "or_fields" in schema["$defs"]["ConditionText"]["properties"]

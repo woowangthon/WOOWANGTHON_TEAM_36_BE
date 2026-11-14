@@ -533,13 +533,22 @@ def test_foundation_request_to_university_counts_as_designated():
 
 
 def test_or_conditions_stay_in_one_item():
-    """또는으로 이어진 자격은 한 항목, 나열된 서로 다른 자격은 나눕니다(extract_v13).
+    """또는으로 이어진 자격의 처리와 나열된 자격 나누기(extract_v13).
 
     국가우수장학금(이공계) 성적우수는 "고교 성적 기준 또는 수능성적 기준"을 항목 둘로 나눠
     둘 다 맞아야 하는 것처럼 판정됐습니다(직접 답하는 조건 오류 B).
     """
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
-    assert '**"또는"으로 이어진 자격은 한 항목으로 둔다.**' in prompt
+    assert "**모든 선택지를 학생이 답해야 하면 한 항목으로 둔다.**" in prompt
     assert '"고교 성적 또는 수능 기준 충족 학생"' in prompt
-    assert '**"및"이나 쉼표로 나열된 서로 다른 자격은 나눈다.**' in prompt
+    assert '**제외 대상을 "또는"으로 나열한 문장은 선택지가 아니다.**' in prompt
+    assert '**"그리고"로 이어진 서로 다른 자격은 나눈다.**' in prompt
+    assert "나누는 기준은 표시 단어가 아니라 뜻이다" in prompt
     assert '"졸업이수학점 40% 이상 취득 학생"' in prompt
+
+
+def test_or_with_profile_field_uses_or_fields():
+    """선택지 하나는 프로필로, 하나는 학생이 답하면 or_fields로 묶습니다(extract_v13)."""
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert '"or_fields": ["min_gpa"]' in prompt
+    assert "`summary`에는 **학생이 답할 선택지만** 쓴다" in prompt

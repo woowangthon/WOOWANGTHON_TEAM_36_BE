@@ -62,6 +62,25 @@ CriteriaField = Literal[
     "required_documents",
 ]
 
+# 직접 답하는 조건과 "또는"으로 묶을 수 있는 필드 (extract_v13 `or_fields`).
+# 규칙 엔진이 프로필로 판정하는 조건만 넣습니다(5.3).
+OrField = Literal[
+    "target_grades",
+    "min_admission_year",
+    "min_remaining_semesters",
+    "min_gpa",
+    "min_score_100",
+    "min_credits",
+    "target_nationality",
+    "gender",
+    "max_age",
+    "max_income_bracket",
+    "regions",
+    "required_special",
+    "target_department",
+    "target_program",
+]
+
 _STRICT = ConfigDict(extra="forbid")
 
 
@@ -94,11 +113,20 @@ class ConditionText(BaseModel):
 
     text: str = Field(min_length=1)
     summary: str | None = None
+    # "평점 3.0 이상 또는 기초생활수급자"처럼 선택지 하나는 프로필로 판정하고 하나는 학생이 답하는
+    # 조건이면, 프로필로 판정하는 필드 이름(extract_v13). 그 필드가 충족이면 이 질문은 묻지 않고,
+    # 아니면 이 질문(요약은 직접 답할 부분만)으로 판정합니다(5.3). 없으면 null.
+    or_fields: list[OrField] | None = None
 
     @field_validator("summary", mode="before")
     @classmethod
     def _clean_summary(cls, value: object) -> object:
         return _clean_short_text(value)
+
+    @field_validator("or_fields")
+    @classmethod
+    def _dedupe_or_fields(cls, value: list[OrField] | None) -> list[OrField] | None:
+        return list(dict.fromkeys(value)) or None if value is not None else None
 
 
 class ScholarshipCriteria(BaseModel):
