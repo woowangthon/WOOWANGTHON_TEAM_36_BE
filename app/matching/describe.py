@@ -47,9 +47,26 @@ def _enrollment_status(c: ScholarshipCriteria) -> str | None:
     return " 또는 ".join(f"{s}생" for s in c.enrollment_status)
 
 
+def grade_either_applies(c: ScholarshipCriteria) -> bool:
+    """평점·100점 조건 중 하나만 맞으면 되는지 (`grade_either`, extract_v12).
+
+    두 조건이 모두 있어야(값이 있거나 모호하다고 표시됨) OR로 묶습니다. 한쪽만 있으면 보통처럼
+    따로 판정합니다. 묶으면 엔진은 `min_gpa` 한 줄로 판정하고 `min_score_100` 줄은 만들지 않습니다.
+    """
+
+    def present(field: str) -> bool:
+        return getattr(c, field) is not None or field in c.ambiguous_fields
+
+    return bool(c.grade_either) and present("min_gpa") and present("min_score_100")
+
+
 def _min_gpa(c: ScholarshipCriteria) -> str | None:
     if c.min_gpa is None:
         return None
+    if grade_either_applies(c):
+        if c.min_score_100 is None:  # 100점 쪽이 모호함 (is_ambiguous가 표시)
+            return None
+        return f"{_basis(c)}{c.min_gpa} 이상 또는 {_num(c.min_score_100)}점 이상"
     return f"{_basis(c)}{c.min_gpa} 이상"
 
 
@@ -165,6 +182,8 @@ def is_ambiguous(condition: ConditionName, c: ScholarshipCriteria) -> bool:
     """
     if _own_field_ambiguous(condition, c):
         return True
+    if condition == "min_gpa" and grade_either_applies(c) and "min_score_100" in c.ambiguous_fields:
+        return True  # 평점·100점 OR 줄(extract_v12)은 100점 쪽이 모호해도 모호입니다.
     basis = _BASIS_FIELD.get(condition)
     return basis is not None and basis in c.ambiguous_fields
 

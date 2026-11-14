@@ -265,7 +265,7 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     result = extract(_request())
     assert isinstance(result, ExtractionResult)
-    assert result.model_version == "mock+extract_v11"
+    assert result.model_version == "mock+extract_v12"
     # 목 응답도 스키마 검증을 다시 통과해야 합니다.
     again = ExtractionResult.model_validate_json(result.model_dump_json())
     assert again.criteria.notice_kind == "모집"
@@ -427,3 +427,15 @@ def test_min_admission_year_rejects_out_of_range(value):
 
 def test_min_admission_year_in_criteria_field():
     assert "min_admission_year" in CRITERIA_FIELDS
+
+
+def test_v11_criteria_without_grade_either_load():
+    """extract_v12 이전에 저장된 조건(새 키 없음)도 읽혀야 하고, 없으면 AND입니다."""
+    s = ScholarshipCriteria.model_validate({"scholarship_name": "v11 장학금"})
+    assert s.grade_either is None
+
+
+def test_grade_either_in_criteria_field_and_json_schema():
+    assert "grade_either" in CRITERIA_FIELDS
+    schema = ExtractedCriteria.model_json_schema()
+    assert "grade_either" in schema["$defs"]["ScholarshipCriteria"]["properties"]
