@@ -161,9 +161,12 @@ def add_scholarship(
         return scholarship.id
 
 
-def bookmark(factory, user_id: int, scholarship_id: int, state: str = "BOOKMARKED") -> None:
+def bookmark(factory, user_id: int, scholarship_id: int, *, applied: bool = False) -> None:
+    """관심으로 표시합니다. applied=True면 신청완료도 함께 켭니다."""
     with factory() as session:
         session.add(
-            UserScholarshipState(user_id=user_id, scholarship_id=scholarship_id, state=state)
+            UserScholarshipState(
+                user_id=user_id, scholarship_id=scholarship_id, bookmarked=True, applied=applied
+            )
         )
         session.commit()
