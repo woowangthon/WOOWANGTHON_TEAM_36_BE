@@ -15,6 +15,10 @@
 `ambiguous_fields`에 든 조건은 값과 관계없이 알 수 없음입니다(5.2).
 `grade_either = true`이고 평점·100점 조건이 모두 있으면 둘을 OR로 묶어 `min_gpa` 한 줄로
 판정합니다(`rules.either`, extract_v12). 그 밖에는 두 성적 조건을 따로(AND) 판정합니다.
+`extra_conditions` 항목에 `or_fields`가 있으면 "그 필드 조건 또는 이 문장"입니다(extract_v16).
+그 필드가 충족이면 내 정보로 판정한 조건에 충족으로 보이고 질문은 묻지 않습니다. 충족이 아니면
+(불충족·알 수 없음) 필드 줄은 보이지 않고 질문으로 판정합니다.
+필드 불충족만으로는 지원 불가가 되지 않습니다.
 이수 학기 범위(`min_completed_semesters`·`max_completed_semesters`, extract_v15)는 두 칸을 묶어
 `min_completed_semesters` 한 줄로 판정하고, 둘 중 하나라도 모호하면 알 수 없음입니다.
 `basic_conditions`(학교 조건·품행 등 대부분 충족)와 `notes`(자격이 아닌 안내)는 판정을 바꾸지 않고
@@ -132,6 +136,19 @@ def _evidence(c: ScholarshipCriteria, condition: str) -> tuple[str | None, str |
     return None, None
 
 
+def _or_field(name: str, either: bool) -> str:
+    """`or_fields`의 이름을 판정 줄 이름으로 바꿉니다.
+
+    평점·100점을 한 줄로 판정하면 min_gpa 줄이고,
+    이수 학기 범위는 늘 min_completed_semesters 한 줄입니다.
+    """
+    if either and name == "min_score_100":
+        return "min_gpa"
+    if name == "max_completed_semesters":
+        return "min_completed_semesters"
+    return name
+
+
 def evaluate(
     profile: Profile,
     criteria: ScholarshipCriteria,
@@ -151,6 +168,11 @@ def evaluate(
     checks: list[ConditionCheck] = []
     ambiguous = set(criteria.ambiguous_fields)
     either = grade_either_applies(criteria)
+    # 질문과 "또는"으로 묶인 필드. 평점·100점을 한 줄로 판정할 때는 min_gpa 줄이 둘을 대신합니다.
+    linked = {
+        _or_field(f, either) for item in criteria.extra_conditions for f in item.or_fields or ()
+    }
+    linked_outcomes: dict[str, rules.Outcome] = {}
 
     def judge(name: ConditionName, rule: Rule) -> rules.Outcome:
         return rules.UNKNOWN if name in ambiguous else rule(profile, criteria, today)
@@ -161,6 +183,10 @@ def evaluate(
         outcome = judge(name, rule)
         if either and name == "min_gpa":
             outcome = rules.either(outcome, judge("min_score_100", _no_date(_min_score_100)))
+        if name in linked:
+            linked_outcomes[name] = outcome
+            if outcome != rules.MET:
+                continue  # 충족이 아니면 줄을 보이지 않고 묶인 질문으로 판정합니다.
         if outcome is not None:
             evidence, source = _evidence(criteria, name)
             if evidence is None and either and name == "min_gpa":
@@ -177,10 +203,17 @@ def evaluate(
                 )
             )
 
+    def satisfied(item: ConditionText) -> bool:
+        """묶인 필드 중 하나가 충족이라 묻지 않아도 되는 질문인지."""
+        return any(
+            linked_outcomes.get(_or_field(f, either)) == rules.MET for f in item.or_fields or ()
+        )
+
+    asked = [item for item in criteria.extra_conditions if not satisfied(item)]
     answers = answers or {}
     extra_checks = [
         ExtraCheck(key=key, text=item.text, answer=answers.get(key), summary=item.summary)
-        for item in criteria.extra_conditions
+        for item in asked
         for key in (condition_key(item.text),)
     ]
     extra_answers = {check.answer for check in extra_checks}
@@ -196,7 +229,7 @@ def evaluate(
     return Evaluation(
         result=result,
         checks=checks,
-        extra_conditions=[item.text for item in criteria.extra_conditions],
+        extra_conditions=[item.text for item in asked],
         extra_checks=extra_checks,
         other_unknown=other_unknown,
         basic_conditions=[item.text for item in criteria.basic_conditions],

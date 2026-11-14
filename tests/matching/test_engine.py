@@ -1048,6 +1048,91 @@ def test_prospective_freshmen_only_is_ineligible():
     assert evaluate(profile(completed_semesters=0), c, date(2026, 11, 13)).result == "INELIGIBLE"
 
 
+# --- 필드 조건 또는 직접 답하는 조건 (or_fields, extract_v16) -----------------------------
+
+BASIC_LIVELIHOOD = "직전학기 평점 3.0 이상 또는 기초생활수급자"
+
+
+def or_criteria(**fields) -> ScholarshipCriteria:
+    """ "평점 3.0 이상 또는 기초생활수급자": 평점은 프로필로, 수급자는 학생이 답합니다."""
+    item = {"text": BASIC_LIVELIHOOD, "summary": "기초생활수급자인 학생", "or_fields": ["min_gpa"]}
+    base = {"min_gpa": 3.0, "grade_basis": "직전학기", "extra_conditions": [item]}
+    return criteria(**{**base, **fields})
+
+
+def test_or_field_met_skips_question():
+    """평점이 충족이면 내 정보로 판정한 조건에 충족으로 보이고 질문은 묻지 않습니다."""
+    evaluation = evaluate(profile(gpa=3.6), or_criteria(), TODAY)
+    assert {c.condition: c.outcome for c in evaluation.checks}["min_gpa"] == "MET"
+    assert evaluation.extra_checks == []
+    assert evaluation.extra_conditions == []
+    assert evaluation.result == "ELIGIBLE"
+
+
+@pytest.mark.parametrize(
+    ("p", "answer", "expected"),
+    [
+        ({"gpa": 2.8}, None, "CONDITIONAL"),  # 평점 미달만으로는 지원 불가가 아님
+        ({"gpa": 2.8}, "YES", "ELIGIBLE"),  # 수급자라고 답하면 충족
+        ({"gpa": 2.8}, "NO", "INELIGIBLE"),  # 둘 다 아니면 지원 불가
+        ({"gpa": None}, None, "CONDITIONAL"),  # 평점이 없으면 질문으로 판정
+        ({"gpa": None}, "YES", "ELIGIBLE"),
+    ],
+)
+def test_or_field_not_met_asks_question(p, answer, expected):
+    """평점이 충족이 아니면 평점 줄은 보이지 않고 질문(요약은 직접 답할 부분만)으로 판정합니다."""
+    given = {} if answer is None else {condition_key(BASIC_LIVELIHOOD): answer}
+    evaluation = evaluate(profile(**p), or_criteria(), TODAY, answers=given)
+    assert "min_gpa" not in {c.condition for c in evaluation.checks}
+    assert [c.summary for c in evaluation.extra_checks] == ["기초생활수급자인 학생"]
+    assert evaluation.result == expected
+
+
+def test_or_field_ambiguous_asks_question():
+    evaluation = evaluate(profile(gpa=4.0), or_criteria(ambiguous_fields=["min_gpa"]), TODAY)
+    assert "min_gpa" not in {c.condition for c in evaluation.checks}
+    assert len(evaluation.extra_checks) == 1
+
+
+def test_or_field_with_grade_either_uses_one_grade_line():
+    """평점·100점 OR(grade_either)과 함께 묶이면 min_gpa 한 줄의 결과로 판단합니다."""
+    item = {"text": "평점 3.6 또는 90점 이상, 또는 예체능 특기자", "or_fields": ["min_score_100"]}
+    c = criteria(
+        min_gpa=3.6,
+        min_score_100=90,
+        grade_basis="직전학기",
+        grade_either=True,
+        extra_conditions=[item],
+    )
+    assert evaluate(profile(gpa=3.7), c, TODAY).extra_checks == []
+    assert len(evaluate(profile(gpa=3.0), c, TODAY).extra_checks) == 1
+
+
+def test_or_field_with_completed_semesters_range():
+    """이수 학기 범위(두 칸, 한 줄)와 묶여도 범위 줄의 결과로 판단합니다."""
+    item = {"text": "4~5개 학기 이수 또는 기초생활수급자", "or_fields": ["max_completed_semesters"]}
+    c = criteria(min_completed_semesters=4, max_completed_semesters=5, extra_conditions=[item])
+    met = evaluate(profile(completed_semesters=4), c, TODAY)
+    assert met.extra_checks == []
+    assert {x.condition: x.outcome for x in met.checks}["min_completed_semesters"] == "MET"
+    unmet = evaluate(profile(completed_semesters=2), c, TODAY)
+    assert "min_completed_semesters" not in {x.condition for x in unmet.checks}
+    assert len(unmet.extra_checks) == 1
+
+
+def test_other_extra_conditions_still_and():
+    """묶이지 않은 다른 질문은 그대로 AND입니다."""
+    c = or_criteria(
+        extra_conditions=[
+            {"text": BASIC_LIVELIHOOD, "or_fields": ["min_gpa"]},
+            "직전학기 봉사활동 20시간 이상",
+        ]
+    )
+    evaluation = evaluate(profile(gpa=3.6), c, TODAY)
+    assert [x.text for x in evaluation.extra_checks] == ["직전학기 봉사활동 20시간 이상"]
+    assert evaluation.result == "CONDITIONAL"
+
+
 # --- 이수 학기 범위 (extract_v15, T51) -------------------------------------------------
 
 
