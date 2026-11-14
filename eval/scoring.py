@@ -20,6 +20,8 @@
 - 보조 지표 `min_admission_year`(extract_v11): 위와 같습니다.
 - 보조 지표 `grade_either`(extract_v12): 위와 같습니다. 골든셋에는 "평점 또는 100점" 조건이 없어
   정답이 모두 null이므로, 모델이 AND 조건을 OR로 잘못 표시하지 않는지를 봅니다.
+- 보조 지표 `min_completed_semesters`·`max_completed_semesters`(extract_v14): 위와 같습니다.
+  해당 공지는 `kosaf_20757` 1건입니다.
 - `display_name`(extract_v9)은 표시용 자유 문장이라 채점하지 않습니다(정답 라벨 없음).
 """
 
@@ -47,6 +49,8 @@ AUX_VALUE_FIELDS = (
     "school_excluded",
     "min_admission_year",
     "grade_either",
+    "min_completed_semesters",
+    "max_completed_semesters",
 )
 AUX_FIELDS = ("needs_check", *AUX_VALUE_FIELDS)
 TARGET_ACCURACY = 0.90

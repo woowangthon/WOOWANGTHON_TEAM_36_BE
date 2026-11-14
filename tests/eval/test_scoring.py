@@ -84,8 +84,8 @@ def test_missing_scholarship_counts_all_fields_wrong():
     assert not score.count_match
     assert score.fields["min_gpa"].total == 2
     assert score.fields["min_gpa"].correct == 1
-    # 필드 5 + 보조 값 7(extract_v6 2개, extract_v7 2개, extract_v8 1개, v11 1개, v12 1개)
-    assert sum(1 for m in score.mismatches if m["got"] == "(장학금 없음)") == 12
+    # 필드 5 + 보조 값 9(extract_v6 2개, v7 2개, v8 1개, v11 1개, v12 1개, v14 2개)
+    assert sum(1 for m in score.mismatches if m["got"] == "(장학금 없음)") == 14
 
 
 def test_extra_predicted_scholarship_does_not_grow_denominator():
@@ -188,8 +188,32 @@ def test_golden_set_expected_answers_score_perfectly():
         )
         scores.append(score_notice(notice_id, expected, expected))
     summary = summarize(scores)
-    assert summary["notices"] == 30
+    assert summary["notices"] == 31
     assert summary["accuracy"] == 1.0
+
+
+def test_completed_semesters_fields_are_aux_and_not_in_total():
+    """이수 학기 범위는 보조 지표로만 셉니다(extract_v14)."""
+    want = {**BASE, "min_completed_semesters": 4, "max_completed_semesters": 5}
+    got = {**BASE, "min_completed_semesters": 4, "max_completed_semesters": None}
+    score = score_notice("n1", criteria(scholarships=[want]), criteria(scholarships=[got]))
+    summary = summarize([score])
+    assert summary["fields"]["min_completed_semesters"]["correct"] == 1
+    assert summary["fields"]["max_completed_semesters"]["correct"] == 0
+    assert summary["correct"] == 6 and summary["total"] == 6
+
+
+def test_golden_20757_pins_semester_range_and_grade():
+    """회귀 표본: 2년 지원 유형은 학년 [3]과 이수 학기 4~5가 함께 정답입니다."""
+    expected = ExtractedCriteria.model_validate_json(
+        (run.GOLDEN_DIR / "kosaf_20757.expected.json").read_text(encoding="utf-8")
+    )
+    ranged = [s for s in expected.scholarships if s.min_completed_semesters is not None]
+    assert len(expected.scholarships) == 4
+    assert len(ranged) == 1
+    assert (ranged[0].min_completed_semesters, ranged[0].max_completed_semesters) == (4, 5)
+    assert ranged[0].target_grades == [3]
+    assert ranged[0].grade_either is True
 
 
 def test_run_writes_results_with_mocked_extract(monkeypatch, tmp_path, capsys):

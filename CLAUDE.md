@@ -21,7 +21,7 @@ app/
 ├─ notifications/ # select.py(알림 대상 선정), message.py(메일 내용), jobs.py(하루 1회 발송, `python -m app.notifications.jobs`)
 └─ api/         # health, auth, google, profile, scholarships, notifications, admin, internal
 eval/           # 골든셋 평가 스크립트 (`python -m eval.run`), results/
-tests/fixtures/ # 사이트별 저장 HTML, PDF 샘플, AI 응답 샘플, golden/(공지 30건 + 정답 JSON)
+tests/fixtures/ # 사이트별 저장 HTML, PDF 샘플, AI 응답 샘플, golden/(공지 31건 + 정답 JSON)
 ```
 
 ## 규칙
