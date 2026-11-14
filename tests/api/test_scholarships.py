@@ -204,6 +204,43 @@ def test_result_reflects_profile_change(student, factory):  # noqa: F811
     assert student.get("/scholarships").json()["items"][0]["result"] == "ELIGIBLE"
 
 
+# --- 목록: 서비스 사용자 누구도 받을 수 없는 장학금 ---------------------------------------
+
+
+OTHER_DEPT = {**ELIGIBLE, "target_department": "소프트웨어학부 불포함"}
+OTHER_SCHOOL = {**ELIGIBLE, "school_excluded": True}
+
+
+def test_list_hides_scholarships_no_user_can_get(student, factory):  # noqa: F811
+    """학과·학교 조건으로 소프트웨어학부 학생 누구도 못 받는 장학금은 목록에서 뺍니다."""
+    seed(factory, "보통", criteria=ELIGIBLE)
+    seed(factory, "인문계열 전용", criteria=OTHER_DEPT)
+    seed(factory, "사립대 전용", criteria=OTHER_SCHOOL)
+    seed(factory, "성적 미달", criteria=INELIGIBLE)  # 프로필 때문에 불가 → 그대로 보임
+    assert names(student.get("/scholarships")) == ["보통", "성적 미달"]
+
+
+def test_list_keeps_ambiguous_school_or_department(student, factory):  # noqa: F811
+    """AI가 모호하다고 표시한 학과·학교 조건은 숨기지 않습니다."""
+    seed(
+        factory,
+        "학과 모호",
+        criteria={**OTHER_DEPT, "ambiguous_fields": ["target_department"]},
+    )
+    seed(factory, "학교 모호", criteria={**OTHER_SCHOOL, "ambiguous_fields": ["school_excluded"]})
+    assert sorted(names(student.get("/scholarships"))) == ["학과 모호", "학교 모호"]
+
+
+def test_hidden_scholarship_stays_in_my_list_and_detail(student, factory):  # noqa: F811
+    """이미 관심 표시한 장학금은 내 장학금에 남고, 상세도 열립니다."""
+    sid = seed(factory, "인문계열 전용", criteria=OTHER_DEPT)
+    response = student.put(f"/scholarships/{sid}/state", json={"state": "BOOKMARKED"})
+    assert response.status_code == 200
+    assert names(student.get("/scholarships")) == []
+    assert names(student.get("/scholarships", params={"state": "bookmarked"})) == ["인문계열 전용"]
+    assert student.get(f"/scholarships/{sid}").status_code == 200
+
+
 # --- 정렬 ---------------------------------------------------------------------------
 
 
