@@ -23,7 +23,6 @@ SPEC_ENDPOINTS = {
     ("get", "/scholarships"),
     ("get", "/scholarships/{scholarship_id}"),
     ("put", "/scholarships/{scholarship_id}/state"),
-    ("delete", "/scholarships/{scholarship_id}/state"),
     ("put", "/scholarships/{scholarship_id}/conditions/{condition_key}"),
     ("delete", "/scholarships/{scholarship_id}/conditions/{condition_key}"),
     ("get", "/admin/crawl-runs"),
@@ -61,7 +60,6 @@ IMPLEMENTED = {
     ("get", "/scholarships"),
     ("get", "/scholarships/{scholarship_id}"),
     ("put", "/scholarships/{scholarship_id}/state"),
-    ("delete", "/scholarships/{scholarship_id}/state"),
     # 조건 답 (tests/api/test_scholarships.py, 계획서 5.3)
     ("put", "/scholarships/{scholarship_id}/conditions/{condition_key}"),
     ("delete", "/scholarships/{scholarship_id}/conditions/{condition_key}"),

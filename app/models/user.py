@@ -12,7 +12,6 @@ from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
-    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -22,9 +21,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, in_values
-
-USER_SCHOLARSHIP_STATES = ("BOOKMARKED", "APPLIED")
+from app.models.base import Base
 
 
 class User(Base):
@@ -74,8 +71,13 @@ class UserProfile(Base):
 
 
 class UserScholarshipState(Base):
+    """관심과 신청완료 표시. 두 칸은 서로 영향을 주지 않습니다(7.1, 2026-11-14).
+
+    둘 다 끈 행은 지우지 않고, 표시하지 않은 것과 똑같이 다룹니다(행을 지우려면 읽고 나서
+    판단해야 해 동시에 온 두 요청이 어긋날 수 있음).
+    """
+
     __tablename__ = "user_scholarship_states"
-    __table_args__ = (CheckConstraint(in_values("state", USER_SCHOLARSHIP_STATES), name="state"),)
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
@@ -83,7 +85,8 @@ class UserScholarshipState(Base):
     scholarship_id: Mapped[int] = mapped_column(
         ForeignKey("scholarships.id", ondelete="CASCADE"), primary_key=True
     )
-    state: Mapped[str] = mapped_column(String(12))
+    bookmarked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    applied: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
 
 class UserConditionAnswer(Base):

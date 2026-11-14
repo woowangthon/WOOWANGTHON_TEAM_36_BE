@@ -148,8 +148,8 @@ def test_deleting_user_cascades_profile_and_states(conn):
     )
     conn.execute(
         text(
-            "INSERT INTO user_scholarship_states (user_id, scholarship_id, state)"
-            " SELECT u.id, s.id, 'BOOKMARKED' FROM users u, scholarships s"
+            "INSERT INTO user_scholarship_states (user_id, scholarship_id, bookmarked)"
+            " SELECT u.id, s.id, true FROM users u, scholarships s"
         )
     )
     conn.execute(text("DELETE FROM users"))
@@ -233,3 +233,44 @@ def test_existing_scholarships_get_posted_at_as_created_at(migrated_engine, alem
         command.upgrade(alembic_config, "head")
         with migrated_engine.begin() as c:
             c.execute(text("TRUNCATE scholarships, notices RESTART IDENTITY CASCADE"))
+
+
+def test_state_splits_into_bookmarked_and_applied(migrated_engine, alembic_config):
+    """T70: 기존 BOOKMARKED·APPLIED 행을 두 칸으로 옮기고, 되돌리면 한 값으로 접습니다."""
+    rows_sql = (
+        "SELECT u.email, {columns} FROM user_scholarship_states t"
+        " JOIN users u ON u.id = t.user_id ORDER BY u.email"
+    )
+    command.downgrade(alembic_config, "a7c41e9d2b58")
+    try:
+        with migrated_engine.begin() as c:
+            _insert_user(c, "a@example.com")
+            _insert_user(c, "b@example.com")
+            _insert_scholarship(c)
+            c.execute(
+                text(
+                    "INSERT INTO user_scholarship_states (user_id, scholarship_id, state)"
+                    " SELECT u.id, s.id,"
+                    " CASE u.email WHEN 'a@example.com' THEN 'BOOKMARKED' ELSE 'APPLIED' END"
+                    " FROM users u, scholarships s"
+                )
+            )
+        command.upgrade(alembic_config, "head")
+        with migrated_engine.begin() as c:
+            rows = c.execute(text(rows_sql.format(columns="t.bookmarked, t.applied"))).all()
+            assert [tuple(r) for r in rows] == [
+                ("a@example.com", True, False),
+                ("b@example.com", False, True),
+            ]
+            # a는 둘 다 켜고, b는 둘 다 끕니다.
+            c.execute(text("UPDATE user_scholarship_states SET applied = NOT applied"))
+
+        command.downgrade(alembic_config, "a7c41e9d2b58")
+        with migrated_engine.connect() as c:
+            rows = c.execute(text(rows_sql.format(columns="t.state"))).all()
+        # 둘 다 켠 행은 APPLIED로, 둘 다 끈 행은 지웁니다.
+        assert [tuple(r) for r in rows] == [("a@example.com", "APPLIED")]
+    finally:
+        command.upgrade(alembic_config, "head")
+        with migrated_engine.begin() as c:
+            c.execute(text("TRUNCATE users, scholarships, notices RESTART IDENTITY CASCADE"))
