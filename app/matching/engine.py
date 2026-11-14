@@ -15,7 +15,7 @@
 `ambiguous_fields`에 든 조건은 값과 관계없이 알 수 없음입니다(5.2).
 `grade_either = true`이고 평점·100점 조건이 모두 있으면 둘을 OR로 묶어 `min_gpa` 한 줄로
 판정합니다(`rules.either`, extract_v12). 그 밖에는 두 성적 조건을 따로(AND) 판정합니다.
-이수 학기 범위(`min_completed_semesters`·`max_completed_semesters`, extract_v14)는 두 칸을 묶어
+이수 학기 범위(`min_completed_semesters`·`max_completed_semesters`, extract_v15)는 두 칸을 묶어
 `min_completed_semesters` 한 줄로 판정하고, 둘 중 하나라도 모호하면 알 수 없음입니다.
 `basic_conditions`(학교 조건·품행 등 대부분 충족)와 `notes`(자격이 아닌 안내)는 판정을 바꾸지 않고
 화면에 보여 주기만 합니다(extract_v5).

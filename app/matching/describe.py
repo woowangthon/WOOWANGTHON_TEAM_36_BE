@@ -187,7 +187,7 @@ def _own_field_ambiguous(condition: ConditionName, c: ScholarshipCriteria) -> bo
     if condition in c.ambiguous_fields:
         return True
     if condition == "min_completed_semesters" and "max_completed_semesters" in c.ambiguous_fields:
-        return True  # 이수 학기 범위는 두 칸이 한 줄이라 한쪽만 모호해도 모호입니다(extract_v14).
+        return True  # 이수 학기 범위는 두 칸이 한 줄이라 한쪽만 모호해도 모호입니다(extract_v15).
     return condition == "target_department" and c.target_department == "불명"
 
 

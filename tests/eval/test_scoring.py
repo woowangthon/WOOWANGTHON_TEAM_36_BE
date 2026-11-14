@@ -84,7 +84,7 @@ def test_missing_scholarship_counts_all_fields_wrong():
     assert not score.count_match
     assert score.fields["min_gpa"].total == 2
     assert score.fields["min_gpa"].correct == 1
-    # 필드 5 + 보조 값 9(extract_v6 2개, v7 2개, v8 1개, v11 1개, v12 1개, v14 2개)
+    # 필드 5 + 보조 값 9(extract_v6 2개, v7 2개, v8 1개, v11 1개, v12 1개, v15 2개)
     assert sum(1 for m in score.mismatches if m["got"] == "(장학금 없음)") == 14
 
 
@@ -193,7 +193,7 @@ def test_golden_set_expected_answers_score_perfectly():
 
 
 def test_completed_semesters_fields_are_aux_and_not_in_total():
-    """이수 학기 범위는 보조 지표로만 셉니다(extract_v14)."""
+    """이수 학기 범위는 보조 지표로만 셉니다(extract_v15)."""
     want = {**BASE, "min_completed_semesters": 4, "max_completed_semesters": 5}
     got = {**BASE, "min_completed_semesters": 4, "max_completed_semesters": None}
     score = score_notice("n1", criteria(scholarships=[want]), criteria(scholarships=[got]))

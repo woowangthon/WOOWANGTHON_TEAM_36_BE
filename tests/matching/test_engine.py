@@ -1048,7 +1048,7 @@ def test_prospective_freshmen_only_is_ineligible():
     assert evaluate(profile(completed_semesters=0), c, date(2026, 11, 13)).result == "INELIGIBLE"
 
 
-# --- 이수 학기 범위 (extract_v14, T51) -------------------------------------------------
+# --- 이수 학기 범위 (extract_v15, T51) -------------------------------------------------
 
 
 @pytest.mark.parametrize(

@@ -265,7 +265,7 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     result = extract(_request())
     assert isinstance(result, ExtractionResult)
-    assert result.model_version == "mock+extract_v14"
+    assert result.model_version == "mock+extract_v15"
     # 목 응답도 스키마 검증을 다시 통과해야 합니다.
     again = ExtractionResult.model_validate_json(result.model_dump_json())
     assert again.criteria.notice_kind == "모집"
@@ -441,9 +441,9 @@ def test_grade_either_in_criteria_field_and_json_schema():
     assert "grade_either" in schema["$defs"]["ScholarshipCriteria"]["properties"]
 
 
-def test_v13_criteria_without_completed_semesters_load():
-    """extract_v14 이전에 저장된 조건(새 키 없음)도 읽혀야 합니다."""
-    s = ScholarshipCriteria.model_validate({"scholarship_name": "v13 장학금"})
+def test_v14_criteria_without_completed_semesters_load():
+    """extract_v15 이전에 저장된 조건(새 키 없음)도 읽혀야 합니다."""
+    s = ScholarshipCriteria.model_validate({"scholarship_name": "v14 장학금"})
     assert s.min_completed_semesters is None
     assert s.max_completed_semesters is None
 

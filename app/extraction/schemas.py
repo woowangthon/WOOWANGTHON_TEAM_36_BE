@@ -136,7 +136,7 @@ class ScholarshipCriteria(BaseModel):
     min_admission_year: int | None = Field(default=None, ge=2000, le=2100)
     # 남은 정규학기가 N학기 이상이어야 함(예: "잔여정규학기 1개 학기 이상" → 1)
     min_remaining_semesters: int | None = Field(default=None, ge=1, le=8)
-    # extract_v14에서 추가했습니다(T51). 기본값이 None이라 DB에 저장된 v13 결과도 그대로 읽힙니다.
+    # extract_v15에서 추가했습니다(T51). 기본값이 None이라 DB에 저장된 v14 결과도 그대로 읽힙니다.
     # 지금까지 마친 정규학기 수의 범위("4∼5개 학기를 이수한 학생" → 4, 5).
     # 한쪽만 있으면 다른 쪽은 None입니다("4개 학기 이상 이수" → 4, None).
     # 학년으로 바꾸지 않고 원문 숫자 그대로 두며, 판정용 이수학기와 비교합니다(5.3).
