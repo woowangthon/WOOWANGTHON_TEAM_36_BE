@@ -262,6 +262,9 @@ def list_scholarships(
     rows: list[_Row] = []
     for s, notice, src, my_state, has_unread in db.execute(query):
         criteria = ScholarshipCriteria.model_validate(s.criteria)
+        # 내 장학금 화면(state)은 사용자가 직접 표시한 것이라 그대로 보여 줍니다.
+        if state is None and not_for_any_user(criteria):
+            continue
         evaluation = evaluate(
             profile, criteria, today, has_unread_attachments=has_unread, answers=answers.get(s.id)
         )
@@ -280,6 +283,25 @@ def list_scholarships(
         )
         items.append(ScholarshipSummary.model_validate(summary))
     return ScholarshipListResponse(items=items)
+
+
+def not_for_any_user(criteria: ScholarshipCriteria) -> bool:
+    """서비스 사용자 누구도 받을 수 없는 장학금이면 True입니다(목록에서 뺌).
+
+    사용자는 모두 충북대학교 소프트웨어학부 재학생입니다(계획서 4.1). 그래서 프로필과
+    관계없이 지원 불가가 정해지는 두 조건만 봅니다.
+    - 학교 조건(`school_excluded`): 사립대·전문대·해외 대학 전용처럼 충북대가 충족하지 못함
+    - 학과 조건(`target_department` = 소프트웨어학부 불포함): 인문·예체능 계열 전용 등
+    AI가 그 조건을 모호하다고 표시했으면(`ambiguous_fields`) 숨기지 않습니다.
+    상세 화면과 알림은 바꾸지 않습니다(알림은 이미 지원 불가를 보내지 않음).
+    """
+    ambiguous = set(criteria.ambiguous_fields)
+    school = criteria.school_excluded is True and "school_excluded" not in ambiguous
+    department = (
+        criteria.target_department == "소프트웨어학부 불포함"
+        and "target_department" not in ambiguous
+    )
+    return school or department
 
 
 # --- 같은 장학금 묶기 (T45) ---------------------------------------------------------
