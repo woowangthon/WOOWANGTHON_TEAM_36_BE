@@ -52,11 +52,12 @@ def cand(scholarship_id: int, criteria: dict = ELIGIBLE, **changes) -> Candidate
     return Candidate(**{**values, **changes})
 
 
-def recipient(states: dict[int, str] | None = None, sent=()) -> Recipient:
+def recipient(bookmarked=(), applied=(), sent=()) -> Recipient:
     return Recipient(
         user_id=1,
         profile=Profile.model_validate(PROFILE),
-        states=states or {},
+        bookmarked=frozenset(bookmarked),
+        applied=frozenset(applied),
         sent=frozenset(sent),
     )
 
@@ -93,7 +94,8 @@ def test_new_match_uses_condition_answers():
     answered = Recipient(
         user_id=base.user_id,
         profile=base.profile,
-        states={},
+        bookmarked=frozenset(),
+        applied=frozenset(),
         sent=frozenset(),
         answers={1: {key: "YES"}, 2: {key: "NO"}},
     )
@@ -127,7 +129,7 @@ def test_new_match_includes_always_and_criteria_notice():
 
 
 def test_new_match_excludes_applied_and_already_sent():
-    who = recipient(states={1: "APPLIED"}, sent=[(2, "NEW_MATCH", None)])
+    who = recipient(applied=[1], sent=[(2, "NEW_MATCH", None)])
 
     assert picked(select_items(who, [cand(1), cand(2), cand(3)], NOW)) == [(3, "NEW_MATCH")]
 
@@ -148,7 +150,7 @@ def test_new_match_excludes_applied_and_already_sent():
     ],
 )
 def test_deadline_days(deadline, kind):
-    who = recipient(states={1: "BOOKMARKED"})
+    who = recipient(bookmarked=[1])
 
     items = select_items(who, [cand(1, created_at=OLD, apply_end=deadline)], NOW)
 
@@ -158,7 +160,7 @@ def test_deadline_days(deadline, kind):
 def test_deadline_uses_seoul_date_for_utc_values():
     deadline = datetime(2026, 11, 14, 14, 59, tzinfo=UTC)  # 서울 11-14 23:59
     now = datetime(2026, 11, 11, 0, 0, tzinfo=UTC)  # 서울 11-11 09:00
-    who = recipient(states={1: "BOOKMARKED"})
+    who = recipient(bookmarked=[1])
 
     items = select_items(who, [cand(1, created_at=OLD, apply_end=deadline)], now)
 
@@ -166,17 +168,22 @@ def test_deadline_uses_seoul_date_for_utc_values():
 
 
 @pytest.mark.parametrize(
-    ("states", "status"),
-    [({}, "OPEN"), ({1: "APPLIED"}, "OPEN"), ({1: "BOOKMARKED"}, "CLOSED")],
+    ("bookmarked", "applied", "status"),
+    [
+        ((), (), "OPEN"),
+        ((), (1,), "OPEN"),
+        ((1,), (1,), "OPEN"),  # 관심이어도 이미 신청완료면 알리지 않음 (7.4, 2026-11-14)
+        ((1,), (), "CLOSED"),
+    ],
 )
-def test_deadline_requires_bookmark_and_open(states, status):
+def test_deadline_requires_bookmark_not_applied_and_open(bookmarked, applied, status):
     c = cand(1, created_at=OLD, apply_end=kst(2026, 11, 14, 23, 59), status=status)
 
-    assert select_items(recipient(states=states), [c], NOW) == []
+    assert select_items(recipient(bookmarked=bookmarked, applied=applied), [c], NOW) == []
 
 
 def test_deadline_is_sent_regardless_of_match_result():
-    who = recipient(states={1: "BOOKMARKED"})
+    who = recipient(bookmarked=[1])
     c = cand(1, INELIGIBLE, created_at=OLD, apply_end=kst(2026, 11, 12, 23, 59))
 
     items = select_items(who, [c], NOW)
@@ -186,7 +193,7 @@ def test_deadline_is_sent_regardless_of_match_result():
 
 def test_same_deadline_is_not_sent_twice():
     deadline = kst(2026, 11, 14, 23, 59)
-    who = recipient(states={1: "BOOKMARKED"}, sent=[(1, "DEADLINE_D3", deadline)])
+    who = recipient(bookmarked=[1], sent=[(1, "DEADLINE_D3", deadline)])
 
     assert select_items(who, [cand(1, created_at=OLD, apply_end=deadline)], NOW) == []
 
@@ -194,14 +201,14 @@ def test_same_deadline_is_not_sent_twice():
 def test_sent_deadline_matches_across_timezones():
     deadline = kst(2026, 11, 14, 23, 59)
     as_utc = deadline.astimezone(UTC)  # DB는 UTC로 돌려줌
-    who = recipient(states={1: "BOOKMARKED"}, sent=[(1, "DEADLINE_D3", as_utc)])
+    who = recipient(bookmarked=[1], sent=[(1, "DEADLINE_D3", as_utc)])
 
     assert select_items(who, [cand(1, created_at=OLD, apply_end=deadline)], NOW) == []
 
 
 def test_extended_deadline_notifies_again():
     old_deadline = kst(2026, 11, 10, 23, 59)
-    who = recipient(states={1: "BOOKMARKED"}, sent=[(1, "DEADLINE_D3", old_deadline)])
+    who = recipient(bookmarked=[1], sent=[(1, "DEADLINE_D3", old_deadline)])
     c = cand(1, created_at=OLD, apply_end=kst(2026, 11, 14, 23, 59))
 
     assert picked(select_items(who, [c], NOW)) == [(1, "DEADLINE_D3")]
@@ -211,7 +218,7 @@ def test_extended_deadline_notifies_again():
 
 
 def test_bookmarked_new_scholarship_appears_once_as_deadline():
-    who = recipient(states={1: "BOOKMARKED"})
+    who = recipient(bookmarked=[1])
 
     items = select_items(who, [cand(1, apply_end=kst(2026, 11, 14, 23, 59))], NOW)
 
@@ -219,7 +226,7 @@ def test_bookmarked_new_scholarship_appears_once_as_deadline():
 
 
 def test_order_is_deadlines_first_then_new_by_deadline():
-    who = recipient(states={1: "BOOKMARKED", 2: "BOOKMARKED"})
+    who = recipient(bookmarked=[1, 2])
     cands = [
         cand(5),  # 새 장학금, 마감 없음
         cand(4, apply_end=kst(2026, 11, 30, 23, 59)),

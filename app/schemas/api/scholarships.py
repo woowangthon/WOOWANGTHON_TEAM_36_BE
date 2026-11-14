@@ -3,16 +3,15 @@
 목록 응답에 판정 결과와 내 상태를 함께 담아 대시보드가 API를 한 번만 부르게 합니다.
 """
 
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict
+from pydantic import AwareDatetime, BaseModel, ConfigDict, model_validator
 
 from app.extraction.schemas import BenefitType, SourceCode
 
 MatchResult = Literal["ELIGIBLE", "CONDITIONAL", "INELIGIBLE"]  # 지원 가능 / 확인 필요 / 지원 불가
 ConditionOutcome = Literal["MET", "UNMET", "UNKNOWN"]  # 충족 / 불충족 / 알 수 없음
 ScholarshipStatus = Literal["OPEN", "ALWAYS", "CLOSED"]
-UserState = Literal["BOOKMARKED", "APPLIED"]  # 관심 / 신청완료
 
 # 5.3 표의 조건 행. 이름은 ScholarshipCriteria 필드 이름을 씁니다.
 ConditionName = Literal[
@@ -86,7 +85,9 @@ class ScholarshipSummary(BaseModel):
     deadline_conflict: bool  # true면 "마감일 확인 필요"
     posted_at: AwareDatetime
     result: MatchResult
-    my_state: UserState | None
+    # 관심과 신청완료는 따로 켜고 끕니다(7.1, 2026-11-14)
+    bookmarked: bool
+    applied: bool
     # 답하지 않은 자격을 좁히는 조건과, 그 밖에 판정을 막는 것(알 수 없는 조건·못 읽은 첨부)이
     # 있는지. "이것만 확인하면 N개가 풀려요" 안내를 화면이 계산합니다(7.1).
     open_conditions: list[OpenCondition] = []
@@ -177,14 +178,24 @@ class ScholarshipDetail(ScholarshipSummary):
 
 
 class StateRequest(BaseModel):
+    """보낸 값만 바꿉니다. 빼거나 null로 보낸 칸은 그대로 둡니다."""
+
     model_config = ConfigDict(extra="forbid")
 
-    state: UserState
+    bookmarked: bool | None = None
+    applied: bool | None = None
+
+    @model_validator(mode="after")
+    def _needs_a_change(self) -> Self:
+        if self.bookmarked is None and self.applied is None:
+            raise ValueError("bookmarked와 applied 중 하나는 보내야 합니다")
+        return self
 
 
 class StateResponse(BaseModel):
     scholarship_id: int
-    state: UserState | None  # DELETE 뒤에는 null
+    bookmarked: bool
+    applied: bool
 
 
 class ConditionAnswerRequest(BaseModel):

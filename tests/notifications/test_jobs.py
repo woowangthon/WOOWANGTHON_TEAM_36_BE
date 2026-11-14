@@ -44,6 +44,21 @@ def run_rows(factory) -> list[NotificationRun]:
 # --- 기본 흐름 ------------------------------------------------------------------
 
 
+def test_bookmarked_but_applied_gets_no_deadline_mail(session_factory, outbox):
+    """관심과 신청완료를 둘 다 켠 장학금은 마감 메일에서 뺍니다(7.4, 2026-11-14)."""
+    user_id = add_user(session_factory, "a@example.com")
+    waiting_id = add_scholarship(session_factory, "아직신청안함", apply_end=D3)
+    done_id = add_scholarship(session_factory, "이미신청함", apply_end=D3)
+    bookmark(session_factory, user_id, waiting_id)
+    bookmark(session_factory, user_id, done_id, applied=True)
+
+    run(session_factory, outbox)
+
+    [mail] = outbox.mails
+    assert "아직신청안함" in mail.text
+    assert "이미신청함" not in mail.text
+
+
 def test_sends_one_mail_with_new_and_deadline_items(session_factory, outbox):
     user_id = add_user(session_factory, "a@example.com")
     new_id = add_scholarship(session_factory, "새장학금", created_at=FRESH)

@@ -215,15 +215,20 @@ def load_candidates(session: Session, now: datetime) -> list[Candidate]:
 def load_recipients(session: Session, candidates: list[Candidate]) -> list[tuple[str, Recipient]]:
     """(이메일, 수신자) 목록. 사용자 수와 관계없이 쿼리 4번입니다(상태·기록·조건 답·수신자)."""
     ids = [c.scholarship_id for c in candidates]
-    states: dict[int, dict[int, str]] = defaultdict(dict)
+    bookmarked: dict[int, set[int]] = defaultdict(set)
+    applied: dict[int, set[int]] = defaultdict(set)
     for row in session.execute(
         select(
             UserScholarshipState.user_id,
             UserScholarshipState.scholarship_id,
-            UserScholarshipState.state,
+            UserScholarshipState.bookmarked,
+            UserScholarshipState.applied,
         ).where(UserScholarshipState.scholarship_id.in_(ids))
     ):
-        states[row.user_id][row.scholarship_id] = row.state
+        if row.bookmarked:
+            bookmarked[row.user_id].add(row.scholarship_id)
+        if row.applied:
+            applied[row.user_id].add(row.scholarship_id)
 
     sent: dict[int, set[SentKey]] = defaultdict(set)
     for row in session.execute(
@@ -263,7 +268,8 @@ def load_recipients(session: Session, candidates: list[Candidate]) -> list[tuple
                 Recipient(
                     user_id=user_id,
                     profile=profile,
-                    states=states.get(user_id, {}),
+                    bookmarked=frozenset(bookmarked.get(user_id, ())),
+                    applied=frozenset(applied.get(user_id, ())),
                     sent=frozenset(sent.get(user_id, ())),
                     answers=answers.get(user_id, {}),
                 ),

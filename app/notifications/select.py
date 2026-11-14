@@ -47,7 +47,9 @@ class Candidate:
 class Recipient:
     user_id: int
     profile: Profile
-    states: dict[int, str]  # scholarship_id -> BOOKMARKED | APPLIED
+    # 관심·신청완료로 표시한 장학금 id. 두 표시는 서로 영향을 주지 않습니다(7.1)
+    bookmarked: frozenset[int]
+    applied: frozenset[int]
     sent: frozenset[SentKey]
     # scholarship_id -> {condition_key: 답}. 자격을 좁히는 조건에 사용자가 답한 값(5.3)
     answers: Mapping[int, Mapping[str, ConditionAnswer]] = field(default_factory=dict)
@@ -63,7 +65,8 @@ class Item:
 
 
 def _deadline_kind(recipient: Recipient, c: Candidate, now: datetime) -> str | None:
-    if recipient.states.get(c.scholarship_id) != "BOOKMARKED":
+    # 관심이어도 이미 신청완료한 장학금은 알리지 않습니다(7.4, 2026-11-14)
+    if c.scholarship_id not in recipient.bookmarked or c.scholarship_id in recipient.applied:
         return None
     if c.status != "OPEN" or c.apply_end is None:
         return None
@@ -79,7 +82,7 @@ def _new_match(recipient: Recipient, c: Candidate, now: datetime) -> MatchResult
         return None
     if c.status not in NEW_STATUSES or c.notice_kind not in NEW_NOTICE_KINDS:
         return None
-    if recipient.states.get(c.scholarship_id) == "APPLIED":
+    if c.scholarship_id in recipient.applied:
         return None
     if (c.scholarship_id, NEW_MATCH, None) in recipient.sent:
         return None

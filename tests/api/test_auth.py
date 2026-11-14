@@ -415,8 +415,8 @@ def test_delete_me_removes_all_rows(api, factory):
         scholarship_id = notice.scholarships[0].id
         session.add_all(
             [
-                UserScholarshipState(user_id=1, scholarship_id=scholarship_id, state="BOOKMARKED"),
-                UserScholarshipState(user_id=other, scholarship_id=scholarship_id, state="APPLIED"),
+                UserScholarshipState(user_id=1, scholarship_id=scholarship_id, bookmarked=True),
+                UserScholarshipState(user_id=other, scholarship_id=scholarship_id, applied=True),
             ]
         )
         session.commit()

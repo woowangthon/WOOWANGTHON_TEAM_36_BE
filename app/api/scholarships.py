@@ -25,8 +25,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import and_, exists, or_, select
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import and_, exists, false, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -88,7 +88,10 @@ RESULT_FILTERS: dict[ResultFilter, tuple[MatchResult, ...]] = {
     "conditional": ("CONDITIONAL",),
     "all": ("ELIGIBLE", "CONDITIONAL", "INELIGIBLE"),
 }
-STATE_FILTERS = {"bookmarked": "BOOKMARKED", "applied": "APPLIED"}
+STATE_FILTERS = {
+    "bookmarked": UserScholarshipState.bookmarked,
+    "applied": UserScholarshipState.applied,
+}
 # 등록금성·생활비성 필터에 '혼합'도 포함합니다(둘 다 해당).
 BENEFIT_FILTERS: dict[str, tuple[str, ...]] = {
     "등록금성": ("등록금성", "혼합"),
@@ -164,7 +167,8 @@ def _summary(
     s: Scholarship,
     notice: Notice,
     source: Source,
-    state: str | None,
+    bookmarked: bool,
+    applied: bool,
     evaluation: Evaluation,
     now: datetime,
 ) -> dict[str, Any]:
@@ -182,7 +186,8 @@ def _summary(
         "deadline_conflict": s.deadline_conflict,
         "posted_at": _kst(notice.posted_at),
         "result": evaluation.result,
-        "my_state": state,
+        "bookmarked": bookmarked,
+        "applied": applied,
         "open_conditions": [
             OpenCondition(key=c.key, text=c.text, summary=c.summary)
             for c in evaluation.extra_checks
@@ -205,9 +210,19 @@ def unread_attachments_exist():
 
 
 def _base_query(user_id: int):
-    """장학금 + 공지 + 출처 + 내 상태 + 못 읽은 첨부 여부를 한 번에 읽는 쿼리."""
+    """장학금 + 공지 + 출처 + 내 표시(관심·신청완료) + 못 읽은 첨부 여부를 한 번에 읽는 쿼리.
+
+    표시한 적이 없으면(행 없음) 두 값 모두 False입니다.
+    """
     return (
-        select(Scholarship, Notice, Source, UserScholarshipState.state, unread_attachments_exist())
+        select(
+            Scholarship,
+            Notice,
+            Source,
+            func.coalesce(UserScholarshipState.bookmarked, false()).label("bookmarked"),
+            func.coalesce(UserScholarshipState.applied, false()).label("applied"),
+            unread_attachments_exist(),
+        )
         .join(Notice, Scholarship.notice_id == Notice.id)
         .join(Source, Notice.source_code == Source.code)
         .outerjoin(
@@ -244,7 +259,7 @@ def list_scholarships(
             or_(Scholarship.apply_end.is_(None), Scholarship.apply_end > now),
         )
     else:
-        query = query.where(UserScholarshipState.state == STATE_FILTERS[state])
+        query = query.where(STATE_FILTERS[state].is_(True))
     if source is not None:
         query = query.where(Source.is_internal.is_(source == "internal"))
     if benefit_type is not None:
@@ -260,7 +275,7 @@ def list_scholarships(
     wanted = RESULT_FILTERS[result]
     answers = load_condition_answers(db, [user.id], None).get(user.id, {})
     rows: list[_Row] = []
-    for s, notice, src, my_state, has_unread in db.execute(query):
+    for s, notice, src, bookmarked, applied, has_unread in db.execute(query):
         criteria = ScholarshipCriteria.model_validate(s.criteria)
         # 내 장학금 화면(state)은 사용자가 직접 표시한 것이라 그대로 보여 줍니다.
         if state is None and not_for_any_user(criteria):
@@ -268,7 +283,7 @@ def list_scholarships(
         evaluation = evaluate(
             profile, criteria, today, has_unread_attachments=has_unread, answers=answers.get(s.id)
         )
-        rows.append(_Row(s, notice, src, my_state, evaluation))
+        rows.append(_Row(s, notice, src, bookmarked, applied, evaluation))
     # 내 장학금 화면(state)은 사용자가 표시한 것을 그대로 보여 주므로 묶지 않습니다.
     groups = [[row] for row in rows] if state is not None else group_same_scholarships(rows)
     items = []
@@ -277,7 +292,9 @@ def list_scholarships(
         # 묶은 뒤 대표의 판정으로 거릅니다. 같은 장학금이 탭마다 다르게 나오지 않게 합니다.
         if rep.evaluation.result not in wanted:
             continue
-        summary = _summary(rep.s, rep.notice, rep.src, rep.my_state, rep.evaluation, now)
+        summary = _summary(
+            rep.s, rep.notice, rep.src, rep.bookmarked, rep.applied, rep.evaluation, now
+        )
         summary["also_posted_in"] = sorted(
             {row.src.name for row in group if row.src.code != rep.src.code}
         )
@@ -312,7 +329,8 @@ class _Row:
     s: Scholarship
     notice: Notice
     src: Source
-    my_state: str | None
+    bookmarked: bool
+    applied: bool
     evaluation: Evaluation
 
 
@@ -351,7 +369,7 @@ def pick_representative(group: list[_Row]) -> _Row:
     return min(
         group,
         key=lambda r: (
-            r.my_state is None,
+            not (r.bookmarked or r.applied),
             not r.src.is_internal,
             -r.notice.posted_at.timestamp(),
             r.s.id,
@@ -368,7 +386,7 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
     row = db.execute(_base_query(user.id).where(Scholarship.id == scholarship_id)).first()
     if row is None:
         raise _not_found()
-    s, notice, src, my_state, _ = row
+    s, notice, src, bookmarked, applied, _ = row
     attachments = db.scalars(
         select(NoticeAttachment)
         .where(
@@ -395,7 +413,7 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
     ).all()
     return ScholarshipDetail.model_validate(
         {
-            **_summary(s, notice, src, my_state, evaluation, now_kst()),
+            **_summary(s, notice, src, bookmarked, applied, evaluation, now_kst()),
             "apply_start": _kst(s.apply_start),
             "conditions": evaluation.checks,
             "extra_conditions": evaluation.extra_conditions,
@@ -436,31 +454,26 @@ def get_scholarship(scholarship_id: int, user: ConsentedUser, db: DB) -> Scholar
 def put_state(
     scholarship_id: int, body: StateRequest, user: ConsentedUser, db: DB
 ) -> StateResponse:
-    """관심 / 신청완료. 장학금마다 상태는 하나이며 새 값으로 바꿉니다."""
+    """관심·신청완료를 따로 켜고 끕니다. 보낸 값만 바꾸고 나머지는 그대로 둡니다.
+
+    읽고 나서 쓰지 않고 문장 하나로 저장합니다. 하트와 신청완료를 거의 동시에 눌러도
+    두 요청이 서로의 값을 덮어쓰지 않습니다.
+    """
     if db.get(Scholarship, scholarship_id) is None:
         raise _not_found()
+    changes = body.model_dump(exclude_none=True)
     upsert = insert(UserScholarshipState).values(
-        user_id=user.id, scholarship_id=scholarship_id, state=body.state
+        user_id=user.id, scholarship_id=scholarship_id, **changes
     )
-    db.execute(
+    saved = db.execute(
         upsert.on_conflict_do_update(
-            index_elements=["user_id", "scholarship_id"], set_={"state": body.state}
-        )
-    )
+            index_elements=["user_id", "scholarship_id"], set_=changes
+        ).returning(UserScholarshipState.bookmarked, UserScholarshipState.applied)
+    ).one()
     db.commit()
-    return StateResponse(scholarship_id=scholarship_id, state=body.state)
-
-
-@router.delete(
-    "/{scholarship_id}/state", status_code=status.HTTP_204_NO_CONTENT, responses=AUTH_ERRORS
-)
-def delete_state(scholarship_id: int, user: ConsentedUser, db: DB) -> Response:
-    """상태를 지웁니다. 상태가 없어도 204."""
-    state = db.get(UserScholarshipState, (user.id, scholarship_id))
-    if state is not None:
-        db.delete(state)
-        db.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return StateResponse(
+        scholarship_id=scholarship_id, bookmarked=saved.bookmarked, applied=saved.applied
+    )
 
 
 CONDITION_ERRORS = {**AUTH_ERRORS, 404: {"description": "장학금·조건 없음 또는 프로필 미입력"}}

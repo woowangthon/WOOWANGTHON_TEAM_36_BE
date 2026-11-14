@@ -172,7 +172,8 @@ def test_list_item_shape(student, factory):  # noqa: F811
         "deadline_conflict": True,
         "posted_at": "2026-10-30T09:00:00+09:00",
         "result": "ELIGIBLE",
-        "my_state": None,
+        "bookmarked": False,
+        "applied": False,
         "open_conditions": [],
         "other_unknown": False,
         "also_posted_in": [],
@@ -298,38 +299,81 @@ def test_benefit_type_filter_includes_mixed(student, factory):  # noqa: F811
 # --- 상태(관심·신청완료) ----------------------------------------------------------------
 
 
-def test_put_and_delete_state(student, factory):  # noqa: F811
+def test_bookmark_and_applied_are_independent(student, factory):  # noqa: F811
+    """관심과 신청완료는 따로 켜고 끕니다. 보낸 값만 바뀝니다(7.2, 2026-11-14)."""
     sid = seed(factory, "관심")
-    response = student.put(f"/scholarships/{sid}/state", json={"state": "BOOKMARKED"})
-    assert response.status_code == 200
-    assert response.json() == {"scholarship_id": sid, "state": "BOOKMARKED"}
-    assert student.get("/scholarships").json()["items"][0]["my_state"] == "BOOKMARKED"
 
-    student.put(f"/scholarships/{sid}/state", json={"state": "APPLIED"})  # 덮어쓰기
-    assert student.get("/scholarships").json()["items"][0]["my_state"] == "APPLIED"
+    def put(body: dict) -> dict:
+        response = student.put(f"/scholarships/{sid}/state", json=body)
+        assert response.status_code == 200
+        return response.json()
 
-    assert student.delete(f"/scholarships/{sid}/state").status_code == 204
-    assert student.get("/scholarships").json()["items"][0]["my_state"] is None
-    assert student.delete(f"/scholarships/{sid}/state").status_code == 204  # 없어도 204
+    assert put({"bookmarked": True}) == {
+        "scholarship_id": sid,
+        "bookmarked": True,
+        "applied": False,
+    }
+    assert put({"applied": True}) == {"scholarship_id": sid, "bookmarked": True, "applied": True}
+    assert put({"bookmarked": False}) == {
+        "scholarship_id": sid,
+        "bookmarked": False,
+        "applied": True,
+    }
+    item = student.get("/scholarships").json()["items"][0]
+    assert (item["bookmarked"], item["applied"]) == (False, True)
+
+
+def test_scholarship_marked_both_is_in_both_state_lists(student, factory):  # noqa: F811
+    sid = seed(factory, "둘다")
+    seed(factory, "상태 없음")
+    student.put(f"/scholarships/{sid}/state", json={"bookmarked": True, "applied": True})
+
+    for state in ("bookmarked", "applied"):
+        assert names(student.get("/scholarships", params={"state": state})) == ["둘다"]
+
+
+def test_unmarking_everything_looks_unmarked(student, factory):  # noqa: F811
+    sid = seed(factory, "껐음")
+    student.put(f"/scholarships/{sid}/state", json={"bookmarked": True})
+    student.put(f"/scholarships/{sid}/state", json={"bookmarked": False})
+
+    item = student.get("/scholarships").json()["items"][0]
+    assert (item["bookmarked"], item["applied"]) == (False, False)
+    assert student.get("/scholarships", params={"state": "bookmarked"}).json()["items"] == []
 
 
 def test_state_on_missing_scholarship_is_404(student):
-    assert student.put("/scholarships/999/state", json={"state": "BOOKMARKED"}).status_code == 404
+    assert student.put("/scholarships/999/state", json={"bookmarked": True}).status_code == 404
 
 
-def test_invalid_state_is_422(student, factory):  # noqa: F811
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {"bookmarked": None},
+        {"state": "BOOKMARKED"},  # 바뀌기 전 화면이 보내던 모양
+        {"bookmarked": True, "hidden": True},
+    ],
+)
+def test_invalid_state_body_is_422(student, factory, body):  # noqa: F811
     sid = seed(factory, "x")
-    assert student.put(f"/scholarships/{sid}/state", json={"state": "LIKED"}).status_code == 422
-    # 숨기기는 없앴습니다(되돌릴 화면이 없고 탭 필터로 충분).
-    assert student.put(f"/scholarships/{sid}/state", json={"state": "HIDDEN"}).status_code == 422
+    assert student.put(f"/scholarships/{sid}/state", json=body).status_code == 422
+    item = student.get("/scholarships").json()["items"][0]
+    assert (item["bookmarked"], item["applied"]) == (False, False)
+
+
+def test_delete_state_is_removed(student, factory):  # noqa: F811
+    """지우기는 PUT에 false를 보냅니다. DELETE는 없앴습니다."""
+    sid = seed(factory, "x")
+    assert student.delete(f"/scholarships/{sid}/state").status_code == 405
 
 
 def test_default_list_keeps_scholarships_with_state(student, factory):  # noqa: F811
     bookmarked = seed(factory, "관심", apply_end=kst(2026, 11, 10))
     applied = seed(factory, "신청함", apply_end=kst(2026, 11, 11))
     seed(factory, "상태 없음", apply_end=kst(2026, 11, 12))
-    student.put(f"/scholarships/{bookmarked}/state", json={"state": "BOOKMARKED"})
-    student.put(f"/scholarships/{applied}/state", json={"state": "APPLIED"})
+    student.put(f"/scholarships/{bookmarked}/state", json={"bookmarked": True})
+    student.put(f"/scholarships/{applied}/state", json={"applied": True})
     assert names(student.get("/scholarships")) == ["관심", "신청함", "상태 없음"]
 
 
@@ -338,8 +382,8 @@ def test_my_list_includes_closed(student, factory):  # noqa: F811
     closed_id = seed(factory, "마감됨", status="CLOSED", apply_end=kst(2026, 10, 1))
     applied_id = seed(factory, "신청함", status="CLOSED", apply_end=kst(2026, 10, 2))
     seed(factory, "상태 없음")
-    for sid, state in ((open_id, "BOOKMARKED"), (closed_id, "BOOKMARKED"), (applied_id, "APPLIED")):
-        student.put(f"/scholarships/{sid}/state", json={"state": state})
+    for sid, flag in ((open_id, "bookmarked"), (closed_id, "bookmarked"), (applied_id, "applied")):
+        student.put(f"/scholarships/{sid}/state", json={flag: True})
     assert names(student.get("/scholarships", params={"state": "bookmarked"})) == [
         "마감됨",
         "열림",
@@ -349,13 +393,13 @@ def test_my_list_includes_closed(student, factory):  # noqa: F811
 
 def test_state_is_per_user(student, factory):  # noqa: F811
     sid = seed(factory, "공용")
-    student.put(f"/scholarships/{sid}/state", json={"state": "BOOKMARKED"})
+    student.put(f"/scholarships/{sid}/state", json={"bookmarked": True})
     student.cookies.clear()
     signup(student, email="other@example.com")
     student.post("/auth/consent", json={"privacy": True, "sensitive": False})
     student.put("/profile", json=PROFILE)
     items = student.get("/scholarships").json()["items"]
-    assert [(i["name"], i["my_state"]) for i in items] == [("공용", None)]
+    assert [(i["name"], i["bookmarked"], i["applied"]) for i in items] == [("공용", False, False)]
 
 
 def test_list_and_detail_use_display_name(student, factory):  # noqa: F811
@@ -404,12 +448,12 @@ def test_detail(student, factory):  # noqa: F811
     )
     sibling_open = add_scholarship(factory, notice_id, "B재단")
     sibling_closed = add_scholarship(factory, notice_id, "C재단", status="CLOSED")
-    student.put(f"/scholarships/{sid}/state", json={"state": "BOOKMARKED"})
+    student.put(f"/scholarships/{sid}/state", json={"bookmarked": True})
 
     body = student.get(f"/scholarships/{sid}").json()
     assert body["name"] == "A재단"
     assert body["result"] == "CONDITIONAL"
-    assert body["my_state"] == "BOOKMARKED"
+    assert (body["bookmarked"], body["applied"]) == (True, False)
     assert body["conditions"] == [
         {
             "condition": "min_gpa",
@@ -795,7 +839,7 @@ def test_list_hides_deadline_passed_before_next_crawl(student, factory):  # noqa
 
 def test_deadline_passed_shows_closed_in_my_list_and_detail(student, factory):  # noqa: F811
     sid = seed(factory, "지남", apply_end=NOW - timedelta(hours=1))
-    student.put(f"/scholarships/{sid}/state", json={"state": "BOOKMARKED"})
+    student.put(f"/scholarships/{sid}/state", json={"bookmarked": True})
 
     [item] = student.get("/scholarships", params={"state": "bookmarked"}).json()["items"]
     assert item["status"] == "CLOSED"
@@ -825,11 +869,32 @@ def test_same_scholarship_on_two_boards_is_listed_once(student, factory):  # noq
 def test_bookmarked_one_is_shown_even_if_external(student, factory):  # noqa: F811
     kosaf = seed(factory, "두산연강 장학생", source="KOSAF", apply_end=END)
     seed(factory, "두산연강 장학생", source="SW_DEPT", apply_end=END)
-    student.put(f"/scholarships/{kosaf}/state", json={"state": "BOOKMARKED"})
+    student.put(f"/scholarships/{kosaf}/state", json={"bookmarked": True})
 
     [item] = student.get("/scholarships").json()["items"]
     assert item["id"] == kosaf
     assert item["also_posted_in"] == [_source_name(factory, "SW_DEPT")]
+
+
+def test_applied_one_is_shown_even_if_external(student, factory):  # noqa: F811
+    """신청완료만 켠 글도 내가 표시한 글이므로 먼저 보여 줍니다."""
+    kosaf = seed(factory, "두산연강 장학생", source="KOSAF", apply_end=END)
+    seed(factory, "두산연강 장학생", source="SW_DEPT", apply_end=END)
+    student.put(f"/scholarships/{kosaf}/state", json={"applied": True})
+
+    [item] = student.get("/scholarships").json()["items"]
+    assert (item["id"], item["applied"]) == (kosaf, True)
+
+
+def test_unmarked_again_is_not_preferred_over_internal(student, factory):  # noqa: F811
+    """둘 다 끈 글은 표시하지 않은 것과 같아 교내 글이 대표가 됩니다."""
+    kosaf = seed(factory, "두산연강 장학생", source="KOSAF", apply_end=END)
+    internal = seed(factory, "두산연강 장학생", source="SW_DEPT", apply_end=END)
+    student.put(f"/scholarships/{kosaf}/state", json={"bookmarked": True})
+    student.put(f"/scholarships/{kosaf}/state", json={"bookmarked": False})
+
+    [item] = student.get("/scholarships").json()["items"]
+    assert item["id"] == internal
 
 
 def test_different_deadline_or_always_is_not_grouped(student, factory):  # noqa: F811
@@ -864,6 +929,6 @@ def test_source_filter_groups_within_that_board_only(student, factory):  # noqa:
 def test_my_list_is_not_grouped(student, factory):  # noqa: F811
     for source in ("KOSAF", "SW_DEPT"):
         sid = seed(factory, "두산연강 장학생", source=source, apply_end=END)
-        student.put(f"/scholarships/{sid}/state", json={"state": "BOOKMARKED"})
+        student.put(f"/scholarships/{sid}/state", json={"bookmarked": True})
 
     assert len(student.get("/scholarships", params={"state": "bookmarked"}).json()["items"]) == 2
