@@ -123,7 +123,7 @@ def server_error(code: int) -> errors.APIError:
 def test_success(gemini, clock):
     models = gemini([json.dumps(VALID_RESPONSE)])
     result = extract(request())
-    assert result.model_version == "gemini-test-flash+extract_v13"
+    assert result.model_version == "gemini-test-flash+extract_v16"
     scholarship = result.criteria.scholarships[0]
     assert scholarship.apply_end == datetime(2026, 11, 12, 18, 0, tzinfo=SEOUL)
     assert scholarship.ambiguous_fields == ["max_income_bracket"]
@@ -181,6 +181,8 @@ def test_prompt_contains_required_rules():
         "`school_excluded`",  # 새 필드(extract_v8)
         "`min_admission_year`",  # 새 필드(extract_v11)
         "`grade_either`",  # 새 필드(extract_v12)
+        "`min_completed_semesters`",  # 새 필드(extract_v15)
+        "`max_completed_semesters`",
         "`display_name`",  # 쉬운 이름(extract_v9)
         "다듬지 않는다",  # scholarship_name은 원래 이름 그대로(재추출 매칭 키)
         "지어내지 않는다",
@@ -345,7 +347,7 @@ def test_mock_does_not_need_model_or_key(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert extract(request()).model_version == "mock+extract_v13"
+    assert extract(request()).model_version == "mock+extract_v16"
 
 
 # --- import 경계 (8.1) ---
@@ -533,7 +535,7 @@ def test_foundation_request_to_university_counts_as_designated():
 
 
 def test_or_conditions_stay_in_one_item():
-    """또는으로 이어진 자격의 처리와 나열된 자격 나누기(extract_v13).
+    """또는으로 이어진 자격의 처리와 나열된 자격 나누기(extract_v16).
 
     국가우수장학금(이공계) 성적우수는 "고교 성적 기준 또는 수능성적 기준"을 항목 둘로 나눠
     둘 다 맞아야 하는 것처럼 판정됐습니다(직접 답하는 조건 오류 B).
@@ -548,7 +550,42 @@ def test_or_conditions_stay_in_one_item():
 
 
 def test_or_with_profile_field_uses_or_fields():
-    """선택지 하나는 프로필로, 하나는 학생이 답하면 or_fields로 묶습니다(extract_v13)."""
+    """선택지 하나는 프로필로, 하나는 학생이 답하면 or_fields로 묶습니다(extract_v16)."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
     assert '"or_fields": ["min_gpa"]' in prompt
     assert "`summary`에는 **학생이 답할 선택지만** 쓴다" in prompt
+
+
+def test_rare_exclusions_and_headers_are_not_questions():
+    """일반 재학생이 거의 모두 충족하거나 일부 집단에만 붙는 문장은 묻지 않습니다(extract_v14).
+
+    국가근로장학금(223)은 "조기취업자·산업체 위탁생·시간제 등록생 제외"와 "재외국민의 경우
+    국외 소득·재산 신고자에 한정"을, 주거안정장학금(125)은 "아래 요건을 모두 충족하는 자"
+    머리말을 직접 답하는 조건으로 물었습니다(직접 답하는 조건 오류 D).
+    """
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert "**정규 재학생이 아닌 신분·등록 형태를 빼는 제외 대상**" in prompt
+    assert "**일부 집단에만 덧붙는 단서**" in prompt
+    assert '"재외국민의 경우 국외 소득·재산 신고자에 한정"' in prompt
+    assert "**세부 요건을 소개하는 머리말**도 넣지 않는다" in prompt
+    assert '"재외국민 제외", "재외국민만 지원 가능"' in prompt
+
+
+def test_completed_semesters_rule_keeps_numbers_as_written():
+    """이수 학기 수는 원문 숫자 그대로 두고 학년으로 바꾸지 않습니다(extract_v15, T51)."""
+    line = _prompt_line("- `min_completed_semesters`")
+    assert "4∼5개 학기를 이수한 학생" in line
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    assert "학년으로 바꿔 `target_grades`를 채우지 않는다" in prompt
+    assert '"N학기 진학 예정자"는 이 필드가 아니라 `target_grades`다' in prompt
+    assert "4년제 값을 쓴다" in prompt
+    assert "성적 산정 기간" in prompt
+
+
+def test_v15_only_adds_lines_to_v14():
+    """v15는 v14에 줄을 더하기만 합니다. 있던 규칙을 고치면 이 테스트가 실패합니다."""
+    v14 = (PROMPT_PATH.parent / "extract_v14.md").read_text(encoding="utf-8").splitlines()
+    v15 = (PROMPT_PATH.parent / "extract_v15.md").read_text(encoding="utf-8").splitlines()
+    remaining = iter(v15)
+    assert all(line in remaining for line in v14)
+    assert len(v15) - len(v14) == 5

@@ -31,7 +31,7 @@ from app.core.config import get_settings
 from app.core.logging import log_event
 from app.extraction.schemas import ExtractedCriteria, ExtractionResult, ExtractRequest
 
-PROMPT_VERSION = "extract_v13"
+PROMPT_VERSION = "extract_v16"
 MOCK_MODEL_NAME = "mock"
 PROMPT_PATH = Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.md"
 

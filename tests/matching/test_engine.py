@@ -1048,7 +1048,7 @@ def test_prospective_freshmen_only_is_ineligible():
     assert evaluate(profile(completed_semesters=0), c, date(2026, 11, 13)).result == "INELIGIBLE"
 
 
-# --- 필드 조건 또는 직접 답하는 조건 (or_fields, extract_v13) -----------------------------
+# --- 필드 조건 또는 직접 답하는 조건 (or_fields, extract_v16) -----------------------------
 
 BASIC_LIVELIHOOD = "직전학기 평점 3.0 이상 또는 기초생활수급자"
 
@@ -1108,6 +1108,18 @@ def test_or_field_with_grade_either_uses_one_grade_line():
     assert len(evaluate(profile(gpa=3.0), c, TODAY).extra_checks) == 1
 
 
+def test_or_field_with_completed_semesters_range():
+    """이수 학기 범위(두 칸, 한 줄)와 묶여도 범위 줄의 결과로 판단합니다."""
+    item = {"text": "4~5개 학기 이수 또는 기초생활수급자", "or_fields": ["max_completed_semesters"]}
+    c = criteria(min_completed_semesters=4, max_completed_semesters=5, extra_conditions=[item])
+    met = evaluate(profile(completed_semesters=4), c, TODAY)
+    assert met.extra_checks == []
+    assert {x.condition: x.outcome for x in met.checks}["min_completed_semesters"] == "MET"
+    unmet = evaluate(profile(completed_semesters=2), c, TODAY)
+    assert "min_completed_semesters" not in {x.condition for x in unmet.checks}
+    assert len(unmet.extra_checks) == 1
+
+
 def test_other_extra_conditions_still_and():
     """묶이지 않은 다른 질문은 그대로 AND입니다."""
     c = or_criteria(
@@ -1119,3 +1131,77 @@ def test_other_extra_conditions_still_and():
     evaluation = evaluate(profile(gpa=3.6), c, TODAY)
     assert [x.text for x in evaluation.extra_checks] == ["직전학기 봉사활동 20시간 이상"]
     assert evaluation.result == "CONDITIONAL"
+
+
+# --- 이수 학기 범위 (extract_v15, T51) -------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("minimum", "maximum", "p", "expected"),
+    [
+        (4, 5, {"completed_semesters": 3}, "UNMET"),
+        (4, 5, {"completed_semesters": 4}, "MET"),
+        (4, 5, {"completed_semesters": 5}, "MET"),
+        (4, 5, {"completed_semesters": 6}, "UNMET"),
+        (4, None, {"completed_semesters": 16}, "MET"),  # 최대가 없으면 위로 열린 범위
+        (4, None, {"completed_semesters": 3}, "UNMET"),
+        (None, 5, {"completed_semesters": 1}, "MET"),  # 최소가 없으면 아래로 열린 범위
+        (None, 5, {"completed_semesters": 6}, "UNMET"),
+        (4, 5, {"is_transfer": True, "completed_semesters": 0}, "MET"),  # 판정용 4
+        (4, 5, {"is_transfer": True, "completed_semesters": 2}, "UNMET"),  # 판정용 6
+    ],
+)
+def test_completed_semesters_range(minimum, maximum, p, expected):
+    c = criteria(min_completed_semesters=minimum, max_completed_semesters=maximum)
+    assert outcome("min_completed_semesters", profile(**p), c) == expected
+
+
+def test_completed_semesters_absent_is_not_compared():
+    assert outcome("min_completed_semesters", profile(), criteria()) is None
+
+
+@pytest.mark.parametrize("field", ["min_completed_semesters", "max_completed_semesters"])
+def test_completed_semesters_either_ambiguous_is_unknown(field):
+    # 모호한 쪽은 null이고 다른 쪽에 값이 있어도 행 전체가 알 수 없음입니다.
+    other = {"min_completed_semesters": 4, "max_completed_semesters": 5}
+    del other[field]
+    c = criteria(**other, ambiguous_fields=[field])
+    check = next(
+        check
+        for check in evaluate(profile(), c, TODAY).checks
+        if check.condition == "min_completed_semesters"
+    )
+    assert check.outcome == "UNKNOWN"
+    assert check.ambiguous is True
+    assert check.requirement is None
+
+
+def test_completed_semesters_evidence_falls_back_to_max_key():
+    c = criteria(
+        max_completed_semesters=5,
+        evidence={"max_completed_semesters": "5개 학기 이하를 이수한 학생"},
+    )
+    check = evaluate(profile(), c, TODAY).checks[0]
+    assert check.condition == "min_completed_semesters"
+    assert check.evidence == "5개 학기 이하를 이수한 학생"
+
+
+def test_completed_semesters_follows_remaining_in_checklist():
+    c = criteria(
+        min_remaining_semesters=1,
+        min_completed_semesters=4,
+        max_completed_semesters=5,
+        enrollment_status=["재학"],
+    )
+    order = [check.condition for check in evaluate(profile(), c, TODAY).checks]
+    assert order == ["min_remaining_semesters", "min_completed_semesters", "enrollment_status"]
+
+
+def test_grade_and_completed_semesters_are_separate_rows():
+    """국가우수 2년지원: "3학년 재학" + "4∼5개 학기 이수". 2학년은 두 행 모두 불충족입니다."""
+    c = criteria(target_grades=[3], min_completed_semesters=4, max_completed_semesters=5)
+    evaluation = evaluate(profile(completed_semesters=3), c, TODAY)
+    outcomes = {check.condition: check.outcome for check in evaluation.checks}
+    assert outcomes == {"target_grades": "UNMET", "min_completed_semesters": "UNMET"}
+    assert evaluation.result == "INELIGIBLE"
+    assert evaluate(profile(completed_semesters=4), c, TODAY).result == "ELIGIBLE"

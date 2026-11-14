@@ -265,7 +265,7 @@ def test_extract_returns_mock_when_ai_mock(monkeypatch):
     monkeypatch.setenv("AI_MOCK", "1")
     result = extract(_request())
     assert isinstance(result, ExtractionResult)
-    assert result.model_version == "mock+extract_v13"
+    assert result.model_version == "mock+extract_v16"
     # 목 응답도 스키마 검증을 다시 통과해야 합니다.
     again = ExtractionResult.model_validate_json(result.model_dump_json())
     assert again.criteria.notice_kind == "모집"
@@ -442,7 +442,7 @@ def test_grade_either_in_criteria_field_and_json_schema():
 
 
 def test_condition_text_or_fields():
-    """or_fields(extract_v13): 프로필로 판정하는 필드만, 중복과 빈 목록은 정리합니다."""
+    """or_fields(extract_v16): 프로필로 판정하는 필드만, 중복과 빈 목록은 정리합니다."""
     item = ConditionText.model_validate(
         {"text": "평점 3.0 이상 또는 기초생활수급자", "or_fields": ["min_gpa", "min_gpa"]}
     )
@@ -453,3 +453,46 @@ def test_condition_text_or_fields():
         ConditionText.model_validate({"text": "x", "or_fields": ["scholarship_name"]})
     schema = ExtractedCriteria.model_json_schema()
     assert "or_fields" in schema["$defs"]["ConditionText"]["properties"]
+
+
+def test_v14_criteria_without_completed_semesters_load():
+    """extract_v15 이전에 저장된 조건(새 키 없음)도 읽혀야 합니다."""
+    s = ScholarshipCriteria.model_validate({"scholarship_name": "v14 장학금"})
+    assert s.min_completed_semesters is None
+    assert s.max_completed_semesters is None
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"min_completed_semesters": 4, "max_completed_semesters": 5},
+        {"min_completed_semesters": 4},
+        {"max_completed_semesters": 5},
+        {"min_completed_semesters": 4, "max_completed_semesters": 4},
+        {"min_completed_semesters": 0, "max_completed_semesters": 16},
+    ],
+)
+def test_completed_semesters_accepts_range(fields):
+    s = ExtractedCriteria.model_validate(_example(**fields)).scholarships[0]
+    assert s.min_completed_semesters == fields.get("min_completed_semesters")
+    assert s.max_completed_semesters == fields.get("max_completed_semesters")
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"min_completed_semesters": -1},
+        {"max_completed_semesters": 17},
+        {"min_completed_semesters": 6, "max_completed_semesters": 5},
+    ],
+)
+def test_completed_semesters_rejects_bad_range(fields):
+    with pytest.raises(ValidationError):
+        ExtractedCriteria.model_validate(_example(**fields))
+
+
+def test_completed_semesters_in_criteria_field_and_json_schema():
+    schema = ExtractedCriteria.model_json_schema()
+    for name in ("min_completed_semesters", "max_completed_semesters"):
+        assert name in CRITERIA_FIELDS
+        assert name in schema["$defs"]["ScholarshipCriteria"]["properties"]

@@ -116,6 +116,22 @@ def min_remaining_semesters(p: Profile, c: ScholarshipCriteria) -> Outcome:
     return _bool(REGULAR_SEMESTERS - effective_semesters(p) >= c.min_remaining_semesters)
 
 
+def completed_semesters(p: Profile, c: ScholarshipCriteria, *, ambiguous: bool = False) -> Outcome:
+    """이수 학기 범위 (extract_v15). `최소 ≤ 판정용 이수학기 ≤ 최대`면 충족, 벗어나면 불충족.
+
+    `null`인 쪽은 비교하지 않습니다(한쪽만 있으면 열린 범위). 둘 다 `null`이면 조건 없음입니다.
+    마친 학기만 세고 지금 다니는 학기는 세지 않습니다. 편입생은 +4입니다(4.1).
+    두 칸 중 하나라도 모호하면(`ambiguous`) 알 수 없음입니다.
+    """
+    if ambiguous:
+        return UNKNOWN
+    low, high = c.min_completed_semesters, c.max_completed_semesters
+    if low is None and high is None:
+        return None
+    semesters = effective_semesters(p)
+    return _bool((low is None or semesters >= low) and (high is None or semesters <= high))
+
+
 def excludes_transfer_students(p: Profile, c: ScholarshipCriteria) -> Outcome:
     """편입생 제외 (extract_v7). 편입 첫 학기(편입 후 마친 학기 0)인 편입생만 불충족."""
     if not c.excludes_transfer_students:

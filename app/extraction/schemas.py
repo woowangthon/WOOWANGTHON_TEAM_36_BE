@@ -42,6 +42,8 @@ CriteriaField = Literal[
     "excludes_transfer_students",
     "min_admission_year",
     "min_remaining_semesters",
+    "min_completed_semesters",
+    "max_completed_semesters",
     "enrollment_status",
     "min_gpa",
     "min_score_100",
@@ -62,7 +64,7 @@ CriteriaField = Literal[
     "required_documents",
 ]
 
-# 직접 답하는 조건과 "또는"으로 묶을 수 있는 필드 (extract_v13 `or_fields`).
+# 직접 답하는 조건과 "또는"으로 묶을 수 있는 필드 (extract_v16 `or_fields`).
 # 규칙 엔진이 프로필로 판정하는 조건만 넣습니다(5.3).
 OrField = Literal[
     "target_grades",
@@ -71,6 +73,8 @@ OrField = Literal[
     "min_gpa",
     "min_score_100",
     "min_credits",
+    "min_completed_semesters",
+    "max_completed_semesters",
     "target_nationality",
     "gender",
     "max_age",
@@ -114,7 +118,7 @@ class ConditionText(BaseModel):
     text: str = Field(min_length=1)
     summary: str | None = None
     # "평점 3.0 이상 또는 기초생활수급자"처럼 선택지 하나는 프로필로 판정하고 하나는 학생이 답하는
-    # 조건이면, 프로필로 판정하는 필드 이름(extract_v13). 그 필드가 충족이면 이 질문은 묻지 않고,
+    # 조건이면, 프로필로 판정하는 필드 이름(extract_v16). 그 필드가 충족이면 이 질문은 묻지 않고,
     # 아니면 이 질문(요약은 직접 답할 부분만)으로 판정합니다(5.3). 없으면 null.
     or_fields: list[OrField] | None = None
 
@@ -162,6 +166,12 @@ class ScholarshipCriteria(BaseModel):
     min_admission_year: int | None = Field(default=None, ge=2000, le=2100)
     # 남은 정규학기가 N학기 이상이어야 함(예: "잔여정규학기 1개 학기 이상" → 1)
     min_remaining_semesters: int | None = Field(default=None, ge=1, le=8)
+    # extract_v15에서 추가했습니다(T51). 기본값이 None이라 DB에 저장된 v14 결과도 그대로 읽힙니다.
+    # 지금까지 마친 정규학기 수의 범위("4∼5개 학기를 이수한 학생" → 4, 5).
+    # 한쪽만 있으면 다른 쪽은 None입니다("4개 학기 이상 이수" → 4, None).
+    # 학년으로 바꾸지 않고 원문 숫자 그대로 두며, 판정용 이수학기와 비교합니다(5.3).
+    min_completed_semesters: int | None = Field(default=None, ge=0, le=16)
+    max_completed_semesters: int | None = Field(default=None, ge=0, le=16)
     enrollment_status: list[EnrollmentStatus] | None = None
 
     # 성적 조건 (5.2): 4.5 만점 평점과 100점 만점 점수는 서로 환산하지 않고 따로 둡니다.
@@ -256,6 +266,9 @@ class ScholarshipCriteria(BaseModel):
         if self.target_grades is not None:
             if not self.target_grades or any(g not in range(1, 5) for g in self.target_grades):
                 raise ValueError("target_grades는 1~4 중 하나 이상이어야 합니다")
+        low, high = self.min_completed_semesters, self.max_completed_semesters
+        if low is not None and high is not None and low > high:
+            raise ValueError("min_completed_semesters는 max_completed_semesters보다 클 수 없습니다")
         if self.enrollment_status is not None and not self.enrollment_status:
             raise ValueError("enrollment_status 조건이 없으면 빈 목록 대신 null이어야 합니다")
         if self.max_income_bracket is not None and self.max_income_bracket not in INCOME_BRACKETS:

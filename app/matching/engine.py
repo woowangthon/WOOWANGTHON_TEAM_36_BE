@@ -15,10 +15,12 @@
 `ambiguous_fields`에 든 조건은 값과 관계없이 알 수 없음입니다(5.2).
 `grade_either = true`이고 평점·100점 조건이 모두 있으면 둘을 OR로 묶어 `min_gpa` 한 줄로
 판정합니다(`rules.either`, extract_v12). 그 밖에는 두 성적 조건을 따로(AND) 판정합니다.
-`extra_conditions` 항목에 `or_fields`가 있으면 "그 필드 조건 또는 이 문장"입니다(extract_v13).
+`extra_conditions` 항목에 `or_fields`가 있으면 "그 필드 조건 또는 이 문장"입니다(extract_v16).
 그 필드가 충족이면 내 정보로 판정한 조건에 충족으로 보이고 질문은 묻지 않습니다. 충족이 아니면
 (불충족·알 수 없음) 필드 줄은 보이지 않고 질문으로 판정합니다.
 필드 불충족만으로는 지원 불가가 되지 않습니다.
+이수 학기 범위(`min_completed_semesters`·`max_completed_semesters`, extract_v15)는 두 칸을 묶어
+`min_completed_semesters` 한 줄로 판정하고, 둘 중 하나라도 모호하면 알 수 없음입니다.
 `basic_conditions`(학교 조건·품행 등 대부분 충족)와 `notes`(자격이 아닌 안내)는 판정을 바꾸지 않고
 화면에 보여 주기만 합니다(extract_v5).
 """
@@ -75,6 +77,14 @@ def _regions(p: Profile, c: ScholarshipCriteria) -> rules.Outcome:
     return rules.regions(p, c, basis_ambiguous="region_basis" in c.ambiguous_fields)
 
 
+COMPLETED_SEMESTERS_FIELDS = ("min_completed_semesters", "max_completed_semesters")
+
+
+def _completed_semesters(p: Profile, c: ScholarshipCriteria) -> rules.Outcome:
+    ambiguous = any(field in c.ambiguous_fields for field in COMPLETED_SEMESTERS_FIELDS)
+    return rules.completed_semesters(p, c, ambiguous=ambiguous)
+
+
 def _min_gpa(p: Profile, c: ScholarshipCriteria) -> rules.Outcome:
     return rules.min_gpa(p, c, basis_ambiguous="grade_basis" in c.ambiguous_fields)
 
@@ -92,6 +102,7 @@ RULES: tuple[tuple[ConditionName, Rule], ...] = (
     ("excludes_transfer_students", _no_date(rules.excludes_transfer_students)),
     ("min_admission_year", rules.min_admission_year),
     ("min_remaining_semesters", _no_date(rules.min_remaining_semesters)),
+    ("min_completed_semesters", _no_date(_completed_semesters)),
     ("enrollment_status", _no_date(rules.enrollment_status)),
     ("school_excluded", _no_date(rules.school_excluded)),
     ("min_gpa", _no_date(_min_gpa)),
@@ -111,6 +122,7 @@ RULES: tuple[tuple[ConditionName, Rule], ...] = (
 # 근거 문장을 찾을 evidence 키 (조건 이름과 다를 때만)
 EVIDENCE_KEYS: dict[str, tuple[str, ...]] = {
     "regions": ("regions", "region_basis"),
+    "min_completed_semesters": COMPLETED_SEMESTERS_FIELDS,
     "min_gpa": ("min_gpa", "grade_basis"),
     "min_score_100": ("min_score_100", "grade_basis"),
 }
@@ -125,8 +137,16 @@ def _evidence(c: ScholarshipCriteria, condition: str) -> tuple[str | None, str |
 
 
 def _or_field(name: str, either: bool) -> str:
-    """`or_fields`의 이름을 판정 줄 이름으로: 평점·100점을 한 줄로 판정하면 min_gpa 줄입니다."""
-    return "min_gpa" if either and name == "min_score_100" else name
+    """`or_fields`의 이름을 판정 줄 이름으로 바꿉니다.
+
+    평점·100점을 한 줄로 판정하면 min_gpa 줄이고,
+    이수 학기 범위는 늘 min_completed_semesters 한 줄입니다.
+    """
+    if either and name == "min_score_100":
+        return "min_gpa"
+    if name == "max_completed_semesters":
+        return "min_completed_semesters"
+    return name
 
 
 def evaluate(
