@@ -92,6 +92,30 @@ class PasswordChangeRequest(BaseModel):
     _new_password = field_validator("new_password")(validate_new_password)
 
 
+class PasswordResetCodeRequest(BaseModel):
+    """비밀번호 찾기 1단계: 가입한 이메일로 인증번호 받기 (7.3)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(max_length=320, pattern=EMAIL_PATTERN)
+
+
+class PasswordResetVerifyResponse(BaseModel):
+    reset_token: str  # 3단계(새 비밀번호)에 그대로 돌려줌
+    expires_in: int  # 새 비밀번호를 정해야 하는 시간(초)
+
+
+class PasswordResetRequest(BaseModel):
+    """비밀번호 찾기 3단계: 확인된 이메일(`reset_token`)의 새 비밀번호. 규칙은 가입과 같습니다."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reset_token: str = Field(max_length=TOKEN_MAX_LENGTH)
+    new_password: str
+
+    _new_password = field_validator("new_password")(validate_new_password)
+
+
 class LoginRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

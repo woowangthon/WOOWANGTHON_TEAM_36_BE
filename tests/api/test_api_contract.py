@@ -16,6 +16,9 @@ SPEC_ENDPOINTS = {
     ("delete", "/auth/me"),
     ("put", "/auth/me/notifications"),
     ("put", "/auth/me/password"),  # T37
+    ("post", "/auth/password-reset/code"),
+    ("post", "/auth/password-reset/verify"),
+    ("post", "/auth/password-reset"),
     ("post", "/notifications/unsubscribe"),
     ("get", "/profile"),
     ("put", "/profile"),
@@ -48,6 +51,10 @@ IMPLEMENTED = {
     ("delete", "/auth/me"),
     ("put", "/auth/me/notifications"),
     ("put", "/auth/me/password"),  # T37
+    # 비밀번호 찾기 (tests/api/test_password_reset.py)
+    ("post", "/auth/password-reset/code"),
+    ("post", "/auth/password-reset/verify"),
+    ("post", "/auth/password-reset"),
     ("post", "/notifications/unsubscribe"),
     ("delete", "/auth/consent/sensitive"),
     # T20 (tests/api/test_google.py)
