@@ -116,3 +116,20 @@ def send_signup_code(to: str, code: str) -> None:
     subject, body = signup_code_message(code)
     with mail_session() as send:
         send(OutgoingMail(to=to, subject=subject, text=body))
+
+
+def password_reset_message(code: str) -> tuple[str, str]:
+    subject = f"[{SENDER_NAME}] 비밀번호 재설정 인증번호 {code}"
+    body = (
+        f"장학금 매칭 비밀번호 재설정 인증번호는 {code} 입니다.\n"
+        "비밀번호 찾기 화면에 입력해 주세요. 10분 동안 유효합니다.\n\n"
+        "본인이 요청하지 않았다면 이 메일은 무시하셔도 됩니다. 비밀번호는 바뀌지 않습니다.\n"
+    )
+    return subject, body
+
+
+def send_password_reset_code(to: str, code: str) -> None:
+    """재설정 인증번호 메일을 보냅니다. `MAIL_MOCK=1`이면 보내지 않습니다."""
+    subject, body = password_reset_message(code)
+    with mail_session() as send:
+        send(OutgoingMail(to=to, subject=subject, text=body))

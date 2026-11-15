@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.logging import log_event
-from app.core.mail import MailError, send_signup_code
+from app.core.mail import MailError, send_password_reset_code, send_signup_code
 from app.core.security import (
     SIGNUP_CODE_TTL,
     SIGNUP_TOKEN_TTL,
@@ -26,14 +26,19 @@ from app.core.security import (
     check_signup_code_rate,
     check_signup_verify_rate,
     clear_auth_cookie,
+    create_reset_code_token,
+    create_reset_token,
     create_signup_code_token,
     create_signup_token,
     hash_password,
     is_admin,
     issue_session,
     new_signup_code,
+    read_reset_code_token,
+    read_reset_token,
     read_signup_code_token,
     read_signup_token,
+    reset_code_matches,
     signup_code_matches,
     verify_password,
 )
@@ -45,6 +50,9 @@ from app.schemas.api.auth import (
     MeResponse,
     NotificationSettingRequest,
     PasswordChangeRequest,
+    PasswordResetCodeRequest,
+    PasswordResetRequest,
+    PasswordResetVerifyResponse,
     SignupCodeRequest,
     SignupCodeResponse,
     SignupRequest,
@@ -61,6 +69,7 @@ UNAUTHORIZED = {401: {"description": "로그인이 필요함"}}
 INVALID_CREDENTIALS = "이메일 또는 비밀번호가 올바르지 않습니다"
 GOOGLE_ONLY = "Google 계정으로 가입한 이메일입니다. Google로 로그인하세요"
 ALREADY_SIGNED_UP = "이미 가입된 이메일입니다"
+NOT_SIGNED_UP = "가입되지 않은 이메일입니다"
 CODE_MISMATCH = "인증번호가 맞지 않아요"
 CODE_EXPIRED = "인증번호가 만료됐어요. 다시 받아 주세요"
 SIGNUP_EXPIRED = "인증 시간이 지났어요. 이메일 인증을 다시 해 주세요"
@@ -227,6 +236,91 @@ def login(body: LoginRequest, request: Request, response: Response, db: DB) -> M
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=INVALID_CREDENTIALS)
     issue_session(response, user)
     log_event(logger, "로그인", user_id=user.id)
+    return _me(db, user)
+
+
+@router.post(
+    "/password-reset/code",
+    response_model=SignupCodeResponse,
+    responses={
+        404: {"description": "가입되지 않은 이메일"},
+        429: {"description": "발송 제한 초과"},
+        502: {"description": "메일 발송 실패"},
+    },
+)
+def password_reset_code(
+    body: PasswordResetCodeRequest, request: Request, db: DB
+) -> SignupCodeResponse:
+    """비밀번호 찾기 1단계: 가입한 이메일로 인증번호 메일을 보냅니다(7.3).
+
+    가입 여부는 회원가입 화면(409)에서도 알 수 있으므로, 가입하지 않은 이메일은 404로 알립니다.
+    """
+    email = normalize_email(body.email)
+    check_signup_code_rate(request, email)
+    if db.scalar(select(User.id).where(User.email == email)) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_SIGNED_UP)
+    code = new_signup_code()
+    try:
+        send_password_reset_code(email, code)
+    except MailError as exc:
+        log_event(logger, "재설정 메일 발송 실패", logging.ERROR, reason=str(exc))
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=MAIL_FAILED) from None
+    log_event(logger, "재설정 메일 발송")
+    return SignupCodeResponse(
+        code_token=create_reset_code_token(email, code),
+        expires_in=int(SIGNUP_CODE_TTL.total_seconds()),
+        resend_after=RESEND_AFTER_SECONDS,
+    )
+
+
+@router.post(
+    "/password-reset/verify",
+    response_model=PasswordResetVerifyResponse,
+    responses={
+        400: {"description": "인증번호 불일치·만료"},
+        429: {"description": "확인 시도 제한 초과"},
+    },
+)
+def password_reset_verify(body: SignupVerifyRequest, db: DB) -> PasswordResetVerifyResponse:
+    """비밀번호 찾기 2단계: 번호가 맞으면 30분 동안 새 비밀번호를 정할 수 있는 토큰을 줍니다."""
+    try:
+        email = read_reset_code_token(body.code_token)
+    except ExpiredTokenError:
+        raise _bad_request(CODE_EXPIRED) from None
+    except InvalidTokenError:
+        raise _bad_request(VERIFY_AGAIN) from None
+    check_signup_verify_rate(email)
+    if not reset_code_matches(body.code_token, body.code):
+        raise _bad_request(CODE_MISMATCH)
+    if db.scalar(select(User.id).where(User.email == email)) is None:
+        raise _bad_request(VERIFY_AGAIN)  # 번호를 받은 뒤 탈퇴한 경우
+    return PasswordResetVerifyResponse(
+        reset_token=create_reset_token(email),
+        expires_in=int(SIGNUP_TOKEN_TTL.total_seconds()),
+    )
+
+
+@router.post(
+    "/password-reset",
+    response_model=MeResponse,
+    responses={400: {"description": "인증이 만료됐거나 유효하지 않음"}},
+)
+def password_reset(body: PasswordResetRequest, response: Response, db: DB) -> MeResponse:
+    """비밀번호 찾기 3단계: 새 비밀번호로 바꾸고 다른 기기 로그인을 끊습니다. 이 기기는 로그인."""
+    try:
+        email = read_reset_token(body.reset_token)
+    except ExpiredTokenError:
+        raise _bad_request(SIGNUP_EXPIRED) from None
+    except InvalidTokenError:
+        raise _bad_request(VERIFY_AGAIN) from None
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None:
+        raise _bad_request(VERIFY_AGAIN)
+    user.password_hash = hash_password(body.new_password)
+    user.token_version += 1
+    db.commit()
+    issue_session(response, user)
+    log_event(logger, "비밀번호 재설정", user_id=user.id)
     return _me(db, user)
 
 

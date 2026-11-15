@@ -266,6 +266,8 @@ SIGNUP_CODE_TTL = timedelta(minutes=10)
 SIGNUP_TOKEN_TTL = timedelta(minutes=30)
 SIGNUP_CODE_PURPOSE = "signup_code"
 SIGNUP_PURPOSE = "signup"
+RESET_CODE_PURPOSE = "password_reset_code"
+RESET_PURPOSE = "password_reset"
 MOCK_SIGNUP_CODE = "000000"
 
 
@@ -280,9 +282,9 @@ def new_signup_code() -> str:
     return f"{secrets.randbelow(1_000_000):06d}"
 
 
-def _code_mac(email: str, code: str) -> str:
+def _code_mac(email: str, code: str, purpose: str = SIGNUP_CODE_PURPOSE) -> str:
     """서버 비밀키로 섞은 값이라, 토큰을 열어 봐도 번호를 거꾸로 알아낼 수 없습니다."""
-    message = f"{SIGNUP_CODE_PURPOSE}:{email}:{code}".encode()
+    message = f"{purpose}:{email}:{code}".encode()
     return hmac.new(_jwt_secret().encode(), message, hashlib.sha256).hexdigest()
 
 
@@ -329,6 +331,34 @@ def read_signup_code_token(token: str, *, now: datetime | None = None) -> str:
 def signup_code_matches(token: str, code: str, *, now: datetime | None = None) -> bool:
     payload = _decode_purpose(token, SIGNUP_CODE_PURPOSE, now)
     return hmac.compare_digest(str(payload.get("mac", "")), _code_mac(payload["email"], code))
+
+
+def create_reset_code_token(email: str, code: str, *, now: datetime | None = None) -> str:
+    """비밀번호 재설정 인증번호 토큰. 가입용과 `purpose`·MAC이 달라 서로 바꿔 쓸 수 없습니다."""
+    mac = _code_mac(email, code, RESET_CODE_PURPOSE)
+    return _encode_purpose(RESET_CODE_PURPOSE, email, SIGNUP_CODE_TTL, now, mac=mac)
+
+
+def read_reset_code_token(token: str, *, now: datetime | None = None) -> str:
+    payload = _decode_purpose(token, RESET_CODE_PURPOSE, now)
+    if not isinstance(payload.get("mac"), str):
+        raise InvalidTokenError("유효하지 않은 토큰")
+    return payload["email"]
+
+
+def reset_code_matches(token: str, code: str, *, now: datetime | None = None) -> bool:
+    payload = _decode_purpose(token, RESET_CODE_PURPOSE, now)
+    expected = _code_mac(payload["email"], code, RESET_CODE_PURPOSE)
+    return hmac.compare_digest(str(payload.get("mac", "")), expected)
+
+
+def create_reset_token(email: str, *, now: datetime | None = None) -> str:
+    """번호를 확인한 이메일에 30분 동안 새 비밀번호를 정할 수 있게 하는 토큰."""
+    return _encode_purpose(RESET_PURPOSE, email, SIGNUP_TOKEN_TTL, now)
+
+
+def read_reset_token(token: str, *, now: datetime | None = None) -> str:
+    return _decode_purpose(token, RESET_PURPOSE, now)["email"]
 
 
 def create_signup_token(email: str, *, now: datetime | None = None) -> str:
