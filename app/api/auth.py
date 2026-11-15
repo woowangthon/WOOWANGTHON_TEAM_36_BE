@@ -98,6 +98,15 @@ def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
+def _uses_password(user: User) -> bool:
+    """이메일·비밀번호로 가입한 계정인지. Google 계정(`google_sub` 있음)은 Google로만 로그인합니다.
+
+    Google과 연결하면 비밀번호를 지우지만(7.3 연결 규칙 2), 예전 비밀번호 찾기 버그로
+    비밀번호가 다시 생긴 Google 계정이 있을 수 있어 `password_hash`만 보지 않습니다.
+    """
+    return user.password_hash is not None and user.google_sub is None
+
+
 def _me(db: Session, user: User) -> MeResponse:
     profile = db.get(UserProfile, user.id)  # 조회 1번 (예전 count 쿼리 대신)
     return MeResponse(
@@ -108,7 +117,7 @@ def _me(db: Session, user: User) -> MeResponse:
         profile_completed=profile is not None,
         is_admin=is_admin(user),
         google_linked=user.google_sub is not None,
-        has_password=user.password_hash is not None,
+        has_password=_uses_password(user),
         nickname=profile.name if profile else None,
         completed_semesters=profile.completed_semesters if profile else None,
         is_transfer=profile.is_transfer if profile else None,
@@ -229,7 +238,7 @@ def login(body: LoginRequest, request: Request, response: Response, db: DB) -> M
     if user is None:
         verify_password(body.password, _dummy_hash())
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=INVALID_CREDENTIALS)
-    if user.password_hash is None:
+    if user.password_hash is None or not _uses_password(user):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=GOOGLE_ONLY)
     if not verify_password(body.password, user.password_hash):
         log_event(logger, "로그인 실패", logging.WARNING, user_id=user.id)
@@ -243,6 +252,7 @@ def login(body: LoginRequest, request: Request, response: Response, db: DB) -> M
     "/password-reset/code",
     response_model=SignupCodeResponse,
     responses={
+        400: {"description": "Google 계정 (비밀번호 찾기 대상 아님)"},
         404: {"description": "가입되지 않은 이메일"},
         429: {"description": "발송 제한 초과"},
         502: {"description": "메일 발송 실패"},
@@ -251,14 +261,19 @@ def login(body: LoginRequest, request: Request, response: Response, db: DB) -> M
 def password_reset_code(
     body: PasswordResetCodeRequest, request: Request, db: DB
 ) -> SignupCodeResponse:
-    """비밀번호 찾기 1단계: 가입한 이메일로 인증번호 메일을 보냅니다(7.3).
+    """비밀번호 찾기 1단계: 이메일로 가입한 계정에 인증번호 메일을 보냅니다(7.3).
 
     가입 여부는 회원가입 화면(409)에서도 알 수 있으므로, 가입하지 않은 이메일은 404로 알립니다.
+    Google 계정은 비밀번호가 없으므로 메일을 보내지 않고 Google 로그인으로 안내합니다
+    (로그인 화면도 같은 안내를 하므로 새로 드러나는 정보는 없습니다).
     """
     email = normalize_email(body.email)
     check_signup_code_rate(request, email)
-    if db.scalar(select(User.id).where(User.email == email)) is None:
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_SIGNED_UP)
+    if not _uses_password(user):
+        raise _bad_request(GOOGLE_ONLY)
     code = new_signup_code()
     try:
         send_password_reset_code(email, code)
@@ -277,12 +292,15 @@ def password_reset_code(
     "/password-reset/verify",
     response_model=PasswordResetVerifyResponse,
     responses={
-        400: {"description": "인증번호 불일치·만료"},
+        400: {"description": "인증번호 불일치·만료, Google 계정"},
         429: {"description": "확인 시도 제한 초과"},
     },
 )
 def password_reset_verify(body: SignupVerifyRequest, db: DB) -> PasswordResetVerifyResponse:
-    """비밀번호 찾기 2단계: 번호가 맞으면 30분 동안 새 비밀번호를 정할 수 있는 토큰을 줍니다."""
+    """비밀번호 찾기 2단계: 번호가 맞으면 30분 동안 새 비밀번호를 정할 수 있는 토큰을 줍니다.
+
+    번호를 받은 뒤 Google을 연결했을 수 있어 Google 계정인지 다시 확인합니다.
+    """
     try:
         email = read_reset_code_token(body.code_token)
     except ExpiredTokenError:
@@ -292,8 +310,11 @@ def password_reset_verify(body: SignupVerifyRequest, db: DB) -> PasswordResetVer
     check_signup_verify_rate(email)
     if not reset_code_matches(body.code_token, body.code):
         raise _bad_request(CODE_MISMATCH)
-    if db.scalar(select(User.id).where(User.email == email)) is None:
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None:
         raise _bad_request(VERIFY_AGAIN)  # 번호를 받은 뒤 탈퇴한 경우
+    if not _uses_password(user):
+        raise _bad_request(GOOGLE_ONLY)
     return PasswordResetVerifyResponse(
         reset_token=create_reset_token(email),
         expires_in=int(SIGNUP_TOKEN_TTL.total_seconds()),
@@ -303,10 +324,13 @@ def password_reset_verify(body: SignupVerifyRequest, db: DB) -> PasswordResetVer
 @router.post(
     "/password-reset",
     response_model=MeResponse,
-    responses={400: {"description": "인증이 만료됐거나 유효하지 않음"}},
+    responses={400: {"description": "인증이 만료됐거나 유효하지 않음, Google 계정"}},
 )
 def password_reset(body: PasswordResetRequest, response: Response, db: DB) -> MeResponse:
-    """비밀번호 찾기 3단계: 새 비밀번호로 바꾸고 다른 기기 로그인을 끊습니다. 이 기기는 로그인."""
+    """비밀번호 찾기 3단계: 새 비밀번호로 바꾸고 다른 기기 로그인을 끊습니다. 이 기기는 로그인.
+
+    토큰을 받은 뒤 Google을 연결했을 수 있어 여기서도 Google 계정이면 거부합니다.
+    """
     try:
         email = read_reset_token(body.reset_token)
     except ExpiredTokenError:
@@ -316,6 +340,8 @@ def password_reset(body: PasswordResetRequest, response: Response, db: DB) -> Me
     user = db.scalar(select(User).where(User.email == email))
     if user is None:
         raise _bad_request(VERIFY_AGAIN)
+    if not _uses_password(user):
+        raise _bad_request(GOOGLE_ONLY)
     user.password_hash = hash_password(body.new_password)
     user.token_version += 1
     db.commit()
@@ -395,7 +421,7 @@ def change_password(body: PasswordChangeRequest, user: CurrentUser, db: DB) -> R
     이 기기에는 새 쿠키를 줘서 로그인을 유지합니다(7.3).
     """
     check_password_change_rate(user.id)
-    if user.password_hash is None:
+    if user.password_hash is None or not _uses_password(user):
         raise _bad_request(NO_PASSWORD)
     if not verify_password(body.current_password, user.password_hash):
         log_event(logger, "비밀번호 변경 실패", logging.WARNING, user_id=user.id)

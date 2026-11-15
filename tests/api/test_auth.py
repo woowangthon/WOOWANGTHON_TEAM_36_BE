@@ -570,6 +570,27 @@ def test_change_password_google_only(api, factory):
     assert response.json()["detail"] == "Google 계정으로 로그인하는 계정이에요"
 
 
+def test_google_account_with_leftover_password_is_google_only(api, factory):
+    """예전 비밀번호 찾기 버그로 비밀번호가 남은 Google 계정도 Google 전용으로 다룹니다(7.3)."""
+    user_id = add_user(
+        factory,
+        email="g@gmail.com",
+        google_sub="g-1",
+        password_hash=security.hash_password(PASSWORD),
+    )
+
+    response = login(api, email="g@gmail.com")
+    assert response.status_code == 400
+    assert "Google로 로그인" in response.json()["detail"]
+
+    api.cookies.set(AUTH_COOKIE, security.create_access_token(user_id, 0))
+    assert api.get("/auth/me").json()["has_password"] is False
+    response = change_password(api)
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Google 계정으로 로그인하는 계정이에요"
+    assert get_user(factory, user_id).token_version == 0
+
+
 def test_change_password_same_as_current(api):
     signup(api)
 
