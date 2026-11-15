@@ -159,16 +159,49 @@ def test_reset_logs_out_other_sessions(api, factory):
     assert api.get("/auth/me").status_code == 401
 
 
-def test_google_only_account_can_set_password(api, factory):
-    user_id = add_user(factory, email=EMAIL, google_sub="google-1", password_hash=None)
-    code_token = request_code(api).json()["code_token"]
+# Google 계정(google_sub 있음)은 비밀번호 찾기를 쓸 수 없습니다. Google로만 로그인합니다(7.3).
+# 예전 버그로 비밀번호가 남은 Google 계정(password_hash 있음)도 똑같이 막습니다.
+GOOGLE_ACCOUNTS = [
+    pytest.param(None, id="google_only"),
+    pytest.param(hash_password(PASSWORD), id="google_with_leftover_password"),
+]
 
-    response = reset(api, code_token, "000000")
 
-    assert response.status_code == 200
-    assert response.json()["has_password"] is True
-    assert get_user(factory, user_id).google_sub == "google-1"
-    assert login(api, password=NEW_PASSWORD).status_code == 200
+@pytest.mark.parametrize("password_hash", GOOGLE_ACCOUNTS)
+def test_google_account_cannot_request_code(api, sent, factory, password_hash):
+    add_user(factory, email=EMAIL, google_sub="google-1", password_hash=password_hash)
+
+    response = request_code(api)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Google 계정으로 가입한 이메일입니다. Google로 로그인하세요"
+    assert sent == []  # 메일을 보내지 않음
+
+
+@pytest.mark.parametrize("password_hash", GOOGLE_ACCOUNTS)
+def test_google_account_cannot_verify(api, factory, password_hash):
+    """인증번호를 받은 뒤 Google을 연결한 경우: 2단계에서도 막습니다."""
+    add_user(factory, email=EMAIL, google_sub="google-1", password_hash=password_hash)
+    code_token = create_reset_code_token(EMAIL, "000000")
+
+    response = verify(api, code_token, "000000")
+
+    assert response.status_code == 400
+    assert "reset_token" not in response.json()
+
+
+@pytest.mark.parametrize("password_hash", GOOGLE_ACCOUNTS)
+def test_google_account_cannot_set_password(api, factory, password_hash):
+    """재설정 토큰을 받은 뒤 Google을 연결한 경우: 3단계에서도 막습니다."""
+    user_id = add_user(factory, email=EMAIL, google_sub="google-1", password_hash=password_hash)
+
+    response = set_password(api, create_reset_token(EMAIL))
+
+    assert response.status_code == 400
+    assert AUTH_COOKIE not in response.cookies
+    user = get_user(factory, user_id)
+    assert user.password_hash == password_hash
+    assert user.token_version == 0
 
 
 @pytest.mark.parametrize("password", ["short1!", "noDigits!!", "nospecial12"])
